@@ -407,22 +407,40 @@ export default function BulkDocumentUpload() {
                           </div>
                         </td>
                         <td className="px-4 py-2 align-top">
-                          <Select
-                            value={r.candidateId ?? ''}
-                            onValueChange={(v) => assignCandidate(r.id, v)}
-                          >
-                            <SelectTrigger className="h-7 w-52 text-xs">
-                              <SelectValue placeholder="Assign…" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {mockCandidates.slice(0, 50).map((c) => (
-                                <SelectItem key={c.candidate_id} value={c.candidate_id}>
-                                  {c.first_name} {c.last_name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <div className="flex items-center gap-1">
+                            <Select
+                              value={r.candidateId ?? ''}
+                              onValueChange={(v) => assignCandidate(r.id, v)}
+                            >
+                              <SelectTrigger className="h-7 w-44 text-xs">
+                                <SelectValue placeholder="Assign…" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {allCandidates.slice(0, 60).map((c) => (
+                                  <SelectItem key={c.candidate_id} value={c.candidate_id}>
+                                    {c.first_name} {c.last_name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              title="Quick add new candidate"
+                              onClick={() => {
+                                const guess = r.fileName.split(/[\s_.-]/)[0] ?? '';
+                                setQuickAddRowId(r.id);
+                                setQFirst(guess ? guess.charAt(0).toUpperCase() + guess.slice(1).toLowerCase() : '');
+                                setQLast(''); setQCountry(''); setQProgram('');
+                                setQuickAddOpen(true);
+                              }}
+                              className="size-7 text-primary"
+                            >
+                              <UserPlus className="size-3.5" />
+                            </Button>
+                          </div>
                         </td>
+
                         <td className="px-4 py-2 align-top">
                           <span className="font-mono text-xs">{r.suggestedName}</span>
                         </td>
