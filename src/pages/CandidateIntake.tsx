@@ -292,25 +292,29 @@ export default function CandidateIntake() {
             <X className="size-4" />
           </button>
           <div className="min-w-0">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Sparkles className="size-3.5" /> Candidate Intake &amp; Verification Studio
+            <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
+              <Sparkles className="size-3" /> Intake · Verification Studio
             </div>
-            <h1 className="truncate text-sm font-medium">
+            <h1 className="font-display truncate text-[15px] font-semibold text-foreground">
               {stage === 'product'  && 'Step 1 · Choose product'}
               {stage === 'section'  && `Step ${current.number} · ${current.label}`}
-              {stage === 'review'   && 'Final Review'}
+              {stage === 'review'   && 'Final review'}
             </h1>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <div className="hidden md:flex items-center gap-2 text-[11px] text-muted-foreground">
             <Keyboard className="size-3.5" />
             <span className="rounded border bg-muted px-1.5 py-0.5">⌘↵</span> verify
             <span className="rounded border bg-muted px-1.5 py-0.5">⌘S</span> save
             <span className="rounded border bg-muted px-1.5 py-0.5">Esc</span> exit
           </div>
-          <div className="w-48">
+          <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <Cloud className="size-3.5 text-emerald-600" />
+            {savedAt ? <>Saved · {savedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</> : 'Autosave on'}
+          </div>
+          <div className="w-44">
             <Progress value={progress} className="h-1.5" />
             <div className="mt-1 flex justify-between text-[10px] tabular-nums text-muted-foreground">
               <span>{progress}%</span>
@@ -337,7 +341,7 @@ export default function CandidateIntake() {
               verified={verified}
               onJump={(i) => setSectionIndex(i)}
             />
-            <div className="flex-1 min-h-0 overflow-y-auto">
+            <div key={current.id} className="animate-section-in flex-1 min-h-0 overflow-y-auto">
               <SectionForm
                 section={current}
                 fields={FIELDS[current.id]}
