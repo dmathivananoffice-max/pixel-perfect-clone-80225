@@ -81,13 +81,13 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                   isActive
                     ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                     : 'text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
-                  !isOpen && 'lg:justify-center lg:px-2'
+                  !isOpen && 'justify-center px-2'
                 )
               }
               title={!isOpen ? item.label : undefined}
             >
               {item.icon}
-              <span className={cn('whitespace-nowrap', !isOpen && 'lg:hidden')}>{item.label}</span>
+              <span className={cn('whitespace-nowrap', !isOpen && 'hidden')}>{item.label}</span>
             </NavLink>
           ))}
         </nav>
@@ -99,13 +99,13 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
               key={item.label}
               className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent/60 transition-colors w-full',
-                !isOpen && 'lg:justify-center lg:px-2'
+                !isOpen && 'justify-center px-2'
               )}
               title={!isOpen ? item.label : undefined}
               onClick={() => alert(`${item.label} - Coming soon`)}
             >
               {item.icon}
-              <span className={cn('whitespace-nowrap', !isOpen && 'lg:hidden')}>{item.label}</span>
+              <span className={cn('whitespace-nowrap', !isOpen && 'hidden')}>{item.label}</span>
             </button>
           ))}
         </div>
