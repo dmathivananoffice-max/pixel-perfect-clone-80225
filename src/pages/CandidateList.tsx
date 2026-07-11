@@ -32,7 +32,7 @@ import { CommandPalette } from '@/components/candidates/CommandPalette';
 import { CandidateDrawer } from '@/components/candidates/CandidateDrawer';
 
 import {
-  Plus, Search, SlidersHorizontal, Download, Upload, Command as CommandIcon,
+  Plus, Search, SlidersHorizontal, Download, Upload, FileArchive, Command as CommandIcon,
   MoreHorizontal, X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
