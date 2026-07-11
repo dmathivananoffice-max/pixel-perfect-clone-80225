@@ -859,13 +859,14 @@ function DocumentViewer({
 // Review step
 // ─────────────────────────────────────────────────────────────
 function ReviewStep({
-  product, values, uploads, declarations, setDeclarations, onEditSection, onBack, onApprove,
+  product, values, uploads, declarations, setDeclarations, firstName, onEditSection, onBack, onApprove,
 }: {
   product: IntakeProductId;
   values: Record<string, Record<string, string>>;
   uploads: Record<string, boolean>;
   declarations: { reviewed: boolean; matches: boolean; complete: boolean };
   setDeclarations: (d: { reviewed: boolean; matches: boolean; complete: boolean }) => void;
+  firstName: string;
   onEditSection: (id: SectionId) => void;
   onBack: () => void;
   onApprove: () => void;
