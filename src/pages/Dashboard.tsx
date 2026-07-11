@@ -279,7 +279,8 @@ function AusbildungDashboard({ product }: { product: ProductConfig }) {
     { label: 'Employer Matching', value: m.shortlisted, icon: Target, accent: 'text-indigo-600 bg-indigo-50' },
     { label: 'Placements', value: m.placed, icon: Briefcase, accent: 'text-green-600 bg-green-50' },
   ];
-  return <ProductBody widgets={widgets} product={product} />;
+  return <ProductBody widgets={widgets} product={product} enginePrograms={['ausbildung']} />;
+
 }
 
 /* ---------- Pre-Bachelor ---------- */
