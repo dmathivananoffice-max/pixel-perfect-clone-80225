@@ -291,6 +291,9 @@ export default function BulkDocumentUpload() {
             <Button size="sm" variant="outline" onClick={() => { setQuickAddRowId(null); setQFirst(''); setQLast(''); setQCountry(''); setQProgram(''); setQuickAddOpen(true); }} className="gap-1.5">
               <UserPlus className="size-4" /> Quick add candidate
             </Button>
+            <Button size="sm" variant="outline" onClick={() => { setBulkNamesText(''); setBulkNamesOpen(true); }} className="gap-1.5">
+              <Users className="size-4" /> Add names
+
             <Button size="sm" onClick={commitAll} className="gap-1.5">
               <CheckCircle2 className="size-4" /> Save {stats.matched} ready
             </Button>
