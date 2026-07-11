@@ -504,18 +504,92 @@ function SectionForm({
   uploads: Record<string, boolean>;
   setUploads: (u: Record<string, boolean>) => void;
 }) {
+  // Contextual, section-specific banners
+  const duplicate = useMemo(() => {
+    if (section.id !== 'contact') return null;
+    const email = (values['email'] ?? '').trim().toLowerCase();
+    if (!email) return null;
+    return mockCandidates.find((c) => c.email.toLowerCase() === email) ?? null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section.id, values['email']]);
+
+  const langWarn = useMemo(() => {
+    if (section.id !== 'language') return null;
+    const exam = values['exam_date'];
+    if (!exam) return null;
+    const days = Math.round((Date.now() - new Date(exam).getTime()) / 86_400_000);
+    if (days > 365) return { days };
+    return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section.id, values['exam_date']]);
+
   return (
     <div className="mx-auto max-w-2xl px-6 py-8">
       <div className="mb-6">
         <p className="text-[11px] uppercase tracking-widest text-muted-foreground">
           Section {section.number} of 12
         </p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight">{section.label}</h2>
+        <h2 className="font-display mt-2 text-[26px] font-semibold tracking-tight">{section.label}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{section.hint}</p>
       </div>
 
+      {duplicate && (
+        <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          <div>
+            <p className="font-medium">Possible duplicate</p>
+            <p>{duplicate.first_name} {duplicate.last_name} — {duplicate.email} · {duplicate.country}</p>
+          </div>
+        </div>
+      )}
+
+      {langWarn && (
+        <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          <div>
+            <p className="font-medium">German language certificate may require renewal</p>
+            <p>Days since examination: <span className="tabular-nums">{langWarn.days}</span> · Recommend new Sprachnachweis. Validity thresholds are configurable per product / visa type.</p>
+          </div>
+        </div>
+      )}
+
       {section.id === 'documents' ? (
         <DocumentsSection uploads={uploads} setUploads={setUploads} />
+      ) : section.id === 'driving' ? (
+        <>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-5">
+            {fields.map((f) => (
+              <FieldRow
+                key={f.key}
+                field={f}
+                value={values[f.key] ?? ''}
+                edited={edited.has(f.key)}
+                onChange={(v) => onChange(f.key, v)}
+              />
+            ))}
+          </div>
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            {(['front', 'back'] as const).map((side) => {
+              const key = `driving_${side}`;
+              const done = !!uploads[key];
+              return (
+                <button
+                  key={side}
+                  type="button"
+                  onClick={() => setUploads({ ...uploads, [key]: !done })}
+                  className={cn(
+                    'flex flex-col items-center justify-center rounded-lg border-2 border-dashed px-4 py-6 text-xs transition',
+                    done ? 'border-emerald-300 bg-emerald-50/50 text-emerald-800' : 'border-border/60 text-muted-foreground hover:bg-muted/40',
+                  )}
+                >
+                  {done ? <CheckCircle2 className="mb-1 size-5 text-emerald-600" /> : <Upload className="mb-1 size-5" />}
+                  <span className="font-medium capitalize">Licence {side}</span>
+                  <span className="mt-0.5 font-mono text-[10px]">DEEBAN fuehrerschein {side} oU.pdf</span>
+                </button>
+              );
+            })}
+          </div>
+        </>
       ) : (
         <div className="grid grid-cols-2 gap-x-4 gap-y-5">
           {fields.map((f) => (
