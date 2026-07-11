@@ -110,20 +110,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 }));
 
-// Hydrate session on module load (client-only).
-if (typeof window !== 'undefined') {
-  supabase.auth.getSession().then(({ data }) => {
-    const session = data.session;
-    if (session?.user?.email) {
-      useAuthStore.getState().setSession(session.user.email, session.access_token, session.user.id);
-    }
-  });
+// DEV BYPASS: Supabase session hydration disabled so the hardcoded dev user
+// isn't cleared by an empty onAuthStateChange event. Re-enable when restoring real auth.
 
-  supabase.auth.onAuthStateChange((_event, session) => {
-    if (session?.user?.email) {
-      useAuthStore.getState().setSession(session.user.email, session.access_token, session.user.id);
-    } else {
-      useAuthStore.getState().setSession(null, null, null);
-    }
-  });
-}
