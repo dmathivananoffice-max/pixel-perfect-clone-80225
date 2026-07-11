@@ -1,110 +1,84 @@
+# Candidate Intelligence Center — Phased Implementation Plan
 
-# Multi-Product Platform Refactor
-
-This is a large architectural change. I'll deliver it in phased milestones so you can review and test each stage before the next. Below is the plan for **Phase 1 (Foundation)** with a roadmap for later phases.
-
----
-
-## Phase 1 — Foundation (this milestone)
-
-Goal: introduce the Product concept end-to-end, ship the Product Selector, and wire the dashboard to switch by product. No business-logic rewrites yet.
-
-### 1. Product registry (config-driven)
-
-Create `src/config/products.ts` — single source of truth for all products. Adding a product later = adding an entry here, nothing else.
-
-```ts
-type ProductId = 'all' | 'nurses' | 'ausbildung' | 'pre_bachelor' | 'pre_masters' | 'mba';
-interface ProductConfig {
-  id: ProductId;
-  name: string;
-  icon: string;           // emoji or lucide name
-  allowedRoles: UserRole[];
-  dashboard: DashboardConfig;   // widgets, charts, quick actions
-  workflow?: WorkflowConfig;    // stubbed for Phase 2
-  candidateFields?: FieldConfig[]; // stubbed for Phase 2
-}
-```
-
-Seed: All Products, Professional Nurses, Ausbildung, Pre-Bachelor, Pre-Masters, MBA. Each declares its widgets/quick-actions per your spec.
-
-### 2. Global product state
-
-`src/store/productStore.ts` (Zustand, persisted to `localStorage`):
-- `selectedProductId`
-- `setProduct(id)`
-- Restores last selection on load
-- `All Products` restricted to `super_admin`; auto-fallback to first permitted product otherwise
-
-### 3. Product Selector UI
-
-New `src/components/layout/ProductSelector.tsx` — dropdown in `Navbar` beside search:
-- Shows current product with icon
-- Lists only products user has permission for
-- Instant switch, no route change, no reload
-- Triggers a re-render of dashboard + any product-aware page via the store subscription
-
-### 4. Dynamic Dashboard
-
-Refactor `src/pages/Dashboard.tsx` into:
-- `Dashboard.tsx` — thin shell that reads `selectedProduct` and renders the right dashboard component
-- `src/pages/dashboards/AllProductsDashboard.tsx` (executive)
-- `src/pages/dashboards/NursesDashboard.tsx`
-- `src/pages/dashboards/AusbildungDashboard.tsx`
-- `src/pages/dashboards/PreBachelorDashboard.tsx`
-- `src/pages/dashboards/PreMastersDashboard.tsx`
-- `src/pages/dashboards/MBADashboard.tsx`
-
-Each dashboard renders widgets + quick actions from its `ProductConfig`. Widgets use mock data now (matching the existing `useReports` pattern) — real data wiring is Phase 3.
-
-Shared building blocks in `src/components/dashboard/`:
-- `KpiCard`, `WidgetGrid`, `QuickActionsBar`, `ChartCard`
-
-### 5. Sidebar refactor
-
-Update `src/components/layout/Sidebar.tsx` to the new IA:
-Dashboard · Candidates · Recruiter Hub · Employer Hub · **Speaking Assessment** · **STI Assessment** · **Interview Hub** · Visa Management · Document Center · Reports · Analytics · Settings · User Management.
-
-Split the current combined "STI" into three independent nav entries and route stubs:
-- `/speaking-assessment` (new stub page)
-- `/sti` (existing, kept independent)
-- `/interviews` (new stub page)
-
-Stubs render a placeholder with the module's feature list so navigation works while Phase 2 builds them out.
-
-### 6. Candidate model — product tag
-
-Add `product_id: ProductId` to the `Candidate` type and mock data seed. No UI filtering yet beyond a badge in the candidate list — full per-product filtering lands in Phase 2.
+All 42 recommendations accepted. Delivering in 6 phases so each phase ships a usable slice and we can course-correct between them. Current data layer is `mockData` — plan works against that now and swaps to Lovable Cloud tables in Phase 6 without changing UI code (single `useCandidatesQuery` hook is the seam).
 
 ---
 
-## Roadmap (later phases, not built now)
+## Phase 1 — Design system + shell (foundation)
 
-- **Phase 2 — Independent Modules:** Full Speaking Assessment, STI Assessment, and Interview Hub modules (queues, calendars, scoring, reports). Product-scoped candidate list & detail. Workflow config per product.
-- **Phase 3 — Configurable Workflows:** Per-product required documents, candidate fields, scoring, email templates, notification rules; admin UI to edit them.
-- **Phase 4 — Shared Services Consolidation:** Unify Document Center, Email Center, Notifications, Calendar, Tasks, Reports, Analytics behind product-aware filters.
-- **Phase 5 — Backend Integration:** Move product registry + workflows to Lovable Cloud tables; RLS by product permission; wire real metrics.
-- **Phase 6 — Enterprise:** Multi-tenancy, white-label theming, regional/country workflows, API-first surface.
+Goal: Apple/Linear/Stripe/Notion visual language, applied app-wide.
+
+- Refresh `src/styles.css` tokens: neutral-first palette, refined radii, elevation scale (subtle shadows only), motion tokens (150/220/320ms), focus rings.
+- Typography: Inter Display for UI + Söhne-like body via system stack fallback; tabular numerals for tables.
+- New primitives: `DataTable`, `Drawer`, `CommandPalette`, `Kbd`, `Toolbar`, `FilterChip`, `StatusPill`, `CountryFlag` (uses `country-flag-icons`), `Avatar`, `EmptyState`, `SkeletonRow`.
+- Global `⌘K` command palette (`cmdk`), global toast (`sonner`), global keyboard map hook.
+- Sticky app chrome; remove heavy borders across existing pages.
+
+## Phase 2 — Candidate list core (the operational spine)
+
+Goal: replace `src/pages/CandidateList.tsx` with the Intelligence Center list.
+
+- Header: sticky, product selector, global search, filter button, saved-views menu, Import, Export, Bulk Actions, primary **+ Add Candidate** (shortcut `A`).
+- URL-synced state via TanStack Router `validateSearch` (page, q, filters, view, open drawer id, sort). All filter/search/sort live in the URL.
+- Columns (product-adaptive presets): Rank · Candidate (avatar + name + flag tooltip) · Product · Stage (inline editable) · AI Score (bar+num) · Language Level · Speaking · STI/Training · Interview · Status pills · Recruiter · Last Activity · Actions.
+- Virtual scrolling via `@tanstack/react-virtual`, sticky header + sticky first column.
+- Row hover prefetches drawer data (250ms intent).
+- Keyboard: `j/k` row, `Enter` drawer, `x` select, `Shift+x` range select, `/` search, `F` filter, `E` export, `A` add.
+- Inline stage editor: popover with allowed transitions + optional ≤120-char note; optimistic update with 5s undo toast; writes to `candidate_status_history`.
+- Duplicate detection on Add (email/phone/passport fuzzy).
+
+## Phase 3 — Filters, saved views, bulk actions
+
+- Filter panel: multi-select product, country, country-group, language level, speaking/STI/interview/visa/recognition status, recruiter, trainer, assessor, employer, score range, registration date, document status, placement-ready, consent status, passport-expiry window.
+- Saved Views: per-user, pinnable to sidebar; stored in Cloud (Phase 6) with localStorage fallback until then.
+- Bulk actions bar (appears on selection): Assign Speaking / STI / Interview / Recruiter / Employer, Move Stage, Request Documents, Email, WhatsApp, SMS, Generate Report, Export. Each opens a compact modal (trainer + date for Speaking, etc.) and shows per-row success/fail summary.
+
+## Phase 4 — Candidate Drawer (Candidate 360° compact)
+
+Right-side drawer, deep-linkable (`?open=CID`). Sections as tabs: Overview · Timeline · Documents · Assessments (Speaking, Training, Interview 1, Interview 2 — each independent) · Visa · Recognition · Communication · Notes · History · AI. Drawer and `/candidates/:id` full page share the same section components (single source of truth = the Candidate 360° pattern).
+
+- AI panel: strengths, weaknesses, placement probability, recommended employers, recommended product, missing docs, next best action, risk flags. Uses Lovable AI Gateway (server function, no key exposed).
+- Comments with `@mentions`, internal-only visibility.
+
+## Phase 5 — Assessment split + workflow config
+
+- Split STI into two independent modules: **Speaking Assessment** and **Training** (separate tables, separate scoring rubrics, separate queues, separate filters). Types + mock data updated.
+- Workflow config: `workflow_stages`, `workflow_transitions`, `products`, `assessments`, `country_groups`, `filters_config` — seeded from current hard-coded values but editable in an Admin → Configuration page.
+- Table columns/quick-actions read from product config (already the pattern in `src/config/products.ts`) — extended to include column presets.
+
+## Phase 6 — Lovable Cloud data layer
+
+Migrate mock data behind server functions + RLS. Tables (all with GRANT + RLS + `service_role`):
+
+- `candidates` (add `nationality`, `current_country`, `passport_country`, `passport_expiry`, `consent_flags jsonb`, `assigned_team jsonb`, `last_activity_at`, `placement_readiness numeric`, `org_id`, `region_id`, `deleted_at`)
+- `speaking_assessments`, `training_assessments`, `interview_rounds` (round 1..n)
+- `candidate_status_history` (append-only; actor, from, to, note ≤120, at)
+- `workflow_stages`, `workflow_transitions`, `products`, `assessments_config`, `country_groups`
+- `saved_views`, `candidate_comments`, `candidate_ai_summaries` (cached)
+- Materialized view `candidate_intelligence_v` (joins latest scores, doc completeness, days-since-activity) — refreshed on write via trigger.
+- Postgres `tsvector` search column + GIN index.
+- Roles: `user_roles` + `has_role()` (per knowledge). Field-level PII redaction handled in server function based on `pii:read` role.
+- GDPR: soft-delete + 30-day purge cron via `/api/public/cron/purge` (secret-verified), consent gate on any bulk email/SMS/WhatsApp action, data-residency tag.
+- Server functions: `listCandidates`, `getCandidate`, `updateStage`, `assignSpeaking`, `assignTraining`, `assignInterview`, `bulkAction`, `aiSummary`, `savedViews.*`, `commentAdd`. All authenticated; audit every mutation.
 
 ---
 
-## Files touched in Phase 1
+## Technical notes
 
-New:
-- `src/config/products.ts`
-- `src/store/productStore.ts`
-- `src/components/layout/ProductSelector.tsx`
-- `src/components/dashboard/{KpiCard,WidgetGrid,QuickActionsBar,ChartCard}.tsx`
-- `src/pages/dashboards/{AllProducts,Nurses,Ausbildung,PreBachelor,PreMasters,MBA}Dashboard.tsx`
-- `src/pages/SpeakingAssessment.tsx` (stub)
-- `src/pages/InterviewHub.tsx` (stub)
+- No new page routes for drawer; state lives in URL search params.
+- Virtual list uses server-side pagination (cursor) from Phase 6; Phase 2 uses in-memory pagination over mock data with the same hook signature.
+- All colors/shadows via CSS tokens — no hard-coded hex in components.
+- No Supabase Edge Functions; all app logic via `createServerFn`. Cron/webhooks via `/api/public/*` server routes.
+- AI calls go through Lovable AI Gateway from a server function; no key in browser.
 
-Edited:
-- `src/pages/Dashboard.tsx` — becomes router shell
-- `src/components/layout/Navbar.tsx` — mount ProductSelector
-- `src/components/layout/Sidebar.tsx` — new IA
-- `src/legacy-app.tsx` (router) — add new routes
-- `src/types/candidate.ts` — add `product_id`
-- `src/lib/mockData.ts` — seed product tags
+## Out of scope for this pass
 
-Approve to proceed with Phase 1, or tell me to adjust scope (e.g. include module stubs with more depth, or start with backend schema first).
+- Native mobile shell (responsive web only).
+- White-label theme editor UI (tokens ready, admin UI later).
+- Full multi-tenant org switcher UI (schema ready, single-org default).
+
+---
+
+**Proposed execution order:** ship Phase 1 + Phase 2 in the first build (visible transformation), then Phase 3, then Phase 4+5 together (drawer needs the split assessments), then Phase 6 (Cloud).
+
+Reply **"go"** to start with Phase 1 + 2, or tell me to reorder / drop specific items.

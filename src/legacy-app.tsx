@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import { Toaster as SonnerToaster } from '@/components/ui/sonner';
 import { useAuthStore } from '@/store/authStore';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { RouteGuard } from '@/components/RouteGuard';
@@ -48,6 +49,7 @@ function App() {
         </Route>
       </Routes>
       <Toaster position="top-right" />
+      <SonnerToaster position="bottom-right" richColors closeButton />
     </>
   );
 }
