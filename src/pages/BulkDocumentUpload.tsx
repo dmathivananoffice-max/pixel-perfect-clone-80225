@@ -237,7 +237,7 @@ export default function BulkDocumentUpload() {
 
   const applyDefault = () => {
     if (!defaultCandidate) return;
-    const cand = mockCandidates.find((c) => c.candidate_id === defaultCandidate);
+    const cand = allCandidates.find((c) => c.candidate_id === defaultCandidate);
     if (!cand) return;
     setRows((prev) => prev.map((r) =>
       r.status === 'unmatched' ? {
