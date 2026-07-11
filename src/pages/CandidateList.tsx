@@ -85,11 +85,14 @@ export default function CandidateList() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [rowOverrides, setRowOverrides] = useState<Record<string, CandidateStatus>>({});
+  const [extraCandidates, setExtraCandidates] = useState<Candidate[]>([]);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddText, setQuickAddText] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Filtered dataset
   const candidates = useMemo(() => {
-    let data = mockCandidates.map((c) => ({
+    let data = [...extraCandidates, ...mockCandidates].map((c) => ({
       ...c,
       status: rowOverrides[c.candidate_id] ?? c.status,
     }));
