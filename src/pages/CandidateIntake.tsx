@@ -879,7 +879,7 @@ function ReviewStep({
         <div className="mb-8 grid gap-3 md:grid-cols-[1fr_auto]">
           <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
             <div className="flex items-center gap-3">
-              <span className="text-2xl">{productDef.emoji}</span>
+              <img src={productDef.image} alt={productDef.label} width={512} height={512} loading="lazy" className={cn('size-10 shrink-0 rounded-full ring-2 object-cover', productDef.ring)} />
               <div>
                 <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Product</div>
                 <div className="text-sm font-medium">{productDef.label}</div>
