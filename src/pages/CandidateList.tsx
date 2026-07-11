@@ -8,9 +8,9 @@ import { PRODUCTS, type ProductId } from '@/config/products';
 import { useProductStore } from '@/store/productStore';
 import { getCountry, COUNTRY_GROUPS } from '@/lib/countries';
 import {
-  stageMeta, TONE_CLASSES,
+  stageMeta,
   deriveLanguageLevel, deriveSpeakingScore, deriveTrainingScore, deriveInterviewScore,
-  deriveLastActivity,
+  deriveLastActivity, placementReadiness, READINESS_CLASSES,
 } from '@/lib/workflow';
 import type { Candidate, CandidateStatus } from '@/types';
 
@@ -33,7 +33,7 @@ import { CandidateDrawer } from '@/components/candidates/CandidateDrawer';
 
 import {
   Plus, Search, SlidersHorizontal, Download, Upload, Command as CommandIcon,
-  ShieldCheck, ShieldAlert, MoreHorizontal, X,
+  MoreHorizontal, X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -271,13 +271,14 @@ export default function CandidateList() {
                   <Th className="w-12 text-center">Rank</Th>
                   <Th>Candidate</Th>
                   <Th>Product</Th>
-                  <Th>Stage</Th>
-                  <Th className="text-right">AI</Th>
+                  <Th>Country</Th>
+                  <Th>Current Stage</Th>
+                  <Th className="text-right">AI Score</Th>
                   <Th className="text-center">Lang</Th>
                   <Th className="text-right">Speaking</Th>
                   <Th className="text-right">Training</Th>
                   <Th className="text-right">Interview</Th>
-                  <Th>Status</Th>
+                  <Th>Placement Readiness</Th>
                   <Th>Recruiter</Th>
                   <Th>Last activity</Th>
                   <Th className="w-10" />
@@ -286,14 +287,14 @@ export default function CandidateList() {
               <tbody>
                 {candidates.length === 0 && (
                   <tr>
-                    <td colSpan={14} className="py-16 text-center text-sm text-muted-foreground">
+                    <td colSpan={15} className="py-16 text-center text-sm text-muted-foreground">
                       No candidates match your filters.
                     </td>
                   </tr>
                 )}
                 {candidates.map((c) => {
                   const country = getCountry(c.country);
-                  const stage = stageMeta(c.status);
+                  
                   const product = PRODUCTS.find((p) => p.id === inferProduct(c))!;
                   const lang = deriveLanguageLevel(c.candidate_id);
                   const speaking = deriveSpeakingScore(c.candidate_id);
@@ -355,6 +356,12 @@ export default function CandidateList() {
                           <span>{product.emoji}</span>{product.short}
                         </span>
                       </Td>
+                      <Td>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-base leading-none">{country.flag}</span>
+                          <span className="text-xs text-foreground/80">{country.name}</span>
+                        </div>
+                      </Td>
                       <Td onClick={(e) => e.stopPropagation()}>
                         <StageEditor
                           status={c.status}
@@ -386,34 +393,20 @@ export default function CandidateList() {
                         <ScoreCell value={interview} />
                       </Td>
                       <Td>
-                        <div className="flex flex-wrap items-center gap-1">
-                          <span className={cn(
-                            'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset',
-                            TONE_CLASSES[stage.tone],
-                          )}>
-                            <span className="size-1.5 rounded-full bg-current opacity-70" />
-                            {stage.label}
-                          </span>
-                          {c.gate_status === 'eligible' ? (
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <span className="inline-flex items-center rounded-full bg-emerald-50 px-1 py-0.5 text-emerald-700 ring-1 ring-inset ring-emerald-200">
-                                  <ShieldCheck className="size-3" />
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent><p className="text-xs">Placement ready</p></TooltipContent>
-                            </Tooltip>
-                          ) : (
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <span className="inline-flex items-center rounded-full bg-rose-50 px-1 py-0.5 text-rose-700 ring-1 ring-inset ring-rose-200">
-                                  <ShieldAlert className="size-3" />
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent><p className="text-xs">Not placement ready</p></TooltipContent>
-                            </Tooltip>
-                          )}
-                        </div>
+                        {(() => {
+                          const r = placementReadiness(c.status, c.gate_status);
+                          return (
+                            <span
+                              className={cn(
+                                'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset whitespace-nowrap',
+                                READINESS_CLASSES[r.tone],
+                              )}
+                            >
+                              <span aria-hidden className="text-[10px] leading-none">{r.dot}</span>
+                              {r.label}
+                            </span>
+                          );
+                        })()}
                       </Td>
                       <Td className="text-xs text-muted-foreground">{c.assigned_recruiter_name ?? '—'}</Td>
                       <Td className="text-xs text-muted-foreground">
