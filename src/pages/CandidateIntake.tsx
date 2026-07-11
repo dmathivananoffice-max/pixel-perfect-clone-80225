@@ -194,7 +194,10 @@ export default function CandidateIntake() {
   const [uploads, setUploads] = useState<Record<string, boolean>>({});
   const [declarations, setDeclarations] = useState({ reviewed: false, matches: false, complete: false });
   const [zoom, setZoom] = useState(100);
+  const [docOpen, setDocOpen] = useState(false); // mobile / tablet drawer
   const [savedAt, setSavedAt] = useState<Date | null>(null);
+
+  const firstName = (values['personal']?.first_name ?? 'Deeban').trim() || 'Deeban';
 
   // Continuous autosave — debounce on any state change
   useEffect(() => {
