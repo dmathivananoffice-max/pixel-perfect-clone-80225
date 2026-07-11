@@ -47,23 +47,15 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={onToggle}
-        />
-      )}
-
       <aside
         className={cn(
-          'fixed top-0 left-0 z-50 h-full bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col transition-all duration-300',
-          isOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full lg:w-16 lg:translate-x-0'
+          'fixed top-0 left-0 z-50 h-full bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col transition-all duration-300 translate-x-0',
+          isOpen ? 'w-64' : 'w-16'
         )}
       >
         {/* Header */}
         <div className="flex items-center justify-between h-16 px-4 border-b border-sidebar-border shrink-0">
-          <div className={cn('flex items-center gap-2 overflow-hidden', !isOpen && 'lg:hidden')}>{isOpen && (
+          <div className={cn('flex items-center gap-2 overflow-hidden', !isOpen && 'hidden')}>{isOpen && (
             <>
               <GraduationCap className="w-7 h-7 text-sidebar-primary shrink-0" />
               <span className="font-bold text-lg whitespace-nowrap text-sidebar-primary-foreground">Workforce Europe</span>
@@ -71,7 +63,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
           )}</div>
           <button
             onClick={onToggle}
-            className="p-1 rounded-md hover:bg-sidebar-accent lg:block hidden"
+            className="p-1 rounded-md hover:bg-sidebar-accent"
           >
             {isOpen ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
           </button>
