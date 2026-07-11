@@ -242,7 +242,7 @@ export default function CandidateEvaluationCenter() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filtered.map(({ candidate, statuses, progress, next }) => {
+                {filtered.map(({ candidate, statuses, progress, next, readiness }) => {
                   const isActive = candidate.candidate_id === selected;
                   return (
                     <tr
@@ -264,6 +264,9 @@ export default function CandidateEvaluationCenter() {
                         </td>
                       ))}
                       <td className="px-3 py-3">
+                        <ReadinessPill readiness={readiness} />
+                      </td>
+                      <td className="px-3 py-3">
                         <div className="flex items-center gap-2">
                           <Progress value={progress} className="h-1.5 w-20" />
                           <span className="w-8 text-xs tabular-nums text-muted-foreground">{progress}%</span>
@@ -279,7 +282,8 @@ export default function CandidateEvaluationCenter() {
                 })}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={STAGES.length + 4} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                    <td colSpan={STAGES.length + 5} className="px-4 py-8 text-center text-sm text-muted-foreground">
+
                       No candidates match your search.
                     </td>
                   </tr>
