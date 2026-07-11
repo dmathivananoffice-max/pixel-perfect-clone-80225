@@ -550,7 +550,7 @@ function SectionNav({
 // Section form
 // ─────────────────────────────────────────────────────────────
 function SectionForm({
-  section, fields, values, edited, onChange, uploads, setUploads,
+  section, fields, values, edited, onChange, uploads, setUploads, firstName,
 }: {
   section: SectionDef;
   fields: FieldDef[];
@@ -559,6 +559,7 @@ function SectionForm({
   onChange: (k: string, v: string) => void;
   uploads: Record<string, boolean>;
   setUploads: (u: Record<string, boolean>) => void;
+  firstName: string;
 }) {
   // Contextual, section-specific banners
   const duplicate = useMemo(() => {
