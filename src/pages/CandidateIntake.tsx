@@ -411,33 +411,39 @@ function ProductStep({
           </p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {INTAKE_PRODUCTS.map((p) => {
             const selected = product === p.id;
-            const Icon = p.icon;
             return (
               <button
                 key={p.id}
                 onClick={() => setProduct(p.id)}
                 className={cn(
-                  'group relative flex items-start gap-4 rounded-xl border p-5 text-left transition',
-                  'bg-gradient-to-br ring-1',
-                  p.accent,
+                  'group relative flex flex-col items-center gap-4 rounded-2xl border bg-background p-6 text-center transition',
                   selected
-                    ? 'border-primary ring-primary/40 shadow-sm'
-                    : 'border-border/60 hover:border-border',
+                    ? 'border-primary shadow-lg ring-2 ring-primary/30 -translate-y-0.5'
+                    : 'border-border/60 hover:border-border hover:-translate-y-0.5 hover:shadow-md',
                 )}
               >
-                <div className="text-3xl leading-none">{p.emoji}</div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <Icon className="size-4 text-muted-foreground" />
-                    <h3 className="text-base font-medium">{p.label}</h3>
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">{p.tagline}</p>
+                <div className={cn(
+                  'relative size-24 shrink-0 overflow-hidden rounded-full ring-4 shadow-lg transition-transform group-hover:scale-105',
+                  p.ring, p.halo,
+                )}>
+                  <img
+                    src={p.image}
+                    alt={p.label}
+                    width={512}
+                    height={512}
+                    loading="lazy"
+                    className="size-full object-cover"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-display text-base font-semibold tracking-tight">{p.label}</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">{p.tagline}</p>
                 </div>
                 {selected && (
-                  <div className="absolute right-4 top-4 rounded-full bg-primary p-1 text-primary-foreground">
+                  <div className="absolute right-3 top-3 rounded-full bg-primary p-1 text-primary-foreground shadow">
                     <Check className="size-3" />
                   </div>
                 )}
