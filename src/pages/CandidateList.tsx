@@ -33,8 +33,12 @@ import { CandidateDrawer } from '@/components/candidates/CandidateDrawer';
 
 import {
   Plus, Search, SlidersHorizontal, Download, Upload, FileArchive, Command as CommandIcon,
-  MoreHorizontal, X,
+  MoreHorizontal, X, Users,
 } from 'lucide-react';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
 const emptyFilters: FiltersState = {
@@ -81,11 +85,14 @@ export default function CandidateList() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [rowOverrides, setRowOverrides] = useState<Record<string, CandidateStatus>>({});
+  const [extraCandidates, setExtraCandidates] = useState<Candidate[]>([]);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddText, setQuickAddText] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Filtered dataset
   const candidates = useMemo(() => {
-    let data = mockCandidates.map((c) => ({
+    let data = [...extraCandidates, ...mockCandidates].map((c) => ({
       ...c,
       status: rowOverrides[c.candidate_id] ?? c.status,
     }));
@@ -119,7 +126,7 @@ export default function CandidateList() {
     }
 
     return data;
-  }, [productFilter, filters, q, rowOverrides]);
+  }, [productFilter, filters, q, rowOverrides, extraCandidates]);
 
   const allSelected = candidates.length > 0 && candidates.every((c) => selection.has(c.candidate_id));
   const someSelected = candidates.some((c) => selection.has(c.candidate_id)) && !allSelected;
@@ -209,6 +216,9 @@ export default function CandidateList() {
               </Button>
               <Button variant="outline" size="sm" onClick={() => navigate('/documents/bulk')} className="gap-1.5">
                 <FileArchive className="size-4" /> Bulk upload
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setQuickAddOpen(true)} className="gap-1.5">
+                <Users className="size-4" /> Quick add
               </Button>
               <Button size="sm" className="gap-1.5 shadow-sm" onClick={goAdd}>
                 <Plus className="size-4" /> Add candidate
@@ -454,6 +464,71 @@ export default function CandidateList() {
         />
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onAddCandidate={goAdd} />
         <CandidateDrawer candidateId={openId} onClose={() => setParam('open', null)} />
+
+        <Dialog open={quickAddOpen} onOpenChange={(v) => { setQuickAddOpen(v); if (!v) setQuickAddText(''); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Quick add candidates</DialogTitle>
+              <DialogDescription>
+                Paste one name per line — first and last (e.g. <em>Deeban Kumar</em>). Up to 200 rows.
+              </DialogDescription>
+            </DialogHeader>
+            <Textarea
+              autoFocus
+              rows={10}
+              placeholder={'Deeban Kumar\nPriya Nair\nJohn Smith'}
+              value={quickAddText}
+              onChange={(e) => setQuickAddText(e.target.value)}
+              className="font-mono text-sm"
+            />
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setQuickAddOpen(false)}>Cancel</Button>
+              <Button
+                onClick={() => {
+                  const nameRe = /^[a-zA-Z\s'.,-]{1,80}$/u;
+                  const lines = quickAddText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).slice(0, 200);
+                  const skipped: string[] = [];
+                  const now = new Date().toISOString();
+                  const created: Candidate[] = [];
+                  lines.forEach((line, i) => {
+                    if (!nameRe.test(line)) { skipped.push(line); return; }
+                    const parts = line.split(/[\s,]+/).filter(Boolean);
+                    const first = parts[0] ?? '';
+                    const last = parts.slice(1).join(' ') || '—';
+                    if (!first) { skipped.push(line); return; }
+                    created.push({
+                      candidate_id: `local-${Date.now()}-${i}`,
+                      first_name: first,
+                      last_name: last,
+                      country: 'India',
+                      email: `${first.toLowerCase()}.${last.toLowerCase().replace(/\s+/g, '')}@pending.local`,
+                      phone: '',
+                      program_name: 'Nurses',
+                      source_type: 'internal',
+                      status: 'waiting',
+                      gate_status: 'not_placement_ready',
+                      created_at: now,
+                      updated_at: now,
+                    });
+                  });
+                  if (created.length === 0) {
+                    toast.error('No valid names to add');
+                    return;
+                  }
+                  setExtraCandidates((prev) => [...created, ...prev]);
+                  toast.success(`${created.length} candidate${created.length === 1 ? '' : 's'} added`, {
+                    description: skipped.length ? `${skipped.length} line(s) skipped` : undefined,
+                  });
+                  setQuickAddText('');
+                  setQuickAddOpen(false);
+                }}
+              >
+                Add
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
       </div>
     </TooltipProvider>
   );
