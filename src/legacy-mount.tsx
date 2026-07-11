@@ -3,25 +3,52 @@ import { useEffect, useState, type ComponentType } from "react";
 /**
  * Mounts the legacy React Router (BrowserRouter) app on the client only.
  * SSR renders nothing to avoid `window is not defined`.
+ *
+ * We eagerly initialise Supabase and await getSession() BEFORE mounting so
+ * that:
+ *  - the magic-link URL hash (#access_token=...) is parsed and persisted
+ *    before any route guard runs (otherwise the guard navigates to /login
+ *    and drops the hash before Supabase can consume it).
+ *  - the auth store is hydrated, so RouteGuard sees isAuthenticated=true
+ *    on first render and doesn't bounce the user to /login.
  */
 export function LegacyAppMount() {
   const [Mounted, setMounted] = useState<ComponentType | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([import("react-router-dom"), import("./legacy-app")]).then(
-      ([rr, mod]) => {
-        if (cancelled) return;
-        const App = mod.default;
-        const { BrowserRouter } = rr;
-        const Wrapped: ComponentType = () => (
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
-        );
-        setMounted(() => Wrapped);
-      },
-    );
+    (async () => {
+      const [rr, mod, clientMod, storeMod] = await Promise.all([
+        import("react-router-dom"),
+        import("./legacy-app"),
+        import("@/integrations/supabase/client"),
+        import("@/store/authStore"),
+      ]);
+
+      // Force the supabase client to instantiate and parse the URL hash.
+      const { data } = await clientMod.supabase.auth.getSession();
+      const session = data.session;
+      if (session?.user?.email) {
+        storeMod.useAuthStore
+          .getState()
+          .setSession(session.user.email, session.access_token, session.user.id);
+      }
+
+      // Clean the token fragment from the URL so it doesn't linger.
+      if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      }
+
+      if (cancelled) return;
+      const App = mod.default;
+      const { BrowserRouter } = rr;
+      const Wrapped: ComponentType = () => (
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      );
+      setMounted(() => Wrapped);
+    })();
     return () => {
       cancelled = true;
     };
