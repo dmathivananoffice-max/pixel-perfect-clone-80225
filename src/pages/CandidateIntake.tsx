@@ -31,18 +31,18 @@ import imgMba from '@/assets/product-mba.jpg';
 type IntakeProductId = 'nurses' | 'ausbildung' | 'pre_bachelor' | 'pre_masters' | 'mba';
 interface ProductDef {
   id: IntakeProductId;
-  emoji: string;
   label: string;
   tagline: string;
-  icon: LucideIcon;
-  accent: string;
+  image: string;
+  ring: string;
+  halo: string;
 }
 const INTAKE_PRODUCTS: ProductDef[] = [
-  { id: 'nurses',       emoji: '🏥', label: 'Professional Nurses', tagline: 'Approbation, B2, hospital placement', icon: Stethoscope,   accent: 'from-rose-500/10 to-rose-500/0 ring-rose-200' },
-  { id: 'ausbildung',   emoji: '🎓', label: 'Ausbildung',          tagline: 'Vocational training in Germany',      icon: GraduationCap, accent: 'from-indigo-500/10 to-indigo-500/0 ring-indigo-200' },
-  { id: 'pre_bachelor', emoji: '📚', label: 'Pre-Bachelor',        tagline: 'Studienkolleg & undergraduate track', icon: BookOpen,      accent: 'from-emerald-500/10 to-emerald-500/0 ring-emerald-200' },
-  { id: 'pre_masters',  emoji: '🎓', label: 'Pre-Masters',         tagline: 'Master intake preparation',           icon: Award,         accent: 'from-violet-500/10 to-violet-500/0 ring-violet-200' },
-  { id: 'mba',          emoji: '💼', label: 'MBA',                 tagline: 'Executive & business schools',        icon: Briefcase,     accent: 'from-amber-500/10 to-amber-500/0 ring-amber-200' },
+  { id: 'nurses',       label: 'Professional Nurses', tagline: 'Approbation, B2, hospital placement', image: imgNurses,      ring: 'ring-rose-200',    halo: 'shadow-rose-200/50' },
+  { id: 'ausbildung',   label: 'Ausbildung',          tagline: 'Vocational training in Germany',      image: imgAusbildung,  ring: 'ring-indigo-200',  halo: 'shadow-indigo-200/50' },
+  { id: 'pre_bachelor', label: 'Pre-Bachelor',        tagline: 'Studienkolleg & undergraduate track', image: imgPreBachelor, ring: 'ring-emerald-200', halo: 'shadow-emerald-200/50' },
+  { id: 'pre_masters',  label: 'Pre-Masters',         tagline: 'Master intake preparation',           image: imgPreMasters,  ring: 'ring-violet-200',  halo: 'shadow-violet-200/50' },
+  { id: 'mba',          label: 'MBA',                 tagline: 'Executive & business schools',        image: imgMba,         ring: 'ring-amber-200',   halo: 'shadow-amber-200/50' },
 ];
 
 // ─────────────────────────────────────────────────────────────
