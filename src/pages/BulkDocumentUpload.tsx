@@ -283,10 +283,14 @@ export default function BulkDocumentUpload() {
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="gap-1"><Sparkles className="size-3" /> AI OCR</Badge>
+            <Button size="sm" variant="outline" onClick={() => { setQuickAddRowId(null); setQFirst(''); setQLast(''); setQCountry(''); setQProgram(''); setQuickAddOpen(true); }} className="gap-1.5">
+              <UserPlus className="size-4" /> Quick add candidate
+            </Button>
             <Button size="sm" onClick={commitAll} className="gap-1.5">
               <CheckCircle2 className="size-4" /> Save {stats.matched} ready
             </Button>
           </div>
+
         </div>
       </div>
 
