@@ -1,7 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus } from 'lucide-react';
-import { toast } from 'sonner';
 
 interface QuickActionsProps {
   actions: string[];
@@ -19,7 +18,7 @@ export function QuickActions({ actions }: QuickActionsProps) {
             key={a}
             size="sm"
             variant="outline"
-            onClick={() => toast?.(`${a} — coming soon`) ?? window.alert(`${a} — coming soon`)}
+            onClick={() => window.alert(`${a} — coming soon`)}
             className="gap-1.5"
           >
             <Plus className="w-3.5 h-3.5" /> {a}
