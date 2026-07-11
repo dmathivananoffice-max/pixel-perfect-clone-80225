@@ -3,13 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { useReports } from '@/hooks/useReports';
 import { useAuth } from '@/hooks/useAuth';
 import { useProductStore } from '@/store/productStore';
+import { useEngineKpis, type ProgramKey } from '@/store/selectionEngineStore';
 import { getProduct, PRODUCTS, type ProductConfig, type ProductId } from '@/config/products';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { ProductSelector } from '@/components/dashboard/ProductSelector';
 import { WidgetCard } from '@/components/dashboard/WidgetCard';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { mockCandidates } from '@/lib/mockData';
+import { cn } from '@/lib/utils';
+
 
 import {
   Users, UserCheck, UserX, Plane, Briefcase, Calendar, FileText,
