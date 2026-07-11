@@ -115,6 +115,9 @@ export default function BulkDocumentUpload() {
   const [search, setSearch] = useState('');
   const [extraCandidates, setExtraCandidates] = useState<LiteCandidate[]>([]);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [bulkNamesOpen, setBulkNamesOpen] = useState(false);
+  const [bulkNamesText, setBulkNamesText] = useState('');
+
   const [quickAddRowId, setQuickAddRowId] = useState<string | null>(null);
   const [qFirst, setQFirst] = useState('');
   const [qLast, setQLast] = useState('');
