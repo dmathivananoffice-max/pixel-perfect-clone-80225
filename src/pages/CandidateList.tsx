@@ -8,6 +8,7 @@ import { PRODUCTS, type ProductId } from '@/config/products';
 import { useProductStore } from '@/store/productStore';
 import { getCountry, COUNTRY_GROUPS } from '@/lib/countries';
 import {
+  stageMeta,
   deriveLanguageLevel, deriveSpeakingScore, deriveTrainingScore, deriveInterviewScore,
   deriveLastActivity, placementReadiness, READINESS_CLASSES,
 } from '@/lib/workflow';
