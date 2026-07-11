@@ -180,6 +180,14 @@ export default function CandidateIntake() {
   const [uploads, setUploads] = useState<Record<string, boolean>>({});
   const [declarations, setDeclarations] = useState({ reviewed: false, matches: false, complete: false });
   const [zoom, setZoom] = useState(100);
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+
+  // Continuous autosave — debounce on any state change
+  useEffect(() => {
+    if (stage === 'product' && !product) return;
+    const t = setTimeout(() => setSavedAt(new Date()), 700);
+    return () => clearTimeout(t);
+  }, [stage, product, values, edited, uploads, verified, sectionIndex]);
 
   const current = SECTIONS[sectionIndex];
   const totalSteps = SECTIONS.length + 1; // + review
