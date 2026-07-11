@@ -33,8 +33,12 @@ import { CandidateDrawer } from '@/components/candidates/CandidateDrawer';
 
 import {
   Plus, Search, SlidersHorizontal, Download, Upload, FileArchive, Command as CommandIcon,
-  MoreHorizontal, X,
+  MoreHorizontal, X, Users,
 } from 'lucide-react';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
 const emptyFilters: FiltersState = {
