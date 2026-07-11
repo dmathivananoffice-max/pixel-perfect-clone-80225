@@ -107,7 +107,7 @@ export default function Login() {
 
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { label: 'Admin', u: 'alex@workforce-europe.com', p: 'admin123' },
+                  { label: 'Admin', u: 'deeban@workforce-europe.com', p: 'admin123' },
                   { label: 'Recruiter', u: 'lisa@workforce-europe.com', p: 'recruiter123' },
                   { label: 'Trainer', u: 'klaus@workforce-europe.com', p: 'trainer123' },
                   { label: 'Agency', u: 'rajesh@gts.com', p: 'agency123' },
