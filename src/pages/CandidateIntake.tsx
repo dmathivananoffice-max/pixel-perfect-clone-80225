@@ -350,9 +350,9 @@ export default function CandidateIntake() {
       )}
 
       {stage === 'section' && (
-        <div className="grid flex-1 min-h-0 grid-cols-1 lg:grid-cols-[3fr_2fr]">
+        <div className="relative flex flex-1 min-h-0">
           {/* Left: master data + section nav */}
-          <div className="flex min-h-0 flex-col border-r border-border/60">
+          <div className="flex min-h-0 flex-1 flex-col">
             <SectionNav
               currentIndex={sectionIndex}
               verified={verified}
@@ -367,11 +367,21 @@ export default function CandidateIntake() {
                 onChange={(k, v) => setFieldValue(current.id, k, v)}
                 uploads={uploads}
                 setUploads={setUploads}
+                firstName={firstName}
               />
             </div>
-            <div className="flex items-center justify-between border-t border-border/60 bg-background/95 px-6 py-3">
+            <div className="flex items-center justify-between gap-2 border-t border-border/60 bg-background/95 px-6 py-3">
               <Button variant="ghost" size="sm" onClick={goBack} className="gap-1.5">
                 <ArrowLeft className="size-4" /> Back
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDocOpen((v) => !v)}
+                className="gap-1.5 xl:hidden"
+              >
+                {docOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
+                Source
               </Button>
               <Button size="sm" onClick={verifyAndContinue} className="gap-1.5 shadow-sm">
                 <Check className="size-4" /> Verify &amp; continue
@@ -379,8 +389,30 @@ export default function CandidateIntake() {
               </Button>
             </div>
           </div>
-          {/* Right: doc viewer */}
-          <DocumentViewer section={current} zoom={zoom} setZoom={setZoom} />
+
+          {/* Right: doc viewer — inline on xl+, drawer below */}
+          <div className="hidden xl:flex xl:w-[clamp(420px,38vw,640px)] min-h-0 border-l border-border/60">
+            <DocumentViewer section={current} zoom={zoom} setZoom={setZoom} />
+          </div>
+          {docOpen && (
+            <>
+              <div
+                className="xl:hidden fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm"
+                onClick={() => setDocOpen(false)}
+              />
+              <div className="xl:hidden fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-border/60 bg-background shadow-2xl animate-section-in">
+                <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
+                  <div className="text-xs font-medium">Source document</div>
+                  <button onClick={() => setDocOpen(false)} className="rounded-md p-1.5 hover:bg-muted" aria-label="Close source">
+                    <X className="size-4" />
+                  </button>
+                </div>
+                <div className="flex-1 min-h-0">
+                  <DocumentViewer section={current} zoom={zoom} setZoom={setZoom} />
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -391,6 +423,7 @@ export default function CandidateIntake() {
           uploads={uploads}
           declarations={declarations}
           setDeclarations={setDeclarations}
+          firstName={firstName}
           onEditSection={(id) => {
             const idx = SECTIONS.findIndex((s) => s.id === id);
             if (idx >= 0) { setSectionIndex(idx); setStage('section'); }
