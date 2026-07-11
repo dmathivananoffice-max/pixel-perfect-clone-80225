@@ -207,6 +207,9 @@ export default function CandidateList() {
                 <span className="hidden sm:inline">Quick</span>
                 <Kbd>⌘K</Kbd>
               </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate('/documents/bulk')} className="gap-1.5">
+                <FileArchive className="size-4" /> Bulk upload
+              </Button>
               <Button size="sm" className="gap-1.5 shadow-sm" onClick={goAdd}>
                 <Plus className="size-4" /> Add candidate
                 <Kbd className="ml-1 border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground/80">A</Kbd>
