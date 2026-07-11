@@ -216,7 +216,7 @@ export default function BulkDocumentUpload() {
   };
 
   const assignCandidate = (id: string, candidateId: string) => {
-    const cand = mockCandidates.find((c) => c.candidate_id === candidateId);
+    const cand = allCandidates.find((c) => c.candidate_id === candidateId);
     if (!cand) return;
     updateRow(id, {
       candidateId,
