@@ -1005,7 +1005,7 @@ function ReviewStep({
                       : <AlertTriangle className="size-3 text-rose-500" />}
                     {u.label}
                   </span>
-                  <span className="font-mono text-[10px] text-muted-foreground">DEEBAN {u.german} oU.pdf</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">{appDocName(firstName, u.german)}</span>
                 </div>
               ))}
             </div>
