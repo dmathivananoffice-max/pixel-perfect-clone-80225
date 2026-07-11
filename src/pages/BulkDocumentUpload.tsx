@@ -4,12 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   ArrowLeft, FileArchive, FileText, Loader2, CheckCircle2, AlertTriangle,
-  X, UserCheck, Sparkles, Trash2, RefreshCw, UserPlus,
+  X, UserCheck, Sparkles, Trash2, RefreshCw, UserPlus, Users,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+
 
 
 import { Button } from '@/components/ui/button';
@@ -113,6 +115,9 @@ export default function BulkDocumentUpload() {
   const [search, setSearch] = useState('');
   const [extraCandidates, setExtraCandidates] = useState<LiteCandidate[]>([]);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [bulkNamesOpen, setBulkNamesOpen] = useState(false);
+  const [bulkNamesText, setBulkNamesText] = useState('');
+
   const [quickAddRowId, setQuickAddRowId] = useState<string | null>(null);
   const [qFirst, setQFirst] = useState('');
   const [qLast, setQLast] = useState('');
@@ -286,6 +291,11 @@ export default function BulkDocumentUpload() {
             <Button size="sm" variant="outline" onClick={() => { setQuickAddRowId(null); setQFirst(''); setQLast(''); setQCountry(''); setQProgram(''); setQuickAddOpen(true); }} className="gap-1.5">
               <UserPlus className="size-4" /> Quick add candidate
             </Button>
+            <Button size="sm" variant="outline" onClick={() => { setBulkNamesText(''); setBulkNamesOpen(true); }} className="gap-1.5">
+              <Users className="size-4" /> Add names
+            </Button>
+
+
             <Button size="sm" onClick={commitAll} className="gap-1.5">
               <CheckCircle2 className="size-4" /> Save {stats.matched} ready
             </Button>
@@ -562,7 +572,96 @@ export default function BulkDocumentUpload() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Add Names Dialog */}
+      <Dialog open={bulkNamesOpen} onOpenChange={setBulkNamesOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="size-4" /> Add candidate names in bulk
+            </DialogTitle>
+            <DialogDescription>
+              Paste one name per line. Formats supported: <span className="font-mono">Deeban Kumar</span>, <span className="font-mono">Deeban, Kumar</span>, or just <span className="font-mono">Deeban</span>. Each becomes a lightweight candidate and any unmatched upload rows whose filename starts with that first name are matched instantly.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 py-1">
+            <Label htmlFor="bulk-names">Names</Label>
+            <Textarea
+              id="bulk-names"
+              value={bulkNamesText}
+              onChange={(e) => setBulkNamesText(e.target.value.slice(0, 5000))}
+              placeholder={'Deeban Kumar\nPriya Sharma\nAhmed, Hassan\nCarlos'}
+              rows={10}
+              className="font-mono text-sm"
+              autoFocus
+            />
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>{bulkNamesText.split(/\r?\n/).filter((l) => l.trim().length > 0).length} name(s) detected</span>
+              <span>Max 200 rows</span>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setBulkNamesOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                const NAME_RE = /^[\p{L}\s'.,-]{1,80}$/u;
+                const lines = bulkNamesText
+                  .split(/\r?\n/)
+                  .map((l) => l.trim())
+                  .filter((l) => l.length > 0)
+                  .slice(0, 200);
+                if (lines.length === 0) {
+                  toast.error('Paste at least one name');
+                  return;
+                }
+                const added: LiteCandidate[] = [];
+                let skipped = 0;
+                for (const line of lines) {
+                  if (!NAME_RE.test(line)) { skipped++; continue; }
+                  const parts = line.split(/[,]+|\s+/).map((p) => p.trim()).filter(Boolean);
+                  const first = parts[0];
+                  const last = parts.slice(1).join(' ') || '—';
+                  if (!first) { skipped++; continue; }
+                  added.push({
+                    candidate_id: `cand-bulk-${Date.now()}-${added.length}`,
+                    first_name: first.charAt(0).toUpperCase() + first.slice(1).toLowerCase(),
+                    last_name: last,
+                  });
+                }
+                if (added.length === 0) {
+                  toast.error('No valid names found');
+                  return;
+                }
+                setExtraCandidates((prev) => [...added, ...prev]);
+                // Auto-match any unmatched rows by first name
+                setRows((prev) => prev.map((row) => {
+                  if (row.status !== 'unmatched') return row;
+                  const rowFirst = row.fileName.split(/[\s_.-]/)[0]?.toUpperCase();
+                  const hit = added.find((c) => c.first_name.toUpperCase() === rowFirst);
+                  if (!hit) return row;
+                  const merged = {
+                    ...row,
+                    candidateId: hit.candidate_id,
+                    candidateName: `${hit.first_name} ${hit.last_name}`,
+                    status: 'matched' as RowStatus,
+                  };
+                  merged.suggestedName = suggestedFilename(merged);
+                  return merged;
+                }));
+                toast.success(
+                  `Added ${added.length} candidate${added.length === 1 ? '' : 's'}` +
+                  (skipped ? ` · ${skipped} skipped` : '')
+                );
+                setBulkNamesOpen(false);
+              }}
+            >
+              Add {bulkNamesText.split(/\r?\n/).filter((l) => l.trim().length > 0).length || ''} name(s)
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
 
