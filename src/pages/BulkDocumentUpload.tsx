@@ -4,8 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   ArrowLeft, FileArchive, FileText, Loader2, CheckCircle2, AlertTriangle,
-  X, UserCheck, Sparkles, Trash2, RefreshCw,
+  X, UserCheck, Sparkles, Trash2, RefreshCw, UserPlus,
 } from 'lucide-react';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
