@@ -111,12 +111,25 @@ export default function BulkDocumentUpload() {
   const [rows, setRows] = useState<FileRow[]>([]);
   const [defaultCandidate, setDefaultCandidate] = useState<string>('');
   const [search, setSearch] = useState('');
+  const [extraCandidates, setExtraCandidates] = useState<LiteCandidate[]>([]);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddRowId, setQuickAddRowId] = useState<string | null>(null);
+  const [qFirst, setQFirst] = useState('');
+  const [qLast, setQLast] = useState('');
+  const [qCountry, setQCountry] = useState('');
+  const [qProgram, setQProgram] = useState('');
+
+  const allCandidates = useMemo<LiteCandidate[]>(
+    () => [...extraCandidates, ...mockCandidates],
+    [extraCandidates]
+  );
 
   const processFiles = useCallback((files: File[], fromZip?: string) => {
     const newRows: FileRow[] = files.map((f) => {
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const { type, confidence } = detectDocType(f.name);
-      const match = matchCandidate(f.name);
+      const match = matchCandidate(f.name, allCandidates);
+
       const row: FileRow = {
         id,
         fileName: f.name,
