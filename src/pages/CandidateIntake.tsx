@@ -866,14 +866,33 @@ function ReviewStep({
           </div>
         )}
 
-        <div className="mb-8 rounded-lg border border-border/60 bg-muted/30 p-4">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">{productDef.emoji}</span>
-            <div>
-              <div className="text-xs text-muted-foreground">Product</div>
-              <div className="text-sm font-medium">{productDef.label}</div>
+        <div className="mb-8 grid gap-3 md:grid-cols-[1fr_auto]">
+          <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{productDef.emoji}</span>
+              <div>
+                <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Product</div>
+                <div className="text-sm font-medium">{productDef.label}</div>
+              </div>
             </div>
           </div>
+          {(() => {
+            const readiness = Math.max(0, Math.min(100, Math.round(100 - (issues.length / 12) * 100)));
+            const label = readiness >= 95 ? 'Ready for approval' : readiness >= 75 ? 'Almost ready' : 'Needs attention';
+            const tone = readiness >= 95 ? 'text-emerald-700' : readiness >= 75 ? 'text-amber-700' : 'text-rose-700';
+            return (
+              <div className="rounded-lg border border-border/60 bg-background p-4 md:min-w-64">
+                <div className="flex items-center gap-2 text-[11px] uppercase tracking-widest text-muted-foreground">
+                  <Gauge className="size-3.5" /> Candidate readiness
+                </div>
+                <div className="mt-1 flex items-baseline gap-2">
+                  <span className={cn('font-display text-3xl font-semibold tabular-nums', tone)}>{readiness}%</span>
+                  <span className={cn('text-xs font-medium', tone)}>{label}</span>
+                </div>
+                <Progress value={readiness} className="mt-2 h-1.5" />
+              </div>
+            );
+          })()}
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
