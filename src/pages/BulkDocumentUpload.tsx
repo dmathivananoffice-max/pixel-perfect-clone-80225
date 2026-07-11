@@ -4,12 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   ArrowLeft, FileArchive, FileText, Loader2, CheckCircle2, AlertTriangle,
-  X, UserCheck, Sparkles, Trash2, RefreshCw, UserPlus,
+  X, UserCheck, Sparkles, Trash2, RefreshCw, UserPlus, Users,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+
 
 
 import { Button } from '@/components/ui/button';
