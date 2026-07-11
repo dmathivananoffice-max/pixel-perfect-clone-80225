@@ -51,6 +51,42 @@ export const TONE_CLASSES: Record<StageMeta['tone'], string> = {
   zinc:    'bg-zinc-100 text-zinc-600 ring-zinc-200',
 };
 
+// ── Placement Readiness (recruiter-friendly replacement for "gate") ──
+export type ReadinessTone = 'emerald' | 'amber' | 'orange' | 'blue' | 'rose' | 'zinc' | 'violet';
+export interface ReadinessMeta {
+  label: string;
+  tone: ReadinessTone;
+  dot: string; // emoji indicator
+}
+
+export function placementReadiness(
+  status: CandidateStatus,
+  gate: 'eligible' | 'not_placement_ready' | string | null | undefined,
+): ReadinessMeta {
+  if (status === 'placed')     return { label: 'Placed',              tone: 'emerald', dot: '🟢' };
+  if (status === 'rejected')   return { label: 'Rejected',            tone: 'rose',    dot: '🔴' };
+  if (status === 'withdrawn')  return { label: 'On Hold',             tone: 'zinc',    dot: '⚫' };
+  if (status === 'visa')       return { label: 'Visa Processing',     tone: 'blue',    dot: '🔵' };
+  if (status === 'contract')   return { label: 'Contract Pending',    tone: 'violet',  dot: '🟣' };
+  if (status === 'interview1' || status === 'interview2')
+                               return { label: 'Interview Pending',   tone: 'orange',  dot: '🟠' };
+  if (gate === 'not_placement_ready')
+                               return { label: 'Documents Missing',   tone: 'rose',    dot: '🔴' };
+  if (status === 'shortlisted') return { label: 'Placement Ready',    tone: 'emerald', dot: '🟢' };
+  if (status === 'waiting')    return { label: 'Assessment Pending',  tone: 'amber',   dot: '🟡' };
+  return { label: 'In Progress', tone: 'amber', dot: '🟡' };
+}
+
+export const READINESS_CLASSES: Record<ReadinessTone, string> = {
+  emerald: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  amber:   'bg-amber-50 text-amber-800 ring-amber-200',
+  orange:  'bg-orange-50 text-orange-700 ring-orange-200',
+  blue:    'bg-blue-50 text-blue-700 ring-blue-200',
+  rose:    'bg-rose-50 text-rose-700 ring-rose-200',
+  zinc:    'bg-zinc-100 text-zinc-600 ring-zinc-200',
+  violet:  'bg-violet-50 text-violet-700 ring-violet-200',
+};
+
 // Language levels
 export const LANG_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1'] as const;
 export type LangLevel = typeof LANG_LEVELS[number];
