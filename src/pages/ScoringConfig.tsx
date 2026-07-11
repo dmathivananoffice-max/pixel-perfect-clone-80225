@@ -1,207 +1,441 @@
-import { useState } from 'react';
-import { mockPrograms, mockScoringModels } from '@/lib/mockData';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useMemo, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Checkbox } from '@/components/ui/checkbox';
-import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { Plus, Trash2, Save } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Slider } from '@/components/ui/slider';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { CheckCircle2, XCircle, ShieldCheck, Scale, Save, AlertTriangle, Info, RotateCcw } from 'lucide-react';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
-const COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#06b6d4', '#f97316', '#84cc16'];
+/* ────────────────────────────────────────────────────────────
+   Types
+   ──────────────────────────────────────────────────────────── */
+
+type ProgramKey = 'professional_nurses' | 'ausbildung';
+
+interface Gate {
+  id: string;
+  label: string;
+  hint?: string;
+  /** Whether this gate is currently enforced */
+  enabled: boolean;
+  /** Locked = policy-mandated, cannot be disabled in UI */
+  locked?: boolean;
+}
+
+interface Criterion {
+  id: string;
+  label: string;
+  hint?: string;
+  weight: number; // percentage, 0-100
+}
+
+interface ProgramConfig {
+  key: ProgramKey;
+  label: string;
+  emoji: string;
+  gates: Gate[];
+  criteria: Criterion[];
+}
+
+/* ────────────────────────────────────────────────────────────
+   Defaults (per the two-layer selection engine)
+   ──────────────────────────────────────────────────────────── */
+
+const DEFAULTS: Record<ProgramKey, ProgramConfig> = {
+  professional_nurses: {
+    key: 'professional_nurses',
+    label: 'Professional Nurses',
+    emoji: '👩‍⚕️',
+    gates: [
+      { id: 'passport', label: 'Valid Passport uploaded', enabled: true, locked: true },
+      { id: 'no_doc_deficiencies', label: 'No major document deficiencies', enabled: true },
+      { id: 'b2_german', label: 'German Language Level: B2', hint: 'Mandatory — no exceptions', enabled: true, locked: true },
+      { id: 'modules', label: 'All required German language modules completed', enabled: true },
+      { id: 'lang_cert', label: 'Valid German language certificate uploaded', enabled: true },
+      { id: 'lang_cert_verified', label: 'Certificate verified (Goethe / TELC / ÖSD / accepted provider)', enabled: true },
+      { id: 'bsc_nursing', label: 'B.Sc. Nursing degree completed', enabled: true, locked: true },
+      { id: 'nursing_reg', label: 'Nursing Registration Certificate uploaded (where applicable)', enabled: true },
+      { id: 'medical_docs', label: 'Required medical documents uploaded', enabled: true },
+      { id: 'age', label: 'Age within employer requirements (if applicable)', enabled: false },
+    ],
+    criteria: [
+      { id: 'clinical_experience', label: 'Clinical Experience', weight: 35 },
+      { id: 'bsc_marks', label: 'B.Sc. Nursing Marks / GPA', weight: 30 },
+      { id: 'german_b2', label: 'German B2 Performance (Exam Score)', weight: 20 },
+      { id: 'dept_experience', label: 'Hospital Department Experience', weight: 10 },
+      { id: 'certifications', label: 'Professional Certifications / CPD', weight: 5 },
+    ],
+  },
+  ausbildung: {
+    key: 'ausbildung',
+    label: 'Ausbildung Nursing',
+    emoji: '🎓',
+    gates: [
+      { id: 'passport', label: 'Valid Passport uploaded', enabled: true, locked: true },
+      { id: 'no_doc_deficiencies', label: 'No major document deficiencies', enabled: true },
+      { id: 'b2_german', label: 'German Language Level: B2', hint: 'Mandatory — no exceptions', enabled: true, locked: true },
+      { id: 'modules', label: 'All required German language modules completed', enabled: true },
+      { id: 'lang_cert', label: 'Valid German language certificate uploaded', enabled: true },
+      { id: 'lang_cert_verified', label: 'Certificate verified (Goethe / TELC / ÖSD / accepted provider)', enabled: true },
+      { id: 'twelfth', label: '12th Standard completed', enabled: true, locked: true },
+      { id: 'edu_certs', label: 'Required educational certificates uploaded', enabled: true },
+      { id: 'medical_docs', label: 'Required medical documents uploaded', enabled: true },
+      { id: 'age', label: 'Age within employer requirements (if applicable)', enabled: false },
+    ],
+    criteria: [
+      { id: 'twelfth_marks', label: '12th Grade Marks', weight: 40 },
+      { id: 'german_b2', label: 'German B2 Performance (Exam Score)', weight: 25 },
+      { id: 'internship', label: 'Internship / Hospital Exposure', weight: 15 },
+      { id: 'social_service', label: 'Social Service (Red Cross, NSS, Scouts, NCC, NGO)', weight: 15 },
+      { id: 'tenth_marks', label: '10th Grade Marks', weight: 5 },
+    ],
+  },
+};
+
+const CHART_COLORS = ['#0ea5e9', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#06b6d4'];
+
+/* ────────────────────────────────────────────────────────────
+   Page
+   ──────────────────────────────────────────────────────────── */
 
 export default function ScoringConfig() {
-  const [selectedProgram, setSelectedProgram] = useState(mockPrograms[0].id);
-  const [criteria, setCriteria] = useState(mockScoringModels);
-  const [showDelete, setShowDelete] = useState<string | null>(null);
+  const [configs, setConfigs] = useState<Record<ProgramKey, ProgramConfig>>(() =>
+    structuredClone(DEFAULTS),
+  );
+  const [active, setActive] = useState<ProgramKey>('professional_nurses');
 
-  const filteredCriteria = criteria.filter((c) => c.program_id === selectedProgram);
-  const totalWeight = filteredCriteria.reduce((sum, c) => sum + c.weightage, 0);
+  const cfg = configs[active];
 
-  const addCriterion = () => {
-    const newCriterion = {
-      id: `new-${Date.now()}`,
-      program_id: selectedProgram,
-      criteria_name: 'New Criterion',
-      weightage: 0.1,
-      is_gating: false,
-      minimum_threshold: undefined,
-      max_score: 100,
-    };
-    setCriteria([...criteria, newCriterion]);
+  const totalWeight = useMemo(
+    () => cfg.criteria.reduce((sum, c) => sum + c.weight, 0),
+    [cfg.criteria],
+  );
+  const balanced = totalWeight === 100;
+
+  const gatesEnforced = cfg.gates.filter((g) => g.enabled).length;
+  const gatesTotal = cfg.gates.length;
+
+  const updateGate = (id: string, enabled: boolean) => {
+    setConfigs((prev) => ({
+      ...prev,
+      [active]: {
+        ...prev[active],
+        gates: prev[active].gates.map((g) => (g.id === id ? { ...g, enabled } : g)),
+      },
+    }));
   };
 
-  const updateCriterion = (id: string, updates: Partial<typeof criteria[0]>) => {
-    setCriteria(criteria.map((c) => (c.id === id ? { ...c, ...updates } : c)));
+  const updateWeight = (id: string, weight: number) => {
+    setConfigs((prev) => ({
+      ...prev,
+      [active]: {
+        ...prev[active],
+        criteria: prev[active].criteria.map((c) =>
+          c.id === id ? { ...c, weight: Math.max(0, Math.min(100, Math.round(weight))) } : c,
+        ),
+      },
+    }));
   };
 
-  const deleteCriterion = (id: string) => {
-    setCriteria(criteria.filter((c) => c.id !== id));
-    setShowDelete(null);
-    toast.success('Criterion deleted');
+  const resetProgram = () => {
+    setConfigs((prev) => ({ ...prev, [active]: structuredClone(DEFAULTS[active]) }));
+    toast.success(`${cfg.label} restored to defaults`);
   };
 
-  const saveChanges = () => {
-    toast.success('Scoring configuration saved');
+  const save = () => {
+    if (!balanced) {
+      toast.error('Weights must total 100% before saving', {
+        description: `Current total is ${totalWeight}%`,
+      });
+      return;
+    }
+    toast.success('Selection engine saved', {
+      description: `${cfg.label} · ${gatesEnforced}/${gatesTotal} gates enforced`,
+    });
   };
 
-  const pieData = filteredCriteria.map((c) => ({
-    name: c.criteria_name,
-    value: Math.round(c.weightage * 100),
-  }));
+  const pieData = cfg.criteria.map((c) => ({ name: c.label, value: c.weight }));
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Scoring Configuration</h1>
-          <p className="text-sm text-muted-foreground">Configure criteria, weights, and gating per program</p>
+    <div className="space-y-6 pb-10">
+      {/* Header */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight">Selection Engine</h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Two-layer model. Candidates must clear <span className="font-medium text-foreground">every mandatory eligibility gate</span> before
+            the scoring engine runs — no score is calculated for ineligible candidates.
+          </p>
         </div>
-        <Button onClick={saveChanges}>
-          <Save className="w-4 h-4 mr-2" /> Save Changes
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={resetProgram} className="gap-1.5">
+            <RotateCcw className="size-4" /> Reset to defaults
+          </Button>
+          <Button size="sm" onClick={save} className="gap-1.5">
+            <Save className="size-4" /> Save changes
+          </Button>
+        </div>
       </div>
 
-      <Card>
-        <CardContent className="p-4">
-          <Label className="mb-2 block">Program</Label>
-          <Select value={selectedProgram} onValueChange={setSelectedProgram}>
-            <SelectTrigger className="w-full md:w-80">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {mockPrograms.map((p) => (
-                <SelectItem key={p.id} value={p.id}>{p.program_name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
+      {/* Program tabs */}
+      <Tabs value={active} onValueChange={(v) => setActive(v as ProgramKey)}>
+        <TabsList className="grid w-full max-w-xl grid-cols-2">
+          <TabsTrigger value="professional_nurses" className="gap-1.5">
+            👩‍⚕️ Professional Nurses
+          </TabsTrigger>
+          <TabsTrigger value="ausbildung" className="gap-1.5">
+            🎓 Ausbildung Nursing
+          </TabsTrigger>
+        </TabsList>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold">Criteria ({filteredCriteria.length})</h3>
-            <Button size="sm" variant="outline" onClick={addCriterion}>
-              <Plus className="w-4 h-4 mr-2" /> Add Criterion
-            </Button>
-          </div>
-
-          <Card>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Weight (%)</TableHead>
-                      <TableHead>Gating</TableHead>
-                      <TableHead>Threshold</TableHead>
-                      <TableHead>Max Score</TableHead>
-                      <TableHead className="w-16"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredCriteria.map((c) => (
-                      <TableRow key={c.id}>
-                        <TableCell>
-                          <Input
-                            value={c.criteria_name}
-                            onChange={(e) => updateCriterion(c.id, { criteria_name: e.target.value })}
-                            className="h-8"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            max="1"
-                            value={c.weightage}
-                            onChange={(e) => updateCriterion(c.id, { weightage: Number(e.target.value) })}
-                            className="h-8 w-20"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Checkbox
-                            checked={c.is_gating}
-                            onCheckedChange={(v) => updateCriterion(c.id, { is_gating: v === true })}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            value={c.minimum_threshold || ''}
-                            onChange={(e) => updateCriterion(c.id, { minimum_threshold: e.target.value ? Number(e.target.value) : undefined })}
-                            className="h-8 w-20"
-                            placeholder="None"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            value={c.max_score || 100}
-                            onChange={(e) => updateCriterion(c.id, { max_score: Number(e.target.value) })}
-                            className="h-8 w-20"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowDelete(c.id)}>
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className={`text-sm font-medium ${Math.abs(totalWeight - 1) < 0.01 ? 'text-green-600' : 'text-red-600'}`}>
-            Total Weight: {(totalWeight * 100).toFixed(0)}% {Math.abs(totalWeight - 1) < 0.01 ? '(Balanced)' : '(Should be 100%)'}
-          </div>
-        </div>
-
-        <Card>
-          <CardHeader><CardTitle>Weight Distribution</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie data={pieData} cx="50%" cy="50%" outerRadius={90} dataKey="value" nameKey="name" label>
-                  {pieData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number) => `${value}%`} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="space-y-1 mt-2">
-              {pieData.map((d, idx) => (
-                <div key={d.name} className="flex items-center gap-2 text-xs">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
-                  <span>{d.name}: {d.value}%</span>
+        {(['professional_nurses', 'ausbildung'] as ProgramKey[]).map((key) => (
+          <TabsContent key={key} value={key} className="mt-6 space-y-6">
+            {/* Layer 1 — Eligibility Gates */}
+            <Card className="border-emerald-200/70">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="mb-1 flex items-center gap-2">
+                      <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-800">
+                        Layer 1
+                      </Badge>
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <ShieldCheck className="size-5 text-emerald-600" /> Mandatory Eligibility Gates
+                      </CardTitle>
+                    </div>
+                    <CardDescription>
+                      Pass / Fail. Candidates who fail any enforced gate are marked{' '}
+                      <span className="font-medium text-foreground">Not Eligible for Shortlisting</span> and do not enter the scoring engine.
+                    </CardDescription>
+                  </div>
+                  <div className="shrink-0 rounded-lg border border-border/70 px-3 py-2 text-right">
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Enforced</div>
+                    <div className="text-lg font-semibold tabular-nums">
+                      {configs[key].gates.filter((g) => g.enabled).length}
+                      <span className="text-sm text-muted-foreground"> / {configs[key].gates.length}</span>
+                    </div>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+              </CardHeader>
+              <CardContent>
+                <ul className="grid gap-2 md:grid-cols-2">
+                  {configs[key].gates.map((g) => (
+                    <li
+                      key={g.id}
+                      className={cn(
+                        'flex items-start justify-between gap-3 rounded-md border px-3 py-2.5 transition-colors',
+                        g.enabled
+                          ? 'border-emerald-200 bg-emerald-50/60'
+                          : 'border-border bg-muted/30',
+                      )}
+                    >
+                      <div className="flex items-start gap-2 min-w-0">
+                        {g.enabled ? (
+                          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                        ) : (
+                          <XCircle className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                        )}
+                        <div className="min-w-0">
+                          <p className={cn('text-sm font-medium leading-tight', !g.enabled && 'text-muted-foreground line-through')}>
+                            {g.label}
+                          </p>
+                          {g.hint && (
+                            <p className="mt-0.5 text-[11px] text-emerald-800/80">{g.hint}</p>
+                          )}
+                          {g.locked && (
+                            <p className="mt-0.5 text-[11px] text-muted-foreground">
+                              Policy-locked — required by Workforce Europe standards
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <Switch
+                        checked={g.enabled}
+                        disabled={g.locked}
+                        onCheckedChange={(v) => {
+                          setActive(key);
+                          updateGate(g.id, v);
+                        }}
+                      />
+                    </li>
+                  ))}
+                </ul>
 
-      <ConfirmDialog
-        open={!!showDelete}
-        onOpenChange={() => setShowDelete(null)}
-        title="Delete Criterion"
-        description="Are you sure you want to delete this criterion? This action cannot be undone."
-        onConfirm={() => showDelete && deleteCriterion(showDelete)}
-        variant="destructive"
-      />
+                <div className="mt-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                  <p>
+                    <span className="font-medium">B2 German is mandatory</span> for both Professional Nurses and Ausbildung Nursing.
+                    This gate is locked at the platform level and cannot be disabled per program.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Layer 2 — Scoring criteria */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="mb-1 flex items-center gap-2">
+                      <Badge variant="outline" className="border-sky-300 bg-sky-50 text-sky-800">
+                        Layer 2
+                      </Badge>
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <Scale className="size-5 text-sky-600" /> Academic &amp; Profile Shortlisting Score
+                      </CardTitle>
+                    </div>
+                    <CardDescription>
+                      Runs only for candidates who cleared Layer 1. Determines who receives a Speaking Assessment invitation.
+                    </CardDescription>
+                  </div>
+                  <div className="shrink-0 rounded-lg border border-border/70 px-3 py-2 text-right">
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Total weight</div>
+                    <div className={cn('text-lg font-semibold tabular-nums', balanced ? 'text-emerald-700' : 'text-red-600')}>
+                      {configs[key].criteria.reduce((s, c) => s + c.weight, 0)}%
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-6 lg:grid-cols-5">
+                  {/* Sliders */}
+                  <div className="space-y-4 lg:col-span-3">
+                    {configs[key].criteria.map((c, idx) => (
+                      <div key={c.id} className="rounded-lg border border-border/70 p-3">
+                        <div className="mb-2 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span
+                              className="size-2.5 shrink-0 rounded-full"
+                              style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
+                              aria-hidden
+                            />
+                            <Label className="truncate text-sm font-medium">{c.label}</Label>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Input
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={c.weight}
+                              onChange={(e) => {
+                                setActive(key);
+                                updateWeight(c.id, Number(e.target.value) || 0);
+                              }}
+                              className="h-8 w-16 text-right tabular-nums"
+                            />
+                            <span className="text-sm text-muted-foreground">%</span>
+                          </div>
+                        </div>
+                        <Slider
+                          value={[c.weight]}
+                          min={0}
+                          max={100}
+                          step={1}
+                          onValueChange={([v]) => {
+                            setActive(key);
+                            updateWeight(c.id, v);
+                          }}
+                        />
+                      </div>
+                    ))}
+
+                    {!balanced && active === key && (
+                      <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+                        <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                        <p>
+                          Weights must total <span className="font-semibold">100%</span>. Currently {totalWeight}%.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Distribution chart */}
+                  <div className="lg:col-span-2">
+                    <div className="rounded-lg border border-border/70 p-3">
+                      <div className="mb-2 flex items-center justify-between">
+                        <p className="text-sm font-medium">Weight distribution</p>
+                        <span className="text-[11px] text-muted-foreground">Live preview</span>
+                      </div>
+                      <ResponsiveContainer width="100%" height={220}>
+                        <PieChart>
+                          <Pie
+                            data={configs[key].criteria.map((c) => ({ name: c.label, value: c.weight }))}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={45}
+                            outerRadius={80}
+                            paddingAngle={2}
+                            dataKey="value"
+                            nameKey="name"
+                          >
+                            {configs[key].criteria.map((_, i) => (
+                              <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(v: number) => `${v}%`} />
+                          <Legend
+                            verticalAlign="bottom"
+                            iconType="circle"
+                            wrapperStyle={{ fontSize: 11, lineHeight: '14px' }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Pipeline diagram */}
+            <Card className="bg-muted/30">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Info className="size-4 text-muted-foreground" /> Selection pipeline
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ol className="flex flex-wrap items-center gap-1.5 text-xs">
+                  {[
+                    'Mandatory Gates',
+                    'Shortlisting Score',
+                    'Speaking Assessment',
+                    'Training',
+                    'STI Assessment',
+                    'Employer Interview',
+                    'Final Recommendation',
+                  ].map((step, i, arr) => (
+                    <li key={step} className="flex items-center gap-1.5">
+                      <span
+                        className={cn(
+                          'rounded-full px-2.5 py-1 font-medium ring-1 ring-inset',
+                          i <= 1
+                            ? 'bg-emerald-50 text-emerald-800 ring-emerald-200'
+                            : 'bg-background text-foreground/80 ring-border',
+                        )}
+                      >
+                        {i + 1}. {step}
+                      </span>
+                      {i < arr.length - 1 && <span className="text-muted-foreground">→</span>}
+                    </li>
+                  ))}
+                </ol>
+                <Separator className="my-3" />
+                <p className="text-xs text-muted-foreground">
+                  Only candidates who pass Layer 1 gates enter Layer 2. Only high-ranking candidates from Layer 2 receive Speaking Assessment invitations —
+                  significantly reducing recruiter workload while keeping quality high.
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ))}
+      </Tabs>
     </div>
   );
 }
