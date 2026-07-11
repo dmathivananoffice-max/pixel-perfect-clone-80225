@@ -5,6 +5,7 @@ import {
   ArrowLeft, ArrowRight, Check, ChevronRight, FileText, Save, Sparkles,
   ShieldCheck, X, Search as SearchIcon, ZoomIn, ZoomOut, RotateCw,
   AlertTriangle, CheckCircle2, Info, Upload, Keyboard, Cloud, Gauge,
+  PanelRightOpen, PanelRightClose,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -14,12 +15,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-  Stethoscope, GraduationCap, BookOpen, Award, Briefcase, type LucideIcon,
-} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { allCountries } from '@/lib/countries';
 import { mockCandidates } from '@/lib/mockData';
+
+import imgNurses from '@/assets/product-nurses.jpg';
+import imgAusbildung from '@/assets/product-ausbildung.jpg';
+import imgPreBachelor from '@/assets/product-pre-bachelor.jpg';
+import imgPreMasters from '@/assets/product-pre-masters.jpg';
+import imgMba from '@/assets/product-mba.jpg';
 
 // ─────────────────────────────────────────────────────────────
 // Product definitions (module-local — the intake decides workflow)
