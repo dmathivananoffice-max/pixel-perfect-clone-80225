@@ -20,6 +20,7 @@ import CandidatePortal from '@/pages/CandidatePortal';
 import ContractSigning from '@/pages/ContractSigning';
 import EmailCenter from '@/pages/EmailCenter';
 import DocumentImport from '@/pages/DocumentImport';
+import BulkDocumentUpload from '@/pages/BulkDocumentUpload';
 import UserManagement from '@/pages/UserManagement';
 import Reports from '@/pages/Reports';
 
@@ -32,6 +33,7 @@ function App() {
         <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} />
         {/* Full-screen module — no AppLayout chrome */}
         <Route path="/candidates/new" element={<RouteGuard><CandidateIntake /></RouteGuard>} />
+        <Route path="/documents/bulk" element={<RouteGuard><BulkDocumentUpload /></RouteGuard>} />
         <Route element={<RouteGuard><AppLayout /></RouteGuard>}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/candidates" element={<CandidateList />} />

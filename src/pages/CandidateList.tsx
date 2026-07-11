@@ -32,7 +32,7 @@ import { CommandPalette } from '@/components/candidates/CommandPalette';
 import { CandidateDrawer } from '@/components/candidates/CandidateDrawer';
 
 import {
-  Plus, Search, SlidersHorizontal, Download, Upload, Command as CommandIcon,
+  Plus, Search, SlidersHorizontal, Download, Upload, FileArchive, Command as CommandIcon,
   MoreHorizontal, X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -206,6 +206,9 @@ export default function CandidateList() {
                 <CommandIcon className="size-3.5" />
                 <span className="hidden sm:inline">Quick</span>
                 <Kbd>⌘K</Kbd>
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate('/documents/bulk')} className="gap-1.5">
+                <FileArchive className="size-4" /> Bulk upload
               </Button>
               <Button size="sm" className="gap-1.5 shadow-sm" onClick={goAdd}>
                 <Plus className="size-4" /> Add candidate
