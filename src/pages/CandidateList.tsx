@@ -269,7 +269,7 @@ export default function CandidateList() {
                     />
                   </Th>
                   <Th className="w-12 text-center">Rank</Th>
-                  <Th sticky>Candidate</Th>
+                  <Th>Candidate</Th>
                   <Th>Product</Th>
                   <Th>Stage</Th>
                   <Th className="text-right">AI</Th>
@@ -324,7 +324,7 @@ export default function CandidateList() {
                       <Td className="text-center text-xs tabular-nums text-muted-foreground">
                         {c.rank ?? '—'}
                       </Td>
-                      <Td sticky>
+                      <Td>
                         <div className="flex items-center gap-2.5">
                           <Avatar className="size-8">
                             <AvatarFallback className="bg-gradient-to-br from-slate-700 to-slate-500 text-[11px] font-medium text-white">
@@ -465,13 +465,12 @@ export default function CandidateList() {
 }
 
 function Th({
-  children, className, sticky,
-}: { children?: React.ReactNode; className?: string; sticky?: boolean }) {
+  children, className,
+}: { children?: React.ReactNode; className?: string }) {
   return (
     <th
       className={cn(
         'h-9 whitespace-nowrap border-b border-border/60 px-3 text-left font-medium',
-        sticky && 'sticky left-0 z-[1] bg-muted/40',
         className,
       )}
     >
@@ -480,9 +479,9 @@ function Th({
   );
 }
 function Td({
-  children, className, sticky, onClick,
+  children, className, onClick,
 }: {
-  children?: React.ReactNode; className?: string; sticky?: boolean;
+  children?: React.ReactNode; className?: string;
   onClick?: (e: React.MouseEvent) => void;
 }) {
   return (
@@ -490,7 +489,6 @@ function Td({
       onClick={onClick}
       className={cn(
         'h-14 whitespace-nowrap px-3 align-middle',
-        sticky && 'sticky left-0 z-[1] bg-inherit',
         className,
       )}
     >
