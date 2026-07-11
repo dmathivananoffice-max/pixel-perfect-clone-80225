@@ -78,7 +78,7 @@ export default function ScoringConfig() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={resetProgram} className="gap-1.5">
+          <Button variant="ghost" size="sm" onClick={handleReset} className="gap-1.5">
             <RotateCcw className="size-4" /> Reset to defaults
           </Button>
           <Button size="sm" onClick={save} className="gap-1.5">
