@@ -22,8 +22,8 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard className="w-5 h-5" />, roles: ['super_admin', 'managing_director', 'sales_executive', 'recruiter', 'documentation_officer', 'german_trainer'] },
   { label: 'Candidates', path: '/candidates', icon: <Users className="w-5 h-5" />, roles: ['super_admin', 'managing_director', 'recruiter', 'documentation_officer'] },
-  { label: 'Scoring Config', path: '/admin/scoring', icon: <Settings className="w-5 h-5" />, roles: ['super_admin'] },
-  { label: 'STI Assessment', path: '/sti', icon: <ClipboardCheck className="w-5 h-5" />, roles: ['german_trainer', 'recruiter', 'super_admin'] },
+  { label: 'Selection Engine', path: '/admin/scoring', icon: <Settings className="w-5 h-5" />, roles: ['super_admin'] },
+  { label: 'Evaluation Center', path: '/sti', icon: <ClipboardCheck className="w-5 h-5" />, roles: ['german_trainer', 'recruiter', 'super_admin'] },
   { label: 'Recruiter Hub', path: '/recruiter', icon: <Briefcase className="w-5 h-5" />, roles: ['recruiter', 'super_admin'] },
   { label: 'Agency Portal', path: '/agency', icon: <Building2 className="w-5 h-5" />, roles: ['agency_partner'] },
   { label: 'Employer Portal', path: '/employer', icon: <Building2 className="w-5 h-5" />, roles: ['employer'] },
