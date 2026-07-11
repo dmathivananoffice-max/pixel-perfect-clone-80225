@@ -262,7 +262,7 @@ function NursesDashboard({ product }: { product: ProductConfig }) {
     { label: 'Recruiter Tasks', value: 5, icon: ListChecks, accent: 'text-slate-600 bg-slate-50' },
     { label: 'Pending Documents', value: m.waiting, icon: FileText, accent: 'text-yellow-600 bg-yellow-50' },
   ];
-  return <ProductBody widgets={widgets} product={product} />;
+  return <ProductBody widgets={widgets} product={product} enginePrograms={['professional_nurses']} />;
 }
 
 /* ---------- Ausbildung ---------- */
