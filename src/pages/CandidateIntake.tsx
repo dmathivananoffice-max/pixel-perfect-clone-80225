@@ -5,6 +5,7 @@ import {
   ArrowLeft, ArrowRight, Check, ChevronRight, FileText, Save, Sparkles,
   ShieldCheck, X, Search as SearchIcon, ZoomIn, ZoomOut, RotateCw,
   AlertTriangle, CheckCircle2, Info, Upload, Keyboard, Cloud, Gauge,
+  PanelRightOpen, PanelRightClose,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -14,12 +15,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-  Stethoscope, GraduationCap, BookOpen, Award, Briefcase, type LucideIcon,
-} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { allCountries } from '@/lib/countries';
 import { mockCandidates } from '@/lib/mockData';
+
+import imgNurses from '@/assets/product-nurses.jpg';
+import imgAusbildung from '@/assets/product-ausbildung.jpg';
+import imgPreBachelor from '@/assets/product-pre-bachelor.jpg';
+import imgPreMasters from '@/assets/product-pre-masters.jpg';
+import imgMba from '@/assets/product-mba.jpg';
 
 // ─────────────────────────────────────────────────────────────
 // Product definitions (module-local — the intake decides workflow)
@@ -27,18 +31,18 @@ import { mockCandidates } from '@/lib/mockData';
 type IntakeProductId = 'nurses' | 'ausbildung' | 'pre_bachelor' | 'pre_masters' | 'mba';
 interface ProductDef {
   id: IntakeProductId;
-  emoji: string;
   label: string;
   tagline: string;
-  icon: LucideIcon;
-  accent: string;
+  image: string;
+  ring: string;
+  halo: string;
 }
 const INTAKE_PRODUCTS: ProductDef[] = [
-  { id: 'nurses',       emoji: '🏥', label: 'Professional Nurses', tagline: 'Approbation, B2, hospital placement', icon: Stethoscope,   accent: 'from-rose-500/10 to-rose-500/0 ring-rose-200' },
-  { id: 'ausbildung',   emoji: '🎓', label: 'Ausbildung',          tagline: 'Vocational training in Germany',      icon: GraduationCap, accent: 'from-indigo-500/10 to-indigo-500/0 ring-indigo-200' },
-  { id: 'pre_bachelor', emoji: '📚', label: 'Pre-Bachelor',        tagline: 'Studienkolleg & undergraduate track', icon: BookOpen,      accent: 'from-emerald-500/10 to-emerald-500/0 ring-emerald-200' },
-  { id: 'pre_masters',  emoji: '🎓', label: 'Pre-Masters',         tagline: 'Master intake preparation',           icon: Award,         accent: 'from-violet-500/10 to-violet-500/0 ring-violet-200' },
-  { id: 'mba',          emoji: '💼', label: 'MBA',                 tagline: 'Executive & business schools',        icon: Briefcase,     accent: 'from-amber-500/10 to-amber-500/0 ring-amber-200' },
+  { id: 'nurses',       label: 'Professional Nurses', tagline: 'Approbation, B2, hospital placement', image: imgNurses,      ring: 'ring-rose-200',    halo: 'shadow-rose-200/50' },
+  { id: 'ausbildung',   label: 'Ausbildung',          tagline: 'Vocational training in Germany',      image: imgAusbildung,  ring: 'ring-indigo-200',  halo: 'shadow-indigo-200/50' },
+  { id: 'pre_bachelor', label: 'Pre-Bachelor',        tagline: 'Studienkolleg & undergraduate track', image: imgPreBachelor, ring: 'ring-emerald-200', halo: 'shadow-emerald-200/50' },
+  { id: 'pre_masters',  label: 'Pre-Masters',         tagline: 'Master intake preparation',           image: imgPreMasters,  ring: 'ring-violet-200',  halo: 'shadow-violet-200/50' },
+  { id: 'mba',          label: 'MBA',                 tagline: 'Executive & business schools',        image: imgMba,         ring: 'ring-amber-200',   halo: 'shadow-amber-200/50' },
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -164,6 +168,16 @@ function confidenceMeta(c?: number) {
   return                    { label: `${Math.round(c * 100)}%`, tone: 'bg-rose-50 text-rose-700 ring-1 ring-rose-200' };
 }
 
+// Application documents use the convention: `FIRSTNAME Documentname.pdf`
+// (first name uppercase, German doc word title-cased). The oU / mU suffix is
+// reserved for signature-required documents (contracts, insurance, Mietvertrag,
+// Vollmacht) — not for application uploads.
+const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+function appDocName(firstName: string, german: string, qualifier?: string) {
+  const q = qualifier ? ` ${cap(qualifier)}` : '';
+  return `${firstName.toUpperCase()} ${cap(german)}${q}.pdf`;
+}
+
 // ─────────────────────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────────────────────
@@ -180,7 +194,10 @@ export default function CandidateIntake() {
   const [uploads, setUploads] = useState<Record<string, boolean>>({});
   const [declarations, setDeclarations] = useState({ reviewed: false, matches: false, complete: false });
   const [zoom, setZoom] = useState(100);
+  const [docOpen, setDocOpen] = useState(false); // mobile / tablet drawer
   const [savedAt, setSavedAt] = useState<Date | null>(null);
+
+  const firstName = (values['personal']?.first_name ?? 'Deeban').trim() || 'Deeban';
 
   // Continuous autosave — debounce on any state change
   useEffect(() => {
@@ -333,9 +350,9 @@ export default function CandidateIntake() {
       )}
 
       {stage === 'section' && (
-        <div className="grid flex-1 min-h-0 grid-cols-1 lg:grid-cols-[3fr_2fr]">
+        <div className="relative flex flex-1 min-h-0">
           {/* Left: master data + section nav */}
-          <div className="flex min-h-0 flex-col border-r border-border/60">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <SectionNav
               currentIndex={sectionIndex}
               verified={verified}
@@ -350,11 +367,21 @@ export default function CandidateIntake() {
                 onChange={(k, v) => setFieldValue(current.id, k, v)}
                 uploads={uploads}
                 setUploads={setUploads}
+                firstName={firstName}
               />
             </div>
-            <div className="flex items-center justify-between border-t border-border/60 bg-background/95 px-6 py-3">
+            <div className="flex items-center justify-between gap-2 border-t border-border/60 bg-background/95 px-6 py-3">
               <Button variant="ghost" size="sm" onClick={goBack} className="gap-1.5">
                 <ArrowLeft className="size-4" /> Back
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDocOpen((v) => !v)}
+                className="gap-1.5 xl:hidden"
+              >
+                {docOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
+                Source
               </Button>
               <Button size="sm" onClick={verifyAndContinue} className="gap-1.5 shadow-sm">
                 <Check className="size-4" /> Verify &amp; continue
@@ -362,8 +389,30 @@ export default function CandidateIntake() {
               </Button>
             </div>
           </div>
-          {/* Right: doc viewer */}
-          <DocumentViewer section={current} zoom={zoom} setZoom={setZoom} />
+
+          {/* Right: doc viewer — inline on xl+, drawer below */}
+          <div className="hidden xl:flex xl:w-[clamp(420px,38vw,640px)] min-h-0 border-l border-border/60">
+            <DocumentViewer section={current} zoom={zoom} setZoom={setZoom} />
+          </div>
+          {docOpen && (
+            <>
+              <div
+                className="xl:hidden fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm"
+                onClick={() => setDocOpen(false)}
+              />
+              <div className="xl:hidden fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-border/60 bg-background shadow-2xl animate-section-in">
+                <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
+                  <div className="text-xs font-medium">Source document</div>
+                  <button onClick={() => setDocOpen(false)} className="rounded-md p-1.5 hover:bg-muted" aria-label="Close source">
+                    <X className="size-4" />
+                  </button>
+                </div>
+                <div className="flex-1 min-h-0">
+                  <DocumentViewer section={current} zoom={zoom} setZoom={setZoom} />
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -374,6 +423,7 @@ export default function CandidateIntake() {
           uploads={uploads}
           declarations={declarations}
           setDeclarations={setDeclarations}
+          firstName={firstName}
           onEditSection={(id) => {
             const idx = SECTIONS.findIndex((s) => s.id === id);
             if (idx >= 0) { setSectionIndex(idx); setStage('section'); }
@@ -407,33 +457,39 @@ function ProductStep({
           </p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {INTAKE_PRODUCTS.map((p) => {
             const selected = product === p.id;
-            const Icon = p.icon;
             return (
               <button
                 key={p.id}
                 onClick={() => setProduct(p.id)}
                 className={cn(
-                  'group relative flex items-start gap-4 rounded-xl border p-5 text-left transition',
-                  'bg-gradient-to-br ring-1',
-                  p.accent,
+                  'group relative flex flex-col items-center gap-4 rounded-2xl border bg-background p-6 text-center transition',
                   selected
-                    ? 'border-primary ring-primary/40 shadow-sm'
-                    : 'border-border/60 hover:border-border',
+                    ? 'border-primary shadow-lg ring-2 ring-primary/30 -translate-y-0.5'
+                    : 'border-border/60 hover:border-border hover:-translate-y-0.5 hover:shadow-md',
                 )}
               >
-                <div className="text-3xl leading-none">{p.emoji}</div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <Icon className="size-4 text-muted-foreground" />
-                    <h3 className="text-base font-medium">{p.label}</h3>
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">{p.tagline}</p>
+                <div className={cn(
+                  'relative size-24 shrink-0 overflow-hidden rounded-full ring-4 shadow-lg transition-transform group-hover:scale-105',
+                  p.ring, p.halo,
+                )}>
+                  <img
+                    src={p.image}
+                    alt={p.label}
+                    width={512}
+                    height={512}
+                    loading="lazy"
+                    className="size-full object-cover"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-display text-base font-semibold tracking-tight">{p.label}</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">{p.tagline}</p>
                 </div>
                 {selected && (
-                  <div className="absolute right-4 top-4 rounded-full bg-primary p-1 text-primary-foreground">
+                  <div className="absolute right-3 top-3 rounded-full bg-primary p-1 text-primary-foreground shadow">
                     <Check className="size-3" />
                   </div>
                 )}
@@ -494,7 +550,7 @@ function SectionNav({
 // Section form
 // ─────────────────────────────────────────────────────────────
 function SectionForm({
-  section, fields, values, edited, onChange, uploads, setUploads,
+  section, fields, values, edited, onChange, uploads, setUploads, firstName,
 }: {
   section: SectionDef;
   fields: FieldDef[];
@@ -503,6 +559,7 @@ function SectionForm({
   onChange: (k: string, v: string) => void;
   uploads: Record<string, boolean>;
   setUploads: (u: Record<string, boolean>) => void;
+  firstName: string;
 }) {
   // Contextual, section-specific banners
   const duplicate = useMemo(() => {
@@ -554,7 +611,7 @@ function SectionForm({
       )}
 
       {section.id === 'documents' ? (
-        <DocumentsSection uploads={uploads} setUploads={setUploads} />
+        <DocumentsSection uploads={uploads} setUploads={setUploads} firstName={firstName} />
       ) : section.id === 'driving' ? (
         <>
           <div className="grid grid-cols-2 gap-x-4 gap-y-5">
@@ -584,7 +641,7 @@ function SectionForm({
                 >
                   {done ? <CheckCircle2 className="mb-1 size-5 text-emerald-600" /> : <Upload className="mb-1 size-5" />}
                   <span className="font-medium capitalize">Licence {side}</span>
-                  <span className="mt-0.5 font-mono text-[10px]">DEEBAN fuehrerschein {side} oU.pdf</span>
+                  <span className="mt-0.5 font-mono text-[10px]">{appDocName(firstName, 'fuehrerschein', side)}</span>
                 </button>
               );
             })}
@@ -672,16 +729,18 @@ function FieldRow({
 }
 
 function DocumentsSection({
-  uploads, setUploads,
+  uploads, setUploads, firstName,
 }: {
   uploads: Record<string, boolean>;
   setUploads: (u: Record<string, boolean>) => void;
+  firstName: string;
 }) {
   return (
     <div className="space-y-2">
       <p className="mb-3 text-xs text-muted-foreground">
         Files are auto-renamed on upload:
-        <span className="ml-1 rounded bg-muted px-1.5 py-0.5 font-mono">FIRSTNAME dokumentname oU.pdf</span>
+        <span className="ml-1 rounded bg-muted px-1.5 py-0.5 font-mono">FIRSTNAME Dokumentname.pdf</span>
+        <span className="ml-2 text-[10px]">(oU / mU suffix is reserved for signature documents — contracts, insurance, Mietvertrag, Vollmacht.)</span>
       </p>
       {REQUIRED_UPLOADS.map((u) => {
         const done = !!uploads[u.key];
@@ -698,7 +757,7 @@ function DocumentsSection({
                 <FileText className="size-4 text-muted-foreground" />
                 {u.label}
                 <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-                  DEEBAN {u.german} oU.pdf
+                  {appDocName(firstName, u.german)}
                 </span>
               </div>
               <p className="mt-0.5 text-[11px] text-muted-foreground">
@@ -800,13 +859,14 @@ function DocumentViewer({
 // Review step
 // ─────────────────────────────────────────────────────────────
 function ReviewStep({
-  product, values, uploads, declarations, setDeclarations, onEditSection, onBack, onApprove,
+  product, values, uploads, declarations, setDeclarations, firstName, onEditSection, onBack, onApprove,
 }: {
   product: IntakeProductId;
   values: Record<string, Record<string, string>>;
   uploads: Record<string, boolean>;
   declarations: { reviewed: boolean; matches: boolean; complete: boolean };
   setDeclarations: (d: { reviewed: boolean; matches: boolean; complete: boolean }) => void;
+  firstName: string;
   onEditSection: (id: SectionId) => void;
   onBack: () => void;
   onApprove: () => void;
@@ -869,7 +929,7 @@ function ReviewStep({
         <div className="mb-8 grid gap-3 md:grid-cols-[1fr_auto]">
           <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
             <div className="flex items-center gap-3">
-              <span className="text-2xl">{productDef.emoji}</span>
+              <img src={productDef.image} alt={productDef.label} width={512} height={512} loading="lazy" className={cn('size-10 shrink-0 rounded-full ring-2 object-cover', productDef.ring)} />
               <div>
                 <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Product</div>
                 <div className="text-sm font-medium">{productDef.label}</div>
@@ -945,7 +1005,7 @@ function ReviewStep({
                       : <AlertTriangle className="size-3 text-rose-500" />}
                     {u.label}
                   </span>
-                  <span className="font-mono text-[10px] text-muted-foreground">DEEBAN {u.german} oU.pdf</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">{appDocName(firstName, u.german)}</span>
                 </div>
               ))}
             </div>
