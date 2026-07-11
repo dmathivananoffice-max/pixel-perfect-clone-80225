@@ -179,7 +179,7 @@ export const mockCandidateScores: CandidateScore[] = [
 
 // ─── Users ──────────────────────────────────────────────────
 export const mockUsers: User[] = [
-  { id: 'user-1', name: 'Alexander Reynolds', email: 'alex@workforce-europe.com', role: 'super_admin', department: 'Management', status: 'active', mfa_enabled: true, created_at: '2024-01-01T08:00:00Z' },
+  { id: 'user-1', name: 'Deeban', email: 'deeban@workforce-europe.com', role: 'super_admin', department: 'Management', status: 'active', mfa_enabled: true, created_at: '2024-01-01T08:00:00Z' },
   { id: 'user-2', name: 'Margaret Thompson', email: 'margaret@workforce-europe.com', role: 'managing_director', department: 'Management', status: 'active', mfa_enabled: true, created_at: '2024-01-01T09:00:00Z' },
   { id: 'user-3', name: 'Lisa Anderson', email: 'lisa@workforce-europe.com', role: 'recruiter', department: 'Recruitment', status: 'active', mfa_enabled: true, created_at: '2024-01-15T08:00:00Z' },
   { id: 'user-4', name: 'David Chen', email: 'david@workforce-europe.com', role: 'recruiter', department: 'Recruitment', status: 'active', mfa_enabled: true, created_at: '2024-01-20T09:00:00Z' },

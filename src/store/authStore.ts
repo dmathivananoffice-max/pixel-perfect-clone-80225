@@ -15,9 +15,9 @@ interface AuthState {
 }
 
 const MOCK_USERS: Record<string, { password: string; user: User }> = {
-  'alex@workforce-europe.com': {
+  'deeban@workforce-europe.com': {
     password: 'admin123',
-    user: { id: 'user-1', name: 'Alexander Reynolds', email: 'alex@workforce-europe.com', role: 'super_admin' as UserRole, department: 'Management', status: 'active', mfa_enabled: true, created_at: '2024-01-01T08:00:00Z' },
+    user: { id: 'user-1', name: 'Deeban', email: 'deeban@workforce-europe.com', role: 'super_admin' as UserRole, department: 'Management', status: 'active', mfa_enabled: true, created_at: '2024-01-01T08:00:00Z' },
   },
   'lisa@workforce-europe.com': {
     password: 'recruiter123',
