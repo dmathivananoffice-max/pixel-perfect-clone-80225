@@ -142,3 +142,22 @@
     color: var(--color-foreground);
   }
 }
+
+/* Intake studio typography + motion */
+@utility font-display {
+  font-family: 'Inter Tight', ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+@utility font-body {
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+@keyframes intake-section-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@utility animate-section-in {
+  animation: intake-section-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-section-in { animation: none !important; }
+}
