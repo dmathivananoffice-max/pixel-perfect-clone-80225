@@ -406,6 +406,32 @@ function StagePill({ status }: { status: StageStatus }) {
   );
 }
 
+function ReadinessPill({ readiness }: { readiness: Readiness | null }) {
+  if (!readiness) {
+    return <span className="text-[11px] text-muted-foreground">—</span>;
+  }
+  const meta: Record<Readiness['band'], { label: string; className: string; dot: string }> = {
+    ready:       { label: 'Ready',       className: 'bg-emerald-50 text-emerald-800 border-emerald-200', dot: 'bg-emerald-500' },
+    progressing: { label: 'Progressing', className: 'bg-sky-50 text-sky-800 border-sky-200',             dot: 'bg-sky-500' },
+    at_risk:     { label: 'At risk',     className: 'bg-amber-50 text-amber-900 border-amber-200',       dot: 'bg-amber-500' },
+    ineligible:  { label: 'Ineligible',  className: 'bg-red-50 text-red-800 border-red-200',             dot: 'bg-red-500' },
+  };
+  const m = meta[readiness.band];
+  const title = readiness.eligible
+    ? `Weighted score ${readiness.score}/100`
+    : `Failed gates: ${readiness.failedGates.join(', ')}`;
+  return (
+    <span
+      title={title}
+      className={cn('inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium', m.className)}
+    >
+      <span className={cn('size-1.5 rounded-full', m.dot)} />
+      {m.label}
+      {readiness.eligible && <span className="tabular-nums opacity-80">· {readiness.score}</span>}
+    </span>
+  );
+
+
 function AiSuggestions({ statuses }: { statuses: Record<StageKey, StageStatus> }) {
   const tips: string[] = [];
   if (statuses.speaking === 'passed') tips.push('Speaking ready');
