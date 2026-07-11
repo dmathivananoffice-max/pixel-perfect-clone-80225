@@ -110,7 +110,7 @@ export default function CandidateEvaluationCenter() {
     return (
       candidate.first_name.toLowerCase().includes(q) ||
       candidate.last_name.toLowerCase().includes(q) ||
-      candidate.program_name.toLowerCase().includes(q)
+      (candidate.program_name ?? '').toLowerCase().includes(q)
     );
   });
 
