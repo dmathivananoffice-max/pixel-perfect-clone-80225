@@ -236,6 +236,7 @@ export default function CandidateEvaluationCenter() {
                   {STAGES.map((s) => (
                     <th key={s.key} className="px-3 py-2 text-left font-medium">{s.label}</th>
                   ))}
+                  <th className="px-3 py-2 text-left font-medium">Readiness</th>
                   <th className="px-3 py-2 text-left font-medium">Progress</th>
                   <th className="px-3 py-2 text-left font-medium">Next action</th>
                 </tr>
