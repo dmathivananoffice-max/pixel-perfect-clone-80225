@@ -294,7 +294,7 @@ export default function CandidateList() {
                 )}
                 {candidates.map((c) => {
                   const country = getCountry(c.country);
-                  const stage = stageMeta(c.status);
+                  
                   const product = PRODUCTS.find((p) => p.id === inferProduct(c))!;
                   const lang = deriveLanguageLevel(c.candidate_id);
                   const speaking = deriveSpeakingScore(c.candidate_id);
