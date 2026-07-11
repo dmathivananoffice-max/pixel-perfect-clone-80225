@@ -271,13 +271,14 @@ export default function CandidateList() {
                   <Th className="w-12 text-center">Rank</Th>
                   <Th>Candidate</Th>
                   <Th>Product</Th>
-                  <Th>Stage</Th>
-                  <Th className="text-right">AI</Th>
+                  <Th>Country</Th>
+                  <Th>Current Stage</Th>
+                  <Th className="text-right">AI Score</Th>
                   <Th className="text-center">Lang</Th>
                   <Th className="text-right">Speaking</Th>
                   <Th className="text-right">Training</Th>
                   <Th className="text-right">Interview</Th>
-                  <Th>Status</Th>
+                  <Th>Placement Readiness</Th>
                   <Th>Recruiter</Th>
                   <Th>Last activity</Th>
                   <Th className="w-10" />
