@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import {
   ArrowLeft, ArrowRight, Check, ChevronRight, FileText, Save, Sparkles,
   ShieldCheck, X, Search as SearchIcon, ZoomIn, ZoomOut, RotateCw,
-  AlertTriangle, CheckCircle2, Info, Upload, Keyboard,
+  AlertTriangle, CheckCircle2, Info, Upload, Keyboard, Cloud, Gauge,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { allCountries } from '@/lib/countries';
+import { mockCandidates } from '@/lib/mockData';
 
 // ─────────────────────────────────────────────────────────────
 // Product definitions (module-local — the intake decides workflow)
