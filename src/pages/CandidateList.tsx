@@ -126,7 +126,7 @@ export default function CandidateList() {
     }
 
     return data;
-  }, [productFilter, filters, q, rowOverrides]);
+  }, [productFilter, filters, q, rowOverrides, extraCandidates]);
 
   const allSelected = candidates.length > 0 && candidates.every((c) => selection.has(c.candidate_id));
   const someSelected = candidates.some((c) => selection.has(c.candidate_id)) && !allSelected;
