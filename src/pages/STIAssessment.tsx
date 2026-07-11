@@ -97,7 +97,10 @@ export default function CandidateEvaluationCenter() {
     [],
   );
 
-  // Compute per-candidate stage matrix (memoized)
+  // Selection Engine config drives per-candidate readiness
+  const configs = useSelectionEngine((s) => s.configs);
+
+  // Compute per-candidate stage matrix + readiness (memoized)
   const matrix = useMemo(() => {
     return pool.map((c) => {
       const statuses = {
@@ -106,9 +109,20 @@ export default function CandidateEvaluationCenter() {
         sti:                pickStatus(c.candidate_id, 'sti'),
         employer_interview: pickStatus(c.candidate_id, 'employer_interview'),
       } as Record<StageKey, StageStatus>;
-      return { candidate: c, statuses, progress: progressFor(statuses), next: nextAction(statuses) };
+      const programKey = inferProgramKey(c.program_name);
+      const readiness: Readiness | null = programKey
+        ? computeReadiness(c.candidate_id, configs[programKey], c.gate_status !== 'not_placement_ready')
+        : null;
+      return {
+        candidate: c,
+        statuses,
+        progress: progressFor(statuses),
+        next: nextAction(statuses),
+        readiness,
+      };
     });
-  }, [pool]);
+  }, [pool, configs]);
+
 
   const filtered = matrix.filter(({ candidate }) => {
     if (!query.trim()) return true;
