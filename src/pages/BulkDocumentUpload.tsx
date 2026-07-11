@@ -484,9 +484,88 @@ export default function BulkDocumentUpload() {
           </Card>
         )}
       </div>
+
+      {/* Quick Add Candidate Dialog */}
+      <Dialog open={quickAddOpen} onOpenChange={setQuickAddOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="size-4" /> Quick add candidate
+            </DialogTitle>
+            <DialogDescription>
+              Creates a lightweight candidate record you can attach files to right now. Full profile & documents can be completed later in the intake studio.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="qf">First name *</Label>
+                <Input id="qf" value={qFirst} onChange={(e) => setQFirst(e.target.value)} placeholder="Deeban" autoFocus />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="ql">Last name *</Label>
+                <Input id="ql" value={qLast} onChange={(e) => setQLast(e.target.value)} placeholder="Kumar" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="qc">Country</Label>
+                <Input id="qc" value={qCountry} onChange={(e) => setQCountry(e.target.value)} placeholder="India" />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="qp">Program</Label>
+                <Input id="qp" value={qProgram} onChange={(e) => setQProgram(e.target.value)} placeholder="Pflegefachkraft" />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Filename pattern <span className="font-mono">{(qFirst || 'FIRSTNAME').toUpperCase()} Documenttype.pdf</span> will now auto-match this candidate.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setQuickAddOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (!qFirst.trim() || !qLast.trim()) {
+                  toast.error('First and last name required');
+                  return;
+                }
+                const newCand: LiteCandidate = {
+                  candidate_id: `cand-new-${Date.now()}`,
+                  first_name: qFirst.trim(),
+                  last_name: qLast.trim(),
+                  country: qCountry.trim() || undefined,
+                  program_name: qProgram.trim() || undefined,
+                };
+                setExtraCandidates((prev) => [newCand, ...prev]);
+                // Auto-assign to originating row if any, and re-match any unmatched rows by first name
+                const upperFirst = newCand.first_name.toUpperCase();
+                setRows((prev) => prev.map((row) => {
+                  const shouldAttach =
+                    row.id === quickAddRowId ||
+                    (row.status === 'unmatched' && row.fileName.split(/[\s_.-]/)[0]?.toUpperCase() === upperFirst);
+                  if (!shouldAttach) return row;
+                  const merged = {
+                    ...row,
+                    candidateId: newCand.candidate_id,
+                    candidateName: `${newCand.first_name} ${newCand.last_name}`,
+                    status: 'matched' as RowStatus,
+                  };
+                  merged.suggestedName = suggestedFilename(merged);
+                  return merged;
+                }));
+                toast.success(`Added ${newCand.first_name} ${newCand.last_name}`);
+                setQuickAddOpen(false);
+              }}
+            >
+              Add candidate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
 
 function StatTile({
   label, value, tone = 'default', icon,
