@@ -430,6 +430,9 @@ function ReadinessPill({ readiness }: { readiness: Readiness | null }) {
       {readiness.eligible && <span className="tabular-nums opacity-80">· {readiness.score}</span>}
     </span>
   );
+}
+
+
 
 
 function AiSuggestions({ statuses }: { statuses: Record<StageKey, StageStatus> }) {
