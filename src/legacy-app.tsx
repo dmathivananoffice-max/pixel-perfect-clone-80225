@@ -9,6 +9,7 @@ import { RouteGuard } from '@/components/RouteGuard';
 import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import CandidateList from '@/pages/CandidateList';
+import CandidateIntake from '@/pages/CandidateIntake';
 import CandidateDetail from '@/pages/CandidateDetail';
 import ScoringConfig from '@/pages/ScoringConfig';
 import STIAssessment from '@/pages/STIAssessment';
@@ -29,6 +30,8 @@ function App() {
     <>
       <Routes>
         <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} />
+        {/* Full-screen module — no AppLayout chrome */}
+        <Route path="/candidates/new" element={<RouteGuard><CandidateIntake /></RouteGuard>} />
         <Route element={<RouteGuard><AppLayout /></RouteGuard>}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/candidates" element={<CandidateList />} />

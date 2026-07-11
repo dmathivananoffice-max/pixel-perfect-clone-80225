@@ -27,7 +27,7 @@ import { ProductSelector } from '@/components/dashboard/ProductSelector';
 import { FiltersPanel, type FiltersState } from '@/components/candidates/FiltersPanel';
 import { StageEditor } from '@/components/candidates/StageEditor';
 import { BulkActionsBar } from '@/components/candidates/BulkActionsBar';
-import { AddCandidateDialog } from '@/components/candidates/AddCandidateDialog';
+
 import { CommandPalette } from '@/components/candidates/CommandPalette';
 import { CandidateDrawer } from '@/components/candidates/CandidateDrawer';
 
@@ -77,7 +77,7 @@ export default function CandidateList() {
   // Local UI state
   const [filters, setFilters] = useState<FiltersState>(emptyFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [addOpen, setAddOpen] = useState(false);
+  const goAdd = () => navigate('/candidates/new');
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [rowOverrides, setRowOverrides] = useState<Record<string, CandidateStatus>>({});
@@ -162,7 +162,7 @@ export default function CandidateList() {
       }
       if (inField) return;
       if (e.key === '/') { e.preventDefault(); searchRef.current?.focus(); return; }
-      if (e.key.toLowerCase() === 'a') { e.preventDefault(); setAddOpen(true); return; }
+      if (e.key.toLowerCase() === 'a') { e.preventDefault(); goAdd(); return; }
       if (e.key.toLowerCase() === 'f') { e.preventDefault(); setFiltersOpen(true); return; }
       if (e.key === 'Escape') {
         if (openId) setParam('open', null);
@@ -207,7 +207,7 @@ export default function CandidateList() {
                 <span className="hidden sm:inline">Quick</span>
                 <Kbd>⌘K</Kbd>
               </Button>
-              <Button size="sm" className="gap-1.5 shadow-sm" onClick={() => setAddOpen(true)}>
+              <Button size="sm" className="gap-1.5 shadow-sm" onClick={goAdd}>
                 <Plus className="size-4" /> Add candidate
                 <Kbd className="ml-1 border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground/80">A</Kbd>
               </Button>
@@ -449,8 +449,7 @@ export default function CandidateList() {
           onClear={() => setSelection(new Set())}
           onAction={() => setSelection(new Set())}
         />
-        <AddCandidateDialog open={addOpen} onOpenChange={setAddOpen} />
-        <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onAddCandidate={() => setAddOpen(true)} />
+        <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onAddCandidate={goAdd} />
         <CandidateDrawer candidateId={openId} onClose={() => setParam('open', null)} />
       </div>
     </TooltipProvider>
