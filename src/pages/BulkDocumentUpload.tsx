@@ -4,8 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   ArrowLeft, FileArchive, FileText, Loader2, CheckCircle2, AlertTriangle,
-  X, UserCheck, Sparkles, Trash2, RefreshCw,
+  X, UserCheck, Sparkles, Trash2, RefreshCw, UserPlus,
 } from 'lucide-react';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -75,12 +80,15 @@ function detectDocType(name: string): { type: DocType; confidence: number } {
   return { type: 'other', confidence: 0.4 + Math.random() * 0.2 };
 }
 
-function matchCandidate(fileName: string) {
+type LiteCandidate = { candidate_id: string; first_name: string; last_name: string; country?: string; program_name?: string };
+
+function matchCandidate(fileName: string, list: LiteCandidate[]) {
   // Match on first name (uppercase before space) — pattern DEEBAN Reisepass.pdf
   const first = fileName.split(/[\s_.-]/)[0]?.toUpperCase();
   if (!first) return undefined;
-  return mockCandidates.find((c) => c.first_name.toUpperCase() === first);
+  return list.find((c) => c.first_name.toUpperCase() === first);
 }
+
 
 function suggestedFilename(row: FileRow): string {
   const cand = row.candidateName?.split(' ')[0]?.toUpperCase() ?? 'UNMATCHED';
@@ -103,12 +111,25 @@ export default function BulkDocumentUpload() {
   const [rows, setRows] = useState<FileRow[]>([]);
   const [defaultCandidate, setDefaultCandidate] = useState<string>('');
   const [search, setSearch] = useState('');
+  const [extraCandidates, setExtraCandidates] = useState<LiteCandidate[]>([]);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddRowId, setQuickAddRowId] = useState<string | null>(null);
+  const [qFirst, setQFirst] = useState('');
+  const [qLast, setQLast] = useState('');
+  const [qCountry, setQCountry] = useState('');
+  const [qProgram, setQProgram] = useState('');
+
+  const allCandidates = useMemo<LiteCandidate[]>(
+    () => [...extraCandidates, ...mockCandidates],
+    [extraCandidates]
+  );
 
   const processFiles = useCallback((files: File[], fromZip?: string) => {
     const newRows: FileRow[] = files.map((f) => {
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const { type, confidence } = detectDocType(f.name);
-      const match = matchCandidate(f.name);
+      const match = matchCandidate(f.name, allCandidates);
+
       const row: FileRow = {
         id,
         fileName: f.name,
@@ -195,7 +216,7 @@ export default function BulkDocumentUpload() {
   };
 
   const assignCandidate = (id: string, candidateId: string) => {
-    const cand = mockCandidates.find((c) => c.candidate_id === candidateId);
+    const cand = allCandidates.find((c) => c.candidate_id === candidateId);
     if (!cand) return;
     updateRow(id, {
       candidateId,
@@ -216,7 +237,7 @@ export default function BulkDocumentUpload() {
 
   const applyDefault = () => {
     if (!defaultCandidate) return;
-    const cand = mockCandidates.find((c) => c.candidate_id === defaultCandidate);
+    const cand = allCandidates.find((c) => c.candidate_id === defaultCandidate);
     if (!cand) return;
     setRows((prev) => prev.map((r) =>
       r.status === 'unmatched' ? {
@@ -262,10 +283,14 @@ export default function BulkDocumentUpload() {
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="gap-1"><Sparkles className="size-3" /> AI OCR</Badge>
+            <Button size="sm" variant="outline" onClick={() => { setQuickAddRowId(null); setQFirst(''); setQLast(''); setQCountry(''); setQProgram(''); setQuickAddOpen(true); }} className="gap-1.5">
+              <UserPlus className="size-4" /> Quick add candidate
+            </Button>
             <Button size="sm" onClick={commitAll} className="gap-1.5">
               <CheckCircle2 className="size-4" /> Save {stats.matched} ready
             </Button>
           </div>
+
         </div>
       </div>
 
@@ -319,7 +344,7 @@ export default function BulkDocumentUpload() {
                     <SelectValue placeholder="Bulk-assign unmatched…" />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockCandidates.slice(0, 30).map((c) => (
+                    {allCandidates.slice(0, 40).map((c) => (
                       <SelectItem key={c.candidate_id} value={c.candidate_id}>
                         {c.first_name} {c.last_name}
                       </SelectItem>
@@ -382,22 +407,40 @@ export default function BulkDocumentUpload() {
                           </div>
                         </td>
                         <td className="px-4 py-2 align-top">
-                          <Select
-                            value={r.candidateId ?? ''}
-                            onValueChange={(v) => assignCandidate(r.id, v)}
-                          >
-                            <SelectTrigger className="h-7 w-52 text-xs">
-                              <SelectValue placeholder="Assign…" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {mockCandidates.slice(0, 50).map((c) => (
-                                <SelectItem key={c.candidate_id} value={c.candidate_id}>
-                                  {c.first_name} {c.last_name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <div className="flex items-center gap-1">
+                            <Select
+                              value={r.candidateId ?? ''}
+                              onValueChange={(v) => assignCandidate(r.id, v)}
+                            >
+                              <SelectTrigger className="h-7 w-44 text-xs">
+                                <SelectValue placeholder="Assign…" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {allCandidates.slice(0, 60).map((c) => (
+                                  <SelectItem key={c.candidate_id} value={c.candidate_id}>
+                                    {c.first_name} {c.last_name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              title="Quick add new candidate"
+                              onClick={() => {
+                                const guess = r.fileName.split(/[\s_.-]/)[0] ?? '';
+                                setQuickAddRowId(r.id);
+                                setQFirst(guess ? guess.charAt(0).toUpperCase() + guess.slice(1).toLowerCase() : '');
+                                setQLast(''); setQCountry(''); setQProgram('');
+                                setQuickAddOpen(true);
+                              }}
+                              className="size-7 text-primary"
+                            >
+                              <UserPlus className="size-3.5" />
+                            </Button>
+                          </div>
                         </td>
+
                         <td className="px-4 py-2 align-top">
                           <span className="font-mono text-xs">{r.suggestedName}</span>
                         </td>
@@ -441,9 +484,88 @@ export default function BulkDocumentUpload() {
           </Card>
         )}
       </div>
+
+      {/* Quick Add Candidate Dialog */}
+      <Dialog open={quickAddOpen} onOpenChange={setQuickAddOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="size-4" /> Quick add candidate
+            </DialogTitle>
+            <DialogDescription>
+              Creates a lightweight candidate record you can attach files to right now. Full profile & documents can be completed later in the intake studio.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="qf">First name *</Label>
+                <Input id="qf" value={qFirst} onChange={(e) => setQFirst(e.target.value)} placeholder="Deeban" autoFocus />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="ql">Last name *</Label>
+                <Input id="ql" value={qLast} onChange={(e) => setQLast(e.target.value)} placeholder="Kumar" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="qc">Country</Label>
+                <Input id="qc" value={qCountry} onChange={(e) => setQCountry(e.target.value)} placeholder="India" />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="qp">Program</Label>
+                <Input id="qp" value={qProgram} onChange={(e) => setQProgram(e.target.value)} placeholder="Pflegefachkraft" />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Filename pattern <span className="font-mono">{(qFirst || 'FIRSTNAME').toUpperCase()} Documenttype.pdf</span> will now auto-match this candidate.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setQuickAddOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (!qFirst.trim() || !qLast.trim()) {
+                  toast.error('First and last name required');
+                  return;
+                }
+                const newCand: LiteCandidate = {
+                  candidate_id: `cand-new-${Date.now()}`,
+                  first_name: qFirst.trim(),
+                  last_name: qLast.trim(),
+                  country: qCountry.trim() || undefined,
+                  program_name: qProgram.trim() || undefined,
+                };
+                setExtraCandidates((prev) => [newCand, ...prev]);
+                // Auto-assign to originating row if any, and re-match any unmatched rows by first name
+                const upperFirst = newCand.first_name.toUpperCase();
+                setRows((prev) => prev.map((row) => {
+                  const shouldAttach =
+                    row.id === quickAddRowId ||
+                    (row.status === 'unmatched' && row.fileName.split(/[\s_.-]/)[0]?.toUpperCase() === upperFirst);
+                  if (!shouldAttach) return row;
+                  const merged = {
+                    ...row,
+                    candidateId: newCand.candidate_id,
+                    candidateName: `${newCand.first_name} ${newCand.last_name}`,
+                    status: 'matched' as RowStatus,
+                  };
+                  merged.suggestedName = suggestedFilename(merged);
+                  return merged;
+                }));
+                toast.success(`Added ${newCand.first_name} ${newCand.last_name}`);
+                setQuickAddOpen(false);
+              }}
+            >
+              Add candidate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
 
 function StatTile({
   label, value, tone = 'default', icon,
