@@ -48,12 +48,14 @@ function buildUser(email: string, id: string): User {
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  token: null,
-  isAuthenticated: false,
+  // DEV BYPASS: auto-signed-in as super admin so /dashboard is reachable without login.
+  user: buildUser('deeban@workforce-europe.com', 'dev-bypass-user'),
+  token: 'dev-bypass-token',
+  isAuthenticated: true,
   isLoading: false,
   showMFA: false,
   tempToken: null,
+
 
   sendMagicLink: async (email: string) => {
     set({ isLoading: true });
