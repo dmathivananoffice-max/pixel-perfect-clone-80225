@@ -344,7 +344,7 @@ export default function BulkDocumentUpload() {
                     <SelectValue placeholder="Bulk-assign unmatched…" />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockCandidates.slice(0, 30).map((c) => (
+                    {allCandidates.slice(0, 40).map((c) => (
                       <SelectItem key={c.candidate_id} value={c.candidate_id}>
                         {c.first_name} {c.last_name}
                       </SelectItem>
