@@ -168,6 +168,16 @@ function confidenceMeta(c?: number) {
   return                    { label: `${Math.round(c * 100)}%`, tone: 'bg-rose-50 text-rose-700 ring-1 ring-rose-200' };
 }
 
+// Application documents use the convention: `FIRSTNAME Documentname.pdf`
+// (first name uppercase, German doc word title-cased). The oU / mU suffix is
+// reserved for signature-required documents (contracts, insurance, Mietvertrag,
+// Vollmacht) — not for application uploads.
+const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+function appDocName(firstName: string, german: string, qualifier?: string) {
+  const q = qualifier ? ` ${cap(qualifier)}` : '';
+  return `${firstName.toUpperCase()} ${cap(german)}${q}.pdf`;
+}
+
 // ─────────────────────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────────────────────
