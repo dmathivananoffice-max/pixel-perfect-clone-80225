@@ -259,7 +259,7 @@ export default function CandidateList() {
         <div className="mt-4 overflow-hidden rounded-xl border border-border/70 bg-card shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1180px] border-separate border-spacing-0 text-sm">
-              <thead className="sticky top-[152px] z-10 bg-muted/40 backdrop-blur">
+              <thead className="bg-muted/40">
                 <tr className="text-[11px] uppercase tracking-wide text-muted-foreground">
                   <Th className="w-10 text-center">
                     <Checkbox
