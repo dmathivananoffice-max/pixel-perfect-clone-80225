@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { User, UserRole } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AuthState {
   user: User | null;
@@ -8,42 +9,43 @@ interface AuthState {
   isLoading: boolean;
   showMFA: boolean;
   tempToken: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  sendMagicLink: (email: string) => Promise<void>;
+  logout: () => Promise<void>;
   verifyMFA: (code: string) => Promise<void>;
-  setUser: (user: User) => void;
+  setUser: (user: User | null) => void;
+  setSession: (email: string | null, token: string | null, userId: string | null) => void;
+  // legacy compatibility (unused) - kept so any lingering callers compile
+  login: (email: string, password: string) => Promise<void>;
 }
 
-const MOCK_USERS: Record<string, { password: string; user: User }> = {
-  'deeban@workforce-europe.com': {
-    password: 'admin123',
-    user: { id: 'user-1', name: 'Deeban', email: 'deeban@workforce-europe.com', role: 'super_admin' as UserRole, department: 'Management', status: 'active', mfa_enabled: true, created_at: '2024-01-01T08:00:00Z' },
-  },
-  'lisa@workforce-europe.com': {
-    password: 'recruiter123',
-    user: { id: 'user-3', name: 'Lisa Anderson', email: 'lisa@workforce-europe.com', role: 'recruiter' as UserRole, department: 'Recruitment', status: 'active', mfa_enabled: true, created_at: '2024-01-15T08:00:00Z' },
-  },
-  'klaus@workforce-europe.com': {
-    password: 'trainer123',
-    user: { id: 'user-7', name: 'Klaus Mueller', email: 'klaus@workforce-europe.com', role: 'german_trainer' as UserRole, department: 'Training', status: 'active', mfa_enabled: false, created_at: '2024-03-01T09:00:00Z' },
-  },
-  'rajesh@gts.com': {
-    password: 'agency123',
-    user: { id: 'user-8', name: 'Rajesh Kumar', email: 'rajesh@gts.com', role: 'agency_partner' as UserRole, department: 'External', status: 'active', mfa_enabled: true, created_at: '2024-03-15T10:00:00Z' },
-  },
-  'hans@charite.de': {
-    password: 'employer123',
-    user: { id: 'user-9', name: 'Dr. Hans Mueller', email: 'hans@charite.de', role: 'employer' as UserRole, department: 'External', status: 'active', mfa_enabled: false, created_at: '2024-04-01T08:00:00Z' },
-  },
-  'sarah@workforce-europe.com': {
-    password: 'doc123',
-    user: { id: 'user-6', name: 'Sarah Johnson', email: 'sarah@workforce-europe.com', role: 'documentation_officer' as UserRole, department: 'Documentation', status: 'active', mfa_enabled: true, created_at: '2024-02-15T08:00:00Z' },
-  },
-  'james@workforce-europe.com': {
-    password: 'sales123',
-    user: { id: 'user-11', name: 'James Smith', email: 'james@workforce-europe.com', role: 'sales_executive' as UserRole, department: 'Sales', status: 'active', mfa_enabled: false, created_at: '2024-05-01T08:00:00Z' },
-  },
+// Email → profile map. New emails default to recruiter; the founder gets admin.
+const PROFILES: Record<string, { name: string; role: UserRole; department: string }> = {
+  'deeban@workforce-europe.com': { name: 'Deeban', role: 'super_admin', department: 'Management' },
+  'lisa@workforce-europe.com':   { name: 'Lisa Anderson', role: 'recruiter', department: 'Recruitment' },
+  'klaus@workforce-europe.com':  { name: 'Klaus Mueller', role: 'german_trainer', department: 'Training' },
+  'sarah@workforce-europe.com':  { name: 'Sarah Johnson', role: 'documentation_officer', department: 'Documentation' },
+  'james@workforce-europe.com':  { name: 'James Smith', role: 'sales_executive', department: 'Sales' },
+  'rajesh@gts.com':              { name: 'Rajesh Kumar', role: 'agency_partner', department: 'External' },
+  'hans@charite.de':             { name: 'Dr. Hans Mueller', role: 'employer', department: 'External' },
 };
+
+function buildUser(email: string, id: string): User {
+  const profile = PROFILES[email.toLowerCase()] ?? {
+    name: email.split('@')[0],
+    role: 'recruiter' as UserRole,
+    department: 'Recruitment',
+  };
+  return {
+    id,
+    email,
+    name: profile.name,
+    role: profile.role,
+    department: profile.department,
+    status: 'active',
+    mfa_enabled: false,
+    created_at: new Date().toISOString(),
+  };
+}
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
@@ -53,62 +55,24 @@ export const useAuthStore = create<AuthState>((set) => ({
   showMFA: false,
   tempToken: null,
 
-  login: async (email: string, password: string) => {
+  sendMagicLink: async (email: string) => {
     set({ isLoading: true });
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    const mockEntry = MOCK_USERS[email.toLowerCase()];
-    if (!mockEntry || mockEntry.password !== password) {
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: typeof window !== 'undefined' ? window.location.origin + '/dashboard' : undefined,
+          shouldCreateUser: true,
+        },
+      });
+      if (error) throw error;
+    } finally {
       set({ isLoading: false });
-      throw new Error('Invalid email or password');
-    }
-
-    if (mockEntry.user.mfa_enabled) {
-      set({
-        showMFA: true,
-        tempToken: 'mock-temp-token-' + mockEntry.user.id,
-        isLoading: false,
-      });
-    } else {
-      set({
-        user: mockEntry.user,
-        token: 'mock-jwt-token-' + mockEntry.user.id,
-        isAuthenticated: true,
-        isLoading: false,
-        showMFA: false,
-      });
     }
   },
 
-  verifyMFA: async (code: string) => {
-    set({ isLoading: true });
-    await new Promise((resolve) => setTimeout(resolve, 600));
-
-    if (code.length !== 6 || code === '000000') {
-      set({ isLoading: false });
-      throw new Error('Invalid MFA code');
-    }
-
-    const state = useAuthStore.getState();
-    const userId = state.tempToken?.replace('mock-temp-token-', '');
-    const mockEntry = Object.values(MOCK_USERS).find((m) => m.user.id === userId);
-
-    if (!mockEntry) {
-      set({ isLoading: false });
-      throw new Error('Session expired');
-    }
-
-    set({
-      user: mockEntry.user,
-      token: 'mock-jwt-token-' + mockEntry.user.id,
-      isAuthenticated: true,
-      isLoading: false,
-      showMFA: false,
-      tempToken: null,
-    });
-  },
-
-  logout: () => {
+  logout: async () => {
+    await supabase.auth.signOut();
     set({
       user: null,
       token: null,
@@ -119,5 +83,45 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
   },
 
-  setUser: (user: User) => set({ user }),
+  // Kept for backwards-compat with the (now unused) MFA screen.
+  verifyMFA: async () => {
+    set({ isLoading: false, showMFA: false });
+  },
+
+  // Legacy password path — no longer used. Kept as a no-op reject to satisfy the type.
+  login: async () => {
+    throw new Error('Password login is disabled. Please use the magic link.');
+  },
+
+  setUser: (user) => set({ user, isAuthenticated: !!user }),
+
+  setSession: (email, token, userId) => {
+    if (!email || !token || !userId) {
+      set({ user: null, token: null, isAuthenticated: false });
+      return;
+    }
+    set({
+      user: buildUser(email, userId),
+      token,
+      isAuthenticated: true,
+    });
+  },
 }));
+
+// Hydrate session on module load (client-only).
+if (typeof window !== 'undefined') {
+  supabase.auth.getSession().then(({ data }) => {
+    const session = data.session;
+    if (session?.user?.email) {
+      useAuthStore.getState().setSession(session.user.email, session.access_token, session.user.id);
+    }
+  });
+
+  supabase.auth.onAuthStateChange((_event, session) => {
+    if (session?.user?.email) {
+      useAuthStore.getState().setSession(session.user.email, session.access_token, session.user.id);
+    } else {
+      useAuthStore.getState().setSession(null, null, null);
+    }
+  });
+}
