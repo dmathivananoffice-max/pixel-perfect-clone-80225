@@ -21,6 +21,12 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
+import {
+  useSelectionEngine,
+  computeReadiness,
+  inferProgramKey,
+  type Readiness,
+} from '@/store/selectionEngineStore';
 
 /* ────────────────────────────────────────────────────────────
    Stage model — four independent evaluation modules
