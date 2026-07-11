@@ -287,7 +287,7 @@ export default function CandidateList() {
               <tbody>
                 {candidates.length === 0 && (
                   <tr>
-                    <td colSpan={14} className="py-16 text-center text-sm text-muted-foreground">
+                    <td colSpan={15} className="py-16 text-center text-sm text-muted-foreground">
                       No candidates match your filters.
                     </td>
                   </tr>
