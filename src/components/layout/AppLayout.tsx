@@ -13,7 +13,7 @@ export function AppLayout() {
       <div
         className={cn(
           'transition-all duration-300',
-          sidebarOpen ? 'lg:ml-64' : 'lg:ml-16'
+          sidebarOpen ? 'ml-64' : 'ml-16'
         )}
       >
         <Navbar />
