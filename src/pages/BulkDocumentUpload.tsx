@@ -80,12 +80,15 @@ function detectDocType(name: string): { type: DocType; confidence: number } {
   return { type: 'other', confidence: 0.4 + Math.random() * 0.2 };
 }
 
-function matchCandidate(fileName: string) {
+type LiteCandidate = { candidate_id: string; first_name: string; last_name: string; country?: string; program_name?: string };
+
+function matchCandidate(fileName: string, list: LiteCandidate[]) {
   // Match on first name (uppercase before space) — pattern DEEBAN Reisepass.pdf
   const first = fileName.split(/[\s_.-]/)[0]?.toUpperCase();
   if (!first) return undefined;
-  return mockCandidates.find((c) => c.first_name.toUpperCase() === first);
+  return list.find((c) => c.first_name.toUpperCase() === first);
 }
+
 
 function suggestedFilename(row: FileRow): string {
   const cand = row.candidateName?.split(' ')[0]?.toUpperCase() ?? 'UNMATCHED';
