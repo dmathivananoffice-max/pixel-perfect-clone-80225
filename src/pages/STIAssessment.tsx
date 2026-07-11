@@ -21,6 +21,12 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
+import {
+  useSelectionEngine,
+  computeReadiness,
+  inferProgramKey,
+  type Readiness,
+} from '@/store/selectionEngineStore';
 
 /* ────────────────────────────────────────────────────────────
    Stage model — four independent evaluation modules
@@ -91,7 +97,10 @@ export default function CandidateEvaluationCenter() {
     [],
   );
 
-  // Compute per-candidate stage matrix (memoized)
+  // Selection Engine config drives per-candidate readiness
+  const configs = useSelectionEngine((s) => s.configs);
+
+  // Compute per-candidate stage matrix + readiness (memoized)
   const matrix = useMemo(() => {
     return pool.map((c) => {
       const statuses = {
@@ -100,9 +109,20 @@ export default function CandidateEvaluationCenter() {
         sti:                pickStatus(c.candidate_id, 'sti'),
         employer_interview: pickStatus(c.candidate_id, 'employer_interview'),
       } as Record<StageKey, StageStatus>;
-      return { candidate: c, statuses, progress: progressFor(statuses), next: nextAction(statuses) };
+      const programKey = inferProgramKey(c.program_name);
+      const readiness: Readiness | null = programKey
+        ? computeReadiness(c.candidate_id, configs[programKey], c.gate_status !== 'not_placement_ready')
+        : null;
+      return {
+        candidate: c,
+        statuses,
+        progress: progressFor(statuses),
+        next: nextAction(statuses),
+        readiness,
+      };
     });
-  }, [pool]);
+  }, [pool, configs]);
+
 
   const filtered = matrix.filter(({ candidate }) => {
     if (!query.trim()) return true;
@@ -216,12 +236,13 @@ export default function CandidateEvaluationCenter() {
                   {STAGES.map((s) => (
                     <th key={s.key} className="px-3 py-2 text-left font-medium">{s.label}</th>
                   ))}
+                  <th className="px-3 py-2 text-left font-medium">Readiness</th>
                   <th className="px-3 py-2 text-left font-medium">Progress</th>
                   <th className="px-3 py-2 text-left font-medium">Next action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filtered.map(({ candidate, statuses, progress, next }) => {
+                {filtered.map(({ candidate, statuses, progress, next, readiness }) => {
                   const isActive = candidate.candidate_id === selected;
                   return (
                     <tr
@@ -243,6 +264,9 @@ export default function CandidateEvaluationCenter() {
                         </td>
                       ))}
                       <td className="px-3 py-3">
+                        <ReadinessPill readiness={readiness} />
+                      </td>
+                      <td className="px-3 py-3">
                         <div className="flex items-center gap-2">
                           <Progress value={progress} className="h-1.5 w-20" />
                           <span className="w-8 text-xs tabular-nums text-muted-foreground">{progress}%</span>
@@ -258,7 +282,8 @@ export default function CandidateEvaluationCenter() {
                 })}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={STAGES.length + 4} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                    <td colSpan={STAGES.length + 5} className="px-4 py-8 text-center text-sm text-muted-foreground">
+
                       No candidates match your search.
                     </td>
                   </tr>
@@ -380,6 +405,35 @@ function StagePill({ status }: { status: StageStatus }) {
     </span>
   );
 }
+
+function ReadinessPill({ readiness }: { readiness: Readiness | null }) {
+  if (!readiness) {
+    return <span className="text-[11px] text-muted-foreground">—</span>;
+  }
+  const meta: Record<Readiness['band'], { label: string; className: string; dot: string }> = {
+    ready:       { label: 'Ready',       className: 'bg-emerald-50 text-emerald-800 border-emerald-200', dot: 'bg-emerald-500' },
+    progressing: { label: 'Progressing', className: 'bg-sky-50 text-sky-800 border-sky-200',             dot: 'bg-sky-500' },
+    at_risk:     { label: 'At risk',     className: 'bg-amber-50 text-amber-900 border-amber-200',       dot: 'bg-amber-500' },
+    ineligible:  { label: 'Ineligible',  className: 'bg-red-50 text-red-800 border-red-200',             dot: 'bg-red-500' },
+  };
+  const m = meta[readiness.band];
+  const title = readiness.eligible
+    ? `Weighted score ${readiness.score}/100`
+    : `Failed gates: ${readiness.failedGates.join(', ')}`;
+  return (
+    <span
+      title={title}
+      className={cn('inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium', m.className)}
+    >
+      <span className={cn('size-1.5 rounded-full', m.dot)} />
+      {m.label}
+      {readiness.eligible && <span className="tabular-nums opacity-80">· {readiness.score}</span>}
+    </span>
+  );
+}
+
+
+
 
 function AiSuggestions({ statuses }: { statuses: Record<StageKey, StageStatus> }) {
   const tips: string[] = [];

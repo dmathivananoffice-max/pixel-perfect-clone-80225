@@ -12,92 +12,11 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recha
 import { CheckCircle2, XCircle, ShieldCheck, Scale, Save, AlertTriangle, Info, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-
-/* ────────────────────────────────────────────────────────────
-   Types
-   ──────────────────────────────────────────────────────────── */
-
-type ProgramKey = 'professional_nurses' | 'ausbildung';
-
-interface Gate {
-  id: string;
-  label: string;
-  hint?: string;
-  /** Whether this gate is currently enforced */
-  enabled: boolean;
-  /** Locked = policy-mandated, cannot be disabled in UI */
-  locked?: boolean;
-}
-
-interface Criterion {
-  id: string;
-  label: string;
-  hint?: string;
-  weight: number; // percentage, 0-100
-}
-
-interface ProgramConfig {
-  key: ProgramKey;
-  label: string;
-  emoji: string;
-  gates: Gate[];
-  criteria: Criterion[];
-}
-
-/* ────────────────────────────────────────────────────────────
-   Defaults (per the two-layer selection engine)
-   ──────────────────────────────────────────────────────────── */
-
-const DEFAULTS: Record<ProgramKey, ProgramConfig> = {
-  professional_nurses: {
-    key: 'professional_nurses',
-    label: 'Professional Nurses',
-    emoji: '👩‍⚕️',
-    gates: [
-      { id: 'passport', label: 'Valid Passport uploaded', enabled: true, locked: true },
-      { id: 'no_doc_deficiencies', label: 'No major document deficiencies', enabled: true },
-      { id: 'b2_german', label: 'German Language Level: B2', hint: 'Mandatory — no exceptions', enabled: true, locked: true },
-      { id: 'modules', label: 'All required German language modules completed', enabled: true },
-      { id: 'lang_cert', label: 'Valid German language certificate uploaded', enabled: true },
-      { id: 'lang_cert_verified', label: 'Certificate verified (Goethe / TELC / ÖSD / accepted provider)', enabled: true },
-      { id: 'bsc_nursing', label: 'B.Sc. Nursing degree completed', enabled: true, locked: true },
-      { id: 'nursing_reg', label: 'Nursing Registration Certificate uploaded (where applicable)', enabled: true },
-      { id: 'medical_docs', label: 'Required medical documents uploaded', enabled: true },
-      { id: 'age', label: 'Age within employer requirements (if applicable)', enabled: false },
-    ],
-    criteria: [
-      { id: 'clinical_experience', label: 'Clinical Experience', weight: 35 },
-      { id: 'bsc_marks', label: 'B.Sc. Nursing Marks / GPA', weight: 30 },
-      { id: 'german_b2', label: 'German B2 Performance (Exam Score)', weight: 20 },
-      { id: 'dept_experience', label: 'Hospital Department Experience', weight: 10 },
-      { id: 'certifications', label: 'Professional Certifications / CPD', weight: 5 },
-    ],
-  },
-  ausbildung: {
-    key: 'ausbildung',
-    label: 'Ausbildung Nursing',
-    emoji: '🎓',
-    gates: [
-      { id: 'passport', label: 'Valid Passport uploaded', enabled: true, locked: true },
-      { id: 'no_doc_deficiencies', label: 'No major document deficiencies', enabled: true },
-      { id: 'b2_german', label: 'German Language Level: B2', hint: 'Mandatory — no exceptions', enabled: true, locked: true },
-      { id: 'modules', label: 'All required German language modules completed', enabled: true },
-      { id: 'lang_cert', label: 'Valid German language certificate uploaded', enabled: true },
-      { id: 'lang_cert_verified', label: 'Certificate verified (Goethe / TELC / ÖSD / accepted provider)', enabled: true },
-      { id: 'twelfth', label: '12th Standard completed', enabled: true, locked: true },
-      { id: 'edu_certs', label: 'Required educational certificates uploaded', enabled: true },
-      { id: 'medical_docs', label: 'Required medical documents uploaded', enabled: true },
-      { id: 'age', label: 'Age within employer requirements (if applicable)', enabled: false },
-    ],
-    criteria: [
-      { id: 'twelfth_marks', label: '12th Grade Marks', weight: 40 },
-      { id: 'german_b2', label: 'German B2 Performance (Exam Score)', weight: 25 },
-      { id: 'internship', label: 'Internship / Hospital Exposure', weight: 15 },
-      { id: 'social_service', label: 'Social Service (Red Cross, NSS, Scouts, NCC, NGO)', weight: 15 },
-      { id: 'tenth_marks', label: '10th Grade Marks', weight: 5 },
-    ],
-  },
-};
+import {
+  useSelectionEngine,
+  useEngineKpis,
+  type ProgramKey,
+} from '@/store/selectionEngineStore';
 
 const CHART_COLORS = ['#0ea5e9', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#06b6d4'];
 
@@ -106,12 +25,14 @@ const CHART_COLORS = ['#0ea5e9', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#0
    ──────────────────────────────────────────────────────────── */
 
 export default function ScoringConfig() {
-  const [configs, setConfigs] = useState<Record<ProgramKey, ProgramConfig>>(() =>
-    structuredClone(DEFAULTS),
-  );
-  const [active, setActive] = useState<ProgramKey>('professional_nurses');
+  const configs = useSelectionEngine((s) => s.configs);
+  const setGate = useSelectionEngine((s) => s.setGate);
+  const setWeight = useSelectionEngine((s) => s.setWeight);
+  const resetProgram = useSelectionEngine((s) => s.resetProgram);
 
+  const [active, setActive] = useState<ProgramKey>('professional_nurses');
   const cfg = configs[active];
+  const kpis = useEngineKpis(active);
 
   const totalWeight = useMemo(
     () => cfg.criteria.reduce((sum, c) => sum + c.weight, 0),
@@ -122,30 +43,11 @@ export default function ScoringConfig() {
   const gatesEnforced = cfg.gates.filter((g) => g.enabled).length;
   const gatesTotal = cfg.gates.length;
 
-  const updateGate = (id: string, enabled: boolean) => {
-    setConfigs((prev) => ({
-      ...prev,
-      [active]: {
-        ...prev[active],
-        gates: prev[active].gates.map((g) => (g.id === id ? { ...g, enabled } : g)),
-      },
-    }));
-  };
+  const updateGate = (id: string, enabled: boolean) => setGate(active, id, enabled);
+  const updateWeight = (id: string, weight: number) => setWeight(active, id, weight);
 
-  const updateWeight = (id: string, weight: number) => {
-    setConfigs((prev) => ({
-      ...prev,
-      [active]: {
-        ...prev[active],
-        criteria: prev[active].criteria.map((c) =>
-          c.id === id ? { ...c, weight: Math.max(0, Math.min(100, Math.round(weight))) } : c,
-        ),
-      },
-    }));
-  };
-
-  const resetProgram = () => {
-    setConfigs((prev) => ({ ...prev, [active]: structuredClone(DEFAULTS[active]) }));
+  const handleReset = () => {
+    resetProgram(active);
     toast.success(`${cfg.label} restored to defaults`);
   };
 
@@ -157,7 +59,8 @@ export default function ScoringConfig() {
       return;
     }
     toast.success('Selection engine saved', {
-      description: `${cfg.label} · ${gatesEnforced}/${gatesTotal} gates enforced`,
+      description: `${cfg.label} · ${gatesEnforced}/${gatesTotal} gates enforced · ${kpis.eligible}/${kpis.total} eligible candidates`,
+
     });
   };
 
@@ -175,7 +78,7 @@ export default function ScoringConfig() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={resetProgram} className="gap-1.5">
+          <Button variant="ghost" size="sm" onClick={handleReset} className="gap-1.5">
             <RotateCcw className="size-4" /> Reset to defaults
           </Button>
           <Button size="sm" onClick={save} className="gap-1.5">

@@ -3,13 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { useReports } from '@/hooks/useReports';
 import { useAuth } from '@/hooks/useAuth';
 import { useProductStore } from '@/store/productStore';
+import { useEngineKpis, type ProgramKey } from '@/store/selectionEngineStore';
 import { getProduct, PRODUCTS, type ProductConfig, type ProductId } from '@/config/products';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { ProductSelector } from '@/components/dashboard/ProductSelector';
 import { WidgetCard } from '@/components/dashboard/WidgetCard';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { mockCandidates } from '@/lib/mockData';
+import { cn } from '@/lib/utils';
+
 
 import {
   Users, UserCheck, UserX, Plane, Briefcase, Calendar, FileText,
@@ -140,7 +145,10 @@ function ExecutiveDashboard({ product }: { product: ProductConfig }) {
         ))}
       </div>
 
+      <SelectionEngineBand programs={['professional_nurses', 'ausbildung']} />
+
       <QuickActions actions={product.quickActions} />
+
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
@@ -254,7 +262,7 @@ function NursesDashboard({ product }: { product: ProductConfig }) {
     { label: 'Recruiter Tasks', value: 5, icon: ListChecks, accent: 'text-slate-600 bg-slate-50' },
     { label: 'Pending Documents', value: m.waiting, icon: FileText, accent: 'text-yellow-600 bg-yellow-50' },
   ];
-  return <ProductBody widgets={widgets} product={product} />;
+  return <ProductBody widgets={widgets} product={product} enginePrograms={['professional_nurses']} />;
 }
 
 /* ---------- Ausbildung ---------- */
@@ -271,7 +279,8 @@ function AusbildungDashboard({ product }: { product: ProductConfig }) {
     { label: 'Employer Matching', value: m.shortlisted, icon: Target, accent: 'text-indigo-600 bg-indigo-50' },
     { label: 'Placements', value: m.placed, icon: Briefcase, accent: 'text-green-600 bg-green-50' },
   ];
-  return <ProductBody widgets={widgets} product={product} />;
+  return <ProductBody widgets={widgets} product={product} enginePrograms={['ausbildung']} />;
+
 }
 
 /* ---------- Pre-Bachelor ---------- */
@@ -327,7 +336,9 @@ function MbaDashboard({ product }: { product: ProductConfig }) {
 
 interface Widget { label: string; value: string | number; icon: LucideIcon; accent: string }
 
-function ProductBody({ widgets, product }: { widgets: Widget[]; product: ProductConfig }) {
+function ProductBody({
+  widgets, product, enginePrograms,
+}: { widgets: Widget[]; product: ProductConfig; enginePrograms?: ProgramKey[] }) {
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -335,6 +346,10 @@ function ProductBody({ widgets, product }: { widgets: Widget[]; product: Product
           <WidgetCard key={w.label} label={w.label} value={w.value} icon={w.icon} accent={w.accent} />
         ))}
       </div>
+
+      {enginePrograms && enginePrograms.length > 0 && (
+        <SelectionEngineBand programs={enginePrograms} />
+      )}
 
       <QuickActions actions={product.quickActions} />
 
@@ -352,3 +367,94 @@ function ProductBody({ widgets, product }: { widgets: Widget[]; product: Product
     </>
   );
 }
+
+/* ---------- Selection Engine band ---------- */
+
+const PROGRAM_META: Record<ProgramKey, { label: string; emoji: string; tint: string }> = {
+  professional_nurses: { label: 'Professional Nurses', emoji: '👩‍⚕️', tint: 'sky' },
+  ausbildung:          { label: 'Ausbildung Nursing',  emoji: '🎓',   tint: 'violet' },
+};
+
+function SelectionEngineBand({ programs }: { programs: ProgramKey[] }) {
+  const navigate = useNavigate();
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-3">
+        <div>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary" /> Selection Engine
+          </CardTitle>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Live candidate readiness driven by current gates &amp; weighted criteria.
+          </p>
+        </div>
+        <Button variant="ghost" size="sm" onClick={() => navigate('/admin/scoring')}>
+          Configure <ArrowRight className="w-4 h-4 ml-1" />
+        </Button>
+      </CardHeader>
+      <CardContent className="grid gap-4 md:grid-cols-2">
+        {programs.map((p) => (
+          <SelectionEngineProgramCard key={p} program={p} />
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SelectionEngineProgramCard({ program }: { program: ProgramKey }) {
+  const kpis = useEngineKpis(program);
+  const meta = PROGRAM_META[program];
+
+  return (
+    <div className="rounded-lg border bg-card p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <span>{meta.emoji}</span>
+            <span className="font-medium">{meta.label}</span>
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Gates {kpis.gatesEnforced}/{kpis.gatesTotal} enforced ·
+            weights {kpis.weightBalanced ? 'balanced' : 'unbalanced'}
+          </p>
+        </div>
+        <Badge variant="outline" className="tabular-nums">
+          Avg score {kpis.avgScore}
+        </Badge>
+      </div>
+
+      <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+        <MiniStat label="Ready"        value={kpis.ready}       tone="emerald" />
+        <MiniStat label="Progressing"  value={kpis.progressing} tone="sky" />
+        <MiniStat label="At risk"      value={kpis.atRisk}      tone="amber" />
+        <MiniStat label="Ineligible"   value={kpis.ineligible}  tone="rose" />
+      </div>
+
+      <div className="mt-3">
+        <div className="mb-1 flex items-center justify-between text-[11px] text-muted-foreground">
+          <span>Eligible</span>
+          <span className="tabular-nums">{kpis.eligible} / {kpis.total || 0}</span>
+        </div>
+        <Progress value={kpis.total ? (kpis.eligible / kpis.total) * 100 : 0} className="h-1.5" />
+      </div>
+    </div>
+  );
+}
+
+function MiniStat({
+  label, value, tone,
+}: { label: string; value: number; tone: 'emerald' | 'sky' | 'amber' | 'rose' }) {
+  const toneMap: Record<typeof tone, string> = {
+    emerald: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+    sky:     'bg-sky-50 text-sky-800 border-sky-200',
+    amber:   'bg-amber-50 text-amber-900 border-amber-200',
+    rose:    'bg-rose-50 text-rose-800 border-rose-200',
+  };
+  return (
+    <div className={cn('rounded-md border px-2 py-1.5', toneMap[tone])}>
+      <div className="text-[10px] uppercase tracking-wide opacity-80">{label}</div>
+      <div className="text-sm font-semibold tabular-nums">{value}</div>
+    </div>
+  );
+}
+
