@@ -729,16 +729,18 @@ function FieldRow({
 }
 
 function DocumentsSection({
-  uploads, setUploads,
+  uploads, setUploads, firstName,
 }: {
   uploads: Record<string, boolean>;
   setUploads: (u: Record<string, boolean>) => void;
+  firstName: string;
 }) {
   return (
     <div className="space-y-2">
       <p className="mb-3 text-xs text-muted-foreground">
         Files are auto-renamed on upload:
-        <span className="ml-1 rounded bg-muted px-1.5 py-0.5 font-mono">FIRSTNAME dokumentname oU.pdf</span>
+        <span className="ml-1 rounded bg-muted px-1.5 py-0.5 font-mono">FIRSTNAME Dokumentname.pdf</span>
+        <span className="ml-2 text-[10px]">(oU / mU suffix is reserved for signature documents — contracts, insurance, Mietvertrag, Vollmacht.)</span>
       </p>
       {REQUIRED_UPLOADS.map((u) => {
         const done = !!uploads[u.key];
@@ -755,7 +757,7 @@ function DocumentsSection({
                 <FileText className="size-4 text-muted-foreground" />
                 {u.label}
                 <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-                  DEEBAN {u.german} oU.pdf
+                  {appDocName(firstName, u.german)}
                 </span>
               </div>
               <p className="mt-0.5 text-[11px] text-muted-foreground">
