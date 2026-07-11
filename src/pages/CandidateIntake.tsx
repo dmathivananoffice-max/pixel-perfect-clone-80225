@@ -401,7 +401,7 @@ function ProductStep({
       <div className="mx-auto max-w-4xl px-6 py-16">
         <div className="mb-10 text-center">
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Step 1 of 13</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight">Which Workforce Europe product?</h2>
+          <h2 className="font-display mt-3 text-4xl font-semibold tracking-tight">Which Workforce Europe product?</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             This determines the workflow, required documents, validation rules, and downstream automation.
           </p>
@@ -837,7 +837,7 @@ function ReviewStep({
       <div className="mx-auto max-w-5xl px-6 py-10">
         <div className="mb-8">
           <p className="text-[11px] uppercase tracking-widest text-muted-foreground">Final review</p>
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight">Confirm and approve</h2>
+          <h2 className="font-display mt-2 text-4xl font-semibold tracking-tight">Confirm and approve</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Everything below has been AI-extracted and section-verified. Fix any issues before approving.
           </p>
