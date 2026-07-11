@@ -611,7 +611,7 @@ function SectionForm({
       )}
 
       {section.id === 'documents' ? (
-        <DocumentsSection uploads={uploads} setUploads={setUploads} />
+        <DocumentsSection uploads={uploads} setUploads={setUploads} firstName={firstName} />
       ) : section.id === 'driving' ? (
         <>
           <div className="grid grid-cols-2 gap-x-4 gap-y-5">
@@ -641,7 +641,7 @@ function SectionForm({
                 >
                   {done ? <CheckCircle2 className="mb-1 size-5 text-emerald-600" /> : <Upload className="mb-1 size-5" />}
                   <span className="font-medium capitalize">Licence {side}</span>
-                  <span className="mt-0.5 font-mono text-[10px]">DEEBAN fuehrerschein {side} oU.pdf</span>
+                  <span className="mt-0.5 font-mono text-[10px]">{appDocName(firstName, 'fuehrerschein', side)}</span>
                 </button>
               );
             })}
