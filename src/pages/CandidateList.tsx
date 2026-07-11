@@ -393,34 +393,20 @@ export default function CandidateList() {
                         <ScoreCell value={interview} />
                       </Td>
                       <Td>
-                        <div className="flex flex-wrap items-center gap-1">
-                          <span className={cn(
-                            'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset',
-                            TONE_CLASSES[stage.tone],
-                          )}>
-                            <span className="size-1.5 rounded-full bg-current opacity-70" />
-                            {stage.label}
-                          </span>
-                          {c.gate_status === 'eligible' ? (
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <span className="inline-flex items-center rounded-full bg-emerald-50 px-1 py-0.5 text-emerald-700 ring-1 ring-inset ring-emerald-200">
-                                  <ShieldCheck className="size-3" />
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent><p className="text-xs">Placement ready</p></TooltipContent>
-                            </Tooltip>
-                          ) : (
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <span className="inline-flex items-center rounded-full bg-rose-50 px-1 py-0.5 text-rose-700 ring-1 ring-inset ring-rose-200">
-                                  <ShieldAlert className="size-3" />
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent><p className="text-xs">Not placement ready</p></TooltipContent>
-                            </Tooltip>
-                          )}
-                        </div>
+                        {(() => {
+                          const r = placementReadiness(c.status, c.gate_status);
+                          return (
+                            <span
+                              className={cn(
+                                'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset whitespace-nowrap',
+                                READINESS_CLASSES[r.tone],
+                              )}
+                            >
+                              <span aria-hidden className="text-[10px] leading-none">{r.dot}</span>
+                              {r.label}
+                            </span>
+                          );
+                        })()}
                       </Td>
                       <Td className="text-xs text-muted-foreground">{c.assigned_recruiter_name ?? '—'}</Td>
                       <Td className="text-xs text-muted-foreground">
