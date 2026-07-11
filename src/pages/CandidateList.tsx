@@ -10,7 +10,7 @@ import { getCountry, COUNTRY_GROUPS } from '@/lib/countries';
 import {
   stageMeta, TONE_CLASSES,
   deriveLanguageLevel, deriveSpeakingScore, deriveTrainingScore, deriveInterviewScore,
-  deriveLastActivity,
+  deriveLastActivity, placementReadiness, READINESS_CLASSES,
 } from '@/lib/workflow';
 import type { Candidate, CandidateStatus } from '@/types';
 
