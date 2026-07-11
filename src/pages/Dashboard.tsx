@@ -145,7 +145,10 @@ function ExecutiveDashboard({ product }: { product: ProductConfig }) {
         ))}
       </div>
 
+      <SelectionEngineBand programs={['professional_nurses', 'ausbildung']} />
+
       <QuickActions actions={product.quickActions} />
+
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
