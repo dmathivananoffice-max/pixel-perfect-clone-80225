@@ -356,6 +356,12 @@ export default function CandidateList() {
                           <span>{product.emoji}</span>{product.short}
                         </span>
                       </Td>
+                      <Td>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-base leading-none">{country.flag}</span>
+                          <span className="text-xs text-foreground/80">{country.name}</span>
+                        </div>
+                      </Td>
                       <Td onClick={(e) => e.stopPropagation()}>
                         <StageEditor
                           status={c.status}
