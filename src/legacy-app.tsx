@@ -31,7 +31,6 @@ function App() {
         <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} />
         {/* Full-screen module — no AppLayout chrome */}
         <Route path="/candidates/new" element={<RouteGuard><CandidateIntake /></RouteGuard>} />
-        <Route path="/documents/bulk" element={<RouteGuard><BulkDocumentUpload /></RouteGuard>} />
         <Route element={<RouteGuard><AppLayout /></RouteGuard>}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/candidates" element={<CandidateList />} />
