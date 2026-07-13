@@ -20,7 +20,6 @@ import CandidatePortal from '@/pages/CandidatePortal';
 import ContractSigning from '@/pages/ContractSigning';
 import EmailCenter from '@/pages/EmailCenter';
 import UserManagement from '@/pages/UserManagement';
-import UserManagement from '@/pages/UserManagement';
 import Reports from '@/pages/Reports';
 
 function App() {
