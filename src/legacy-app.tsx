@@ -19,8 +19,7 @@ import EmployerPortal from '@/pages/EmployerPortal';
 import CandidatePortal from '@/pages/CandidatePortal';
 import ContractSigning from '@/pages/ContractSigning';
 import EmailCenter from '@/pages/EmailCenter';
-import DocumentImport from '@/pages/DocumentImport';
-import BulkDocumentUpload from '@/pages/BulkDocumentUpload';
+import UserManagement from '@/pages/UserManagement';
 import UserManagement from '@/pages/UserManagement';
 import Reports from '@/pages/Reports';
 
