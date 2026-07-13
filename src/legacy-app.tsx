@@ -44,7 +44,8 @@ function App() {
           <Route path="/candidate" element={<CandidatePortal />} />
           <Route path="/contracts/:id/sign" element={<ContractSigning />} />
           <Route path="/emails" element={<EmailCenter />} />
-          <Route path="/documents/import" element={<DocumentImport />} />
+          <Route path="/documents/import" element={<Navigate to="/candidates/new" replace />} />
+          <Route path="/documents/bulk" element={<Navigate to="/candidates/new" replace />} />
           <Route path="/admin/users" element={<UserManagement />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
