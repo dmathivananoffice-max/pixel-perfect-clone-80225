@@ -32,8 +32,8 @@ import { CommandPalette } from '@/components/candidates/CommandPalette';
 import { CandidateDrawer } from '@/components/candidates/CandidateDrawer';
 
 import {
-  Plus, Search, SlidersHorizontal, Download, Upload, FileArchive, Command as CommandIcon,
-  MoreHorizontal, X, Users,
+  Plus, Search, SlidersHorizontal, Download, Upload, Command as CommandIcon,
+  MoreHorizontal, X, Sparkles,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
@@ -86,8 +86,6 @@ export default function CandidateList() {
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [rowOverrides, setRowOverrides] = useState<Record<string, CandidateStatus>>({});
   const [extraCandidates, setExtraCandidates] = useState<Candidate[]>([]);
-  const [quickAddOpen, setQuickAddOpen] = useState(false);
-  const [quickAddText, setQuickAddText] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Filtered dataset
@@ -214,14 +212,8 @@ export default function CandidateList() {
                 <span className="hidden sm:inline">Quick</span>
                 <Kbd>⌘K</Kbd>
               </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate('/documents/bulk')} className="gap-1.5">
-                <FileArchive className="size-4" /> Bulk upload
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setQuickAddOpen(true)} className="gap-1.5">
-                <Users className="size-4" /> Quick add
-              </Button>
               <Button size="sm" className="gap-1.5 shadow-sm" onClick={goAdd}>
-                <Plus className="size-4" /> Add candidate
+                <Sparkles className="size-4" /> New intake
                 <Kbd className="ml-1 border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground/80">A</Kbd>
               </Button>
             </div>
@@ -465,69 +457,6 @@ export default function CandidateList() {
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onAddCandidate={goAdd} />
         <CandidateDrawer candidateId={openId} onClose={() => setParam('open', null)} />
 
-        <Dialog open={quickAddOpen} onOpenChange={(v) => { setQuickAddOpen(v); if (!v) setQuickAddText(''); }}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Quick add candidates</DialogTitle>
-              <DialogDescription>
-                Paste one name per line — first and last (e.g. <em>Deeban Kumar</em>). Up to 200 rows.
-              </DialogDescription>
-            </DialogHeader>
-            <Textarea
-              autoFocus
-              rows={10}
-              placeholder={'Deeban Kumar\nPriya Nair\nJohn Smith'}
-              value={quickAddText}
-              onChange={(e) => setQuickAddText(e.target.value)}
-              className="font-mono text-sm"
-            />
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setQuickAddOpen(false)}>Cancel</Button>
-              <Button
-                onClick={() => {
-                  const nameRe = /^[a-zA-Z\s'.,-]{1,80}$/u;
-                  const lines = quickAddText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).slice(0, 200);
-                  const skipped: string[] = [];
-                  const now = new Date().toISOString();
-                  const created: Candidate[] = [];
-                  lines.forEach((line, i) => {
-                    if (!nameRe.test(line)) { skipped.push(line); return; }
-                    const parts = line.split(/[\s,]+/).filter(Boolean);
-                    const first = parts[0] ?? '';
-                    const last = parts.slice(1).join(' ') || '—';
-                    if (!first) { skipped.push(line); return; }
-                    created.push({
-                      candidate_id: `local-${Date.now()}-${i}`,
-                      first_name: first,
-                      last_name: last,
-                      country: 'India',
-                      email: `${first.toLowerCase()}.${last.toLowerCase().replace(/\s+/g, '')}@pending.local`,
-                      phone: '',
-                      program_name: 'Nurses',
-                      source_type: 'internal',
-                      status: 'waiting',
-                      gate_status: 'not_placement_ready',
-                      created_at: now,
-                      updated_at: now,
-                    });
-                  });
-                  if (created.length === 0) {
-                    toast.error('No valid names to add');
-                    return;
-                  }
-                  setExtraCandidates((prev) => [...created, ...prev]);
-                  toast.success(`${created.length} candidate${created.length === 1 ? '' : 's'} added`, {
-                    description: skipped.length ? `${skipped.length} line(s) skipped` : undefined,
-                  });
-                  setQuickAddText('');
-                  setQuickAddOpen(false);
-                }}
-              >
-                Add
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
 
       </div>
     </TooltipProvider>

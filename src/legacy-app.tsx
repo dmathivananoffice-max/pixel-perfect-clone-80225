@@ -19,8 +19,6 @@ import EmployerPortal from '@/pages/EmployerPortal';
 import CandidatePortal from '@/pages/CandidatePortal';
 import ContractSigning from '@/pages/ContractSigning';
 import EmailCenter from '@/pages/EmailCenter';
-import DocumentImport from '@/pages/DocumentImport';
-import BulkDocumentUpload from '@/pages/BulkDocumentUpload';
 import UserManagement from '@/pages/UserManagement';
 import Reports from '@/pages/Reports';
 
@@ -33,7 +31,6 @@ function App() {
         <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} />
         {/* Full-screen module — no AppLayout chrome */}
         <Route path="/candidates/new" element={<RouteGuard><CandidateIntake /></RouteGuard>} />
-        <Route path="/documents/bulk" element={<RouteGuard><BulkDocumentUpload /></RouteGuard>} />
         <Route element={<RouteGuard><AppLayout /></RouteGuard>}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/candidates" element={<CandidateList />} />
@@ -47,7 +44,8 @@ function App() {
           <Route path="/candidate" element={<CandidatePortal />} />
           <Route path="/contracts/:id/sign" element={<ContractSigning />} />
           <Route path="/emails" element={<EmailCenter />} />
-          <Route path="/documents/import" element={<DocumentImport />} />
+          <Route path="/documents/import" element={<Navigate to="/candidates/new" replace />} />
+          <Route path="/documents/bulk" element={<Navigate to="/candidates/new" replace />} />
           <Route path="/admin/users" element={<UserManagement />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
