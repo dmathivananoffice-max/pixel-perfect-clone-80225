@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   LayoutDashboard, Users, Settings, FileText, BarChart3,
   ClipboardCheck, Briefcase, Building2, UserCircle, Mail,
-  Upload, Shield, GraduationCap, ChevronLeft, ChevronRight,
+  Sparkles, Shield, GraduationCap, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
