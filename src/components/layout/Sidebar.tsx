@@ -22,6 +22,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard className="w-5 h-5" />, roles: ['super_admin', 'managing_director', 'sales_executive', 'recruiter', 'documentation_officer', 'german_trainer'] },
   { label: 'Candidates', path: '/candidates', icon: <Users className="w-5 h-5" />, roles: ['super_admin', 'managing_director', 'recruiter', 'documentation_officer'] },
+  { label: 'Candidate Intake', path: '/candidates/new', icon: <Sparkles className="w-5 h-5" />, roles: ['super_admin', 'managing_director', 'recruiter', 'documentation_officer'] },
   { label: 'Selection Engine', path: '/admin/scoring', icon: <Settings className="w-5 h-5" />, roles: ['super_admin'] },
   { label: 'Evaluation Center', path: '/sti', icon: <ClipboardCheck className="w-5 h-5" />, roles: ['german_trainer', 'recruiter', 'super_admin'] },
   { label: 'Recruiter Hub', path: '/recruiter', icon: <Briefcase className="w-5 h-5" />, roles: ['recruiter', 'super_admin'] },
@@ -29,7 +30,6 @@ const navItems: NavItem[] = [
   { label: 'Employer Portal', path: '/employer', icon: <Building2 className="w-5 h-5" />, roles: ['employer'] },
   { label: 'My Portal', path: '/candidate', icon: <UserCircle className="w-5 h-5" />, roles: ['candidate'] },
   { label: 'Email Center', path: '/emails', icon: <Mail className="w-5 h-5" />, roles: ['super_admin', 'recruiter', 'managing_director'] },
-  { label: 'Document Import', path: '/documents/import', icon: <Upload className="w-5 h-5" />, roles: ['recruiter', 'documentation_officer', 'super_admin'] },
   { label: 'User Management', path: '/admin/users', icon: <Shield className="w-5 h-5" />, roles: ['super_admin', 'managing_director'] },
   { label: 'Reports', path: '/reports', icon: <BarChart3 className="w-5 h-5" />, roles: ['super_admin', 'managing_director', 'recruiter'] },
 ];
