@@ -32,8 +32,8 @@ import { CommandPalette } from '@/components/candidates/CommandPalette';
 import { CandidateDrawer } from '@/components/candidates/CandidateDrawer';
 
 import {
-  Plus, Search, SlidersHorizontal, Download, Upload, FileArchive, Command as CommandIcon,
-  MoreHorizontal, X, Users,
+  Plus, Search, SlidersHorizontal, Download, Upload, Command as CommandIcon,
+  MoreHorizontal, X, Sparkles,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
