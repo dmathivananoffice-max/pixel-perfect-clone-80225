@@ -369,9 +369,13 @@ export default function CandidateIntake() {
               <Sparkles className="size-3" /> Intake · Verification Studio
             </div>
             <h1 className="font-display truncate text-[15px] font-semibold text-foreground">
-              {stage === 'product'  && 'Step 1 · Choose product'}
-              {stage === 'section'  && `Step ${current.number} · ${current.label}`}
-              {stage === 'review'   && 'Final review'}
+              {stage === 'type'       && 'Step 1 · Choose intake type'}
+              {stage === 'product'    && 'Step 2 · Choose product'}
+              {stage === 'upload'     && 'Step 3 · Upload documents'}
+              {stage === 'processing' && 'Step 4 · AI processing'}
+              {stage === 'dashboard'  && 'Step 5 · AI Intake Review'}
+              {stage === 'section'    && `Step 6 · ${current.label}${activeCandidate ? ' · ' + activeCandidate.firstName + ' ' + activeCandidate.lastName : ''}`}
+              {stage === 'review'     && 'Final review'}
             </h1>
           </div>
         </div>
