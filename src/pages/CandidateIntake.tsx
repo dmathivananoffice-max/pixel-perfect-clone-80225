@@ -187,8 +187,6 @@ function appDocName(firstName: string, german: string, qualifier?: string) {
 // ─────────────────────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────────────────────
-type Stage = 'product' | 'section' | 'review';
-
 type Stage = 'type' | 'product' | 'upload' | 'processing' | 'dashboard' | 'section' | 'review';
 
 export default function CandidateIntake() {
