@@ -407,9 +407,36 @@ export default function CandidateIntake() {
       </header>
 
       {/* Body */}
+      {stage === 'type' && (
+        <IntakeTypeStep mode={mode} setMode={setMode} onContinue={() => setStage('product')} />
+      )}
+
       {stage === 'product' && (
         <ProductStep product={product} setProduct={setProduct} onContinue={verifyAndContinue} />
       )}
+
+      {stage === 'upload' && (
+        <UploadStep
+          mode={mode ?? 'single'}
+          productLabel={INTAKE_PRODUCTS.find((p) => p.id === product)?.label ?? 'Product'}
+          onBack={goBack}
+          onContinue={(files) => beginProcessing(files.length)}
+        />
+      )}
+
+      {stage === 'processing' && (
+        <ProcessingStep fileCount={uploadedCount} onDone={finishProcessing} />
+      )}
+
+      {stage === 'dashboard' && batch && (
+        <ReviewDashboard
+          batch={batch}
+          approvedIds={approvedIds}
+          onBack={() => setStage('upload')}
+          onVerify={openVerification}
+        />
+      )}
+
 
       {stage === 'section' && (
         <div className="relative flex flex-1 min-h-0">
