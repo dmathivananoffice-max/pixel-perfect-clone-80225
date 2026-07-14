@@ -366,7 +366,9 @@ export default function CandidateIntake() {
           </button>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
-              <Sparkles className="size-3" /> Intake · Verification Studio
+              <Sparkles className="size-3" /> Candidate Intake Engine
+              {batch && <span className="text-foreground/60">· {batch.name}</span>}
+              {mode && <span className="text-foreground/60">· {mode === 'single' ? 'Single' : 'Batch'}</span>}
             </div>
             <h1 className="font-display truncate text-[15px] font-semibold text-foreground">
               {stage === 'type'       && 'Step 1 · Choose intake type'}
