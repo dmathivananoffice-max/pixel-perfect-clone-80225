@@ -189,10 +189,19 @@ function appDocName(firstName: string, german: string, qualifier?: string) {
 // ─────────────────────────────────────────────────────────────
 type Stage = 'product' | 'section' | 'review';
 
+type Stage = 'type' | 'product' | 'upload' | 'processing' | 'dashboard' | 'section' | 'review';
+
 export default function CandidateIntake() {
   const navigate = useNavigate();
-  const [stage, setStage] = useState<Stage>('product');
+  const [stage, setStage] = useState<Stage>('type');
+  const [mode, setMode] = useState<IntakeMode | null>(null);
   const [product, setProduct] = useState<IntakeProductId | null>(null);
+  const [uploadedCount, setUploadedCount] = useState(0);
+  const [batch, setBatch] = useState<IntakeBatch | null>(null);
+  const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
+  const [activeCandidateId, setActiveCandidateId] = useState<string | null>(null);
+  const [pendingFocus, setPendingFocus] = useState<FieldFocus | null>(null);
+
   const [sectionIndex, setSectionIndex] = useState(0);
   const [values, setValues] = useState<Record<string, Record<string, string>>>({});
   const [edited, setEdited] = useState<Record<string, Set<string>>>({});
@@ -203,11 +212,16 @@ export default function CandidateIntake() {
   const [docOpen, setDocOpen] = useState(false); // mobile / tablet drawer
   const [savedAt, setSavedAt] = useState<Date | null>(null);
 
-  const firstName = (values['personal']?.first_name ?? 'Deeban').trim() || 'Deeban';
+  const activeCandidate = useMemo(
+    () => (batch && activeCandidateId ? batch.candidates.find((c) => c.id === activeCandidateId) ?? null : null),
+    [batch, activeCandidateId],
+  );
+
+  const firstName = (values['personal']?.first_name ?? activeCandidate?.firstName ?? 'Deeban').trim() || 'Deeban';
 
   // Continuous autosave — debounce on any state change
   useEffect(() => {
-    if (stage === 'product' && !product) return;
+    if (stage === 'type') return;
     const t = setTimeout(() => setSavedAt(new Date()), 700);
     return () => clearTimeout(t);
   }, [stage, product, values, edited, uploads, verified, sectionIndex]);
