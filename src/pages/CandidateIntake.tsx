@@ -25,6 +25,12 @@ import imgPreBachelor from '@/assets/product-pre-bachelor.jpg';
 import imgPreMasters from '@/assets/product-pre-masters.jpg';
 import imgMba from '@/assets/product-mba.jpg';
 
+import { IntakeTypeStep } from '@/components/intake/IntakeTypeStep';
+import { UploadStep } from '@/components/intake/UploadStep';
+import { ProcessingStep } from '@/components/intake/ProcessingStep';
+import { ReviewDashboard } from '@/components/intake/ReviewDashboard';
+import { makeMockBatch, type IntakeBatch, type IntakeMode, type FieldFocus } from '@/lib/intake/batch';
+
 // ─────────────────────────────────────────────────────────────
 // Product definitions (module-local — the intake decides workflow)
 // ─────────────────────────────────────────────────────────────
