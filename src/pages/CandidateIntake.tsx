@@ -254,12 +254,7 @@ export default function CandidateIntake() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, sectionIndex, product, declarations]);
 
-  function exit() {
-    if (verified.size > 0 || product) {
-      if (!confirm('Leave verification? Progress is saved as draft.')) return;
-    }
-    navigate('/candidates');
-  }
+  // (exit defined below)
 
   function saveDraft() {
     toast.success('Draft saved', { description: 'You can resume from Candidates → Drafts.' });
