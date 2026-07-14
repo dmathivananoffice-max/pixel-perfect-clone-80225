@@ -277,7 +277,7 @@ export default function CandidateIntake() {
   function verifyAndContinue() {
     if (stage === 'product') {
       if (!product) { toast.error('Choose a product to begin'); return; }
-      setStage('section');
+      setStage('upload');
       return;
     }
     if (stage === 'section' && current) {
@@ -301,11 +301,40 @@ export default function CandidateIntake() {
   }
 
   function goBack() {
-    if (stage === 'review') { setStage('section'); return; }
-    if (stage === 'section') {
-      if (sectionIndex === 0) { setStage('product'); return; }
+    if (stage === 'review')     { setStage('section'); return; }
+    if (stage === 'section')    {
+      if (sectionIndex === 0)   { setStage('dashboard'); return; }
       setSectionIndex((i) => i - 1);
+      return;
     }
+    if (stage === 'dashboard')  { setStage('upload'); return; }
+    if (stage === 'upload')     { setStage('product'); return; }
+    if (stage === 'product')    { setStage('type'); return; }
+  }
+
+  function beginProcessing(count: number) {
+    setUploadedCount(count);
+    setStage('processing');
+  }
+
+  function finishProcessing() {
+    const p = product ?? 'nurses';
+    const productDef = INTAKE_PRODUCTS.find((x) => x.id === p)!;
+    setBatch(makeMockBatch(mode ?? 'single', p, productDef.label));
+    setStage('dashboard');
+  }
+
+  function openVerification(candidateId: string, focus?: FieldFocus) {
+    setActiveCandidateId(candidateId);
+    // Reset per-candidate verification state
+    setSectionIndex(focus ? Math.max(0, SECTIONS.findIndex((s) => s.id === focus.section)) : 0);
+    setValues({});
+    setEdited({});
+    setVerified(new Set());
+    setUploads({});
+    setDeclarations({ reviewed: false, matches: false, complete: false });
+    setPendingFocus(focus ?? null);
+    setStage('section');
   }
 
   function approve() {
@@ -313,8 +342,22 @@ export default function CandidateIntake() {
       toast.error('Confirm all three declarations to approve.');
       return;
     }
-    toast.success('Candidate approved', { description: 'Record is now active in the workflow.' });
-    setTimeout(() => navigate('/candidates'), 500);
+    if (activeCandidateId) {
+      setApprovedIds((prev) => new Set(prev).add(activeCandidateId));
+    }
+    toast.success('Candidate approved', { description: 'Draft is now a production candidate.' });
+    if (batch && batch.mode === 'bulk') {
+      setTimeout(() => setStage('dashboard'), 400);
+    } else {
+      setTimeout(() => navigate('/candidates'), 500);
+    }
+  }
+
+  function exit() {
+    if (verified.size > 0 || product || batch) {
+      if (!confirm('Leave intake? Progress is saved as draft.')) return;
+    }
+    navigate('/candidates');
   }
 
   // ─── Layout ──────────────────────────────────────────────
