@@ -25,6 +25,12 @@ import imgPreBachelor from '@/assets/product-pre-bachelor.jpg';
 import imgPreMasters from '@/assets/product-pre-masters.jpg';
 import imgMba from '@/assets/product-mba.jpg';
 
+import { IntakeTypeStep } from '@/components/intake/IntakeTypeStep';
+import { UploadStep } from '@/components/intake/UploadStep';
+import { ProcessingStep } from '@/components/intake/ProcessingStep';
+import { ReviewDashboard } from '@/components/intake/ReviewDashboard';
+import { makeMockBatch, type IntakeBatch, type IntakeMode, type FieldFocus } from '@/lib/intake/batch';
+
 // ─────────────────────────────────────────────────────────────
 // Product definitions (module-local — the intake decides workflow)
 // ─────────────────────────────────────────────────────────────
@@ -181,12 +187,19 @@ function appDocName(firstName: string, german: string, qualifier?: string) {
 // ─────────────────────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────────────────────
-type Stage = 'product' | 'section' | 'review';
+type Stage = 'type' | 'product' | 'upload' | 'processing' | 'dashboard' | 'section' | 'review';
 
 export default function CandidateIntake() {
   const navigate = useNavigate();
-  const [stage, setStage] = useState<Stage>('product');
+  const [stage, setStage] = useState<Stage>('type');
+  const [mode, setMode] = useState<IntakeMode | null>(null);
   const [product, setProduct] = useState<IntakeProductId | null>(null);
+  const [uploadedCount, setUploadedCount] = useState(0);
+  const [batch, setBatch] = useState<IntakeBatch | null>(null);
+  const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
+  const [activeCandidateId, setActiveCandidateId] = useState<string | null>(null);
+  const [pendingFocus, setPendingFocus] = useState<FieldFocus | null>(null);
+
   const [sectionIndex, setSectionIndex] = useState(0);
   const [values, setValues] = useState<Record<string, Record<string, string>>>({});
   const [edited, setEdited] = useState<Record<string, Set<string>>>({});
@@ -197,11 +210,16 @@ export default function CandidateIntake() {
   const [docOpen, setDocOpen] = useState(false); // mobile / tablet drawer
   const [savedAt, setSavedAt] = useState<Date | null>(null);
 
-  const firstName = (values['personal']?.first_name ?? 'Deeban').trim() || 'Deeban';
+  const activeCandidate = useMemo(
+    () => (batch && activeCandidateId ? batch.candidates.find((c) => c.id === activeCandidateId) ?? null : null),
+    [batch, activeCandidateId],
+  );
+
+  const firstName = (values['personal']?.first_name ?? activeCandidate?.firstName ?? 'Deeban').trim() || 'Deeban';
 
   // Continuous autosave — debounce on any state change
   useEffect(() => {
-    if (stage === 'product' && !product) return;
+    if (stage === 'type') return;
     const t = setTimeout(() => setSavedAt(new Date()), 700);
     return () => clearTimeout(t);
   }, [stage, product, values, edited, uploads, verified, sectionIndex]);
@@ -236,12 +254,7 @@ export default function CandidateIntake() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, sectionIndex, product, declarations]);
 
-  function exit() {
-    if (verified.size > 0 || product) {
-      if (!confirm('Leave verification? Progress is saved as draft.')) return;
-    }
-    navigate('/candidates');
-  }
+  // (exit defined below)
 
   function saveDraft() {
     toast.success('Draft saved', { description: 'You can resume from Candidates → Drafts.' });
@@ -259,7 +272,7 @@ export default function CandidateIntake() {
   function verifyAndContinue() {
     if (stage === 'product') {
       if (!product) { toast.error('Choose a product to begin'); return; }
-      setStage('section');
+      setStage('upload');
       return;
     }
     if (stage === 'section' && current) {
@@ -283,11 +296,40 @@ export default function CandidateIntake() {
   }
 
   function goBack() {
-    if (stage === 'review') { setStage('section'); return; }
-    if (stage === 'section') {
-      if (sectionIndex === 0) { setStage('product'); return; }
+    if (stage === 'review')     { setStage('section'); return; }
+    if (stage === 'section')    {
+      if (sectionIndex === 0)   { setStage('dashboard'); return; }
       setSectionIndex((i) => i - 1);
+      return;
     }
+    if (stage === 'dashboard')  { setStage('upload'); return; }
+    if (stage === 'upload')     { setStage('product'); return; }
+    if (stage === 'product')    { setStage('type'); return; }
+  }
+
+  function beginProcessing(count: number) {
+    setUploadedCount(count);
+    setStage('processing');
+  }
+
+  function finishProcessing() {
+    const p = product ?? 'nurses';
+    const productDef = INTAKE_PRODUCTS.find((x) => x.id === p)!;
+    setBatch(makeMockBatch(mode ?? 'single', p, productDef.label));
+    setStage('dashboard');
+  }
+
+  function openVerification(candidateId: string, focus?: FieldFocus) {
+    setActiveCandidateId(candidateId);
+    // Reset per-candidate verification state
+    setSectionIndex(focus ? Math.max(0, SECTIONS.findIndex((s) => s.id === focus.section)) : 0);
+    setValues({});
+    setEdited({});
+    setVerified(new Set());
+    setUploads({});
+    setDeclarations({ reviewed: false, matches: false, complete: false });
+    setPendingFocus(focus ?? null);
+    setStage('section');
   }
 
   function approve() {
@@ -295,8 +337,22 @@ export default function CandidateIntake() {
       toast.error('Confirm all three declarations to approve.');
       return;
     }
-    toast.success('Candidate approved', { description: 'Record is now active in the workflow.' });
-    setTimeout(() => navigate('/candidates'), 500);
+    if (activeCandidateId) {
+      setApprovedIds((prev) => new Set(prev).add(activeCandidateId));
+    }
+    toast.success('Candidate approved', { description: 'Draft is now a production candidate.' });
+    if (batch && batch.mode === 'bulk') {
+      setTimeout(() => setStage('dashboard'), 400);
+    } else {
+      setTimeout(() => navigate('/candidates'), 500);
+    }
+  }
+
+  function exit() {
+    if (verified.size > 0 || product || batch) {
+      if (!confirm('Leave intake? Progress is saved as draft.')) return;
+    }
+    navigate('/candidates');
   }
 
   // ─── Layout ──────────────────────────────────────────────
@@ -310,12 +366,18 @@ export default function CandidateIntake() {
           </button>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
-              <Sparkles className="size-3" /> Intake · Verification Studio
+              <Sparkles className="size-3" /> Candidate Intake Engine
+              {batch && <span className="text-foreground/60">· {batch.name}</span>}
+              {mode && <span className="text-foreground/60">· {mode === 'single' ? 'Single' : 'Batch'}</span>}
             </div>
             <h1 className="font-display truncate text-[15px] font-semibold text-foreground">
-              {stage === 'product'  && 'Step 1 · Choose product'}
-              {stage === 'section'  && `Step ${current.number} · ${current.label}`}
-              {stage === 'review'   && 'Final review'}
+              {stage === 'type'       && 'Step 1 · Choose intake type'}
+              {stage === 'product'    && 'Step 2 · Choose product'}
+              {stage === 'upload'     && 'Step 3 · Upload documents'}
+              {stage === 'processing' && 'Step 4 · AI processing'}
+              {stage === 'dashboard'  && 'Step 5 · AI Intake Review'}
+              {stage === 'section'    && `Step 6 · ${current.label}${activeCandidate ? ' · ' + activeCandidate.firstName + ' ' + activeCandidate.lastName : ''}`}
+              {stage === 'review'     && 'Final review'}
             </h1>
           </div>
         </div>
@@ -345,9 +407,36 @@ export default function CandidateIntake() {
       </header>
 
       {/* Body */}
+      {stage === 'type' && (
+        <IntakeTypeStep mode={mode} setMode={setMode} onContinue={() => setStage('product')} />
+      )}
+
       {stage === 'product' && (
         <ProductStep product={product} setProduct={setProduct} onContinue={verifyAndContinue} />
       )}
+
+      {stage === 'upload' && (
+        <UploadStep
+          mode={mode ?? 'single'}
+          productLabel={INTAKE_PRODUCTS.find((p) => p.id === product)?.label ?? 'Product'}
+          onBack={goBack}
+          onContinue={(files) => beginProcessing(files.length)}
+        />
+      )}
+
+      {stage === 'processing' && (
+        <ProcessingStep fileCount={uploadedCount} onDone={finishProcessing} />
+      )}
+
+      {stage === 'dashboard' && batch && (
+        <ReviewDashboard
+          batch={batch}
+          approvedIds={approvedIds}
+          onBack={() => setStage('upload')}
+          onVerify={openVerification}
+        />
+      )}
+
 
       {stage === 'section' && (
         <div className="relative flex flex-1 min-h-0">
