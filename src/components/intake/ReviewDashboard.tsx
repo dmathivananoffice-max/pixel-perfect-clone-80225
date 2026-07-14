@@ -397,11 +397,11 @@ function DuplicateCentre({
                 <div className="font-medium">Candidate A</div>
                 <div className="font-medium">Candidate B</div>
                 {rows.map(([label, a, b]) => (
-                  <>
-                    <div key={label} className="text-muted-foreground">{label}</div>
+                  <div key={label} className="contents">
+                    <div className="text-muted-foreground">{label}</div>
                     <div className={cn('truncate', a === b && 'text-rose-700 font-medium')}>{a}</div>
                     <div className={cn('truncate', a === b && 'text-rose-700 font-medium')}>{b}</div>
-                  </>
+                  </div>
                 ))}
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
