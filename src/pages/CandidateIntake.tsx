@@ -542,7 +542,12 @@ export default function CandidateIntake() {
 
             {stage === 'section' && (
               <div className="relative flex flex-1 min-h-0">
-                {/* Left: master data + section nav */}
+                {/* Left: source document — the spine of verification */}
+                <div className="hidden lg:flex lg:w-[46%] xl:w-[52%] min-h-0 border-r border-border/60 bg-muted/30">
+                  <DocumentViewer section={current} zoom={zoom} setZoom={setZoom} />
+                </div>
+
+                {/* Right: master data + section nav */}
                 <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                   <SectionNav
                     currentIndex={sectionIndex}
@@ -569,7 +574,7 @@ export default function CandidateIntake() {
                       variant="outline"
                       size="sm"
                       onClick={() => setDocOpen((v) => !v)}
-                      className="gap-1.5 xl:hidden"
+                      className="gap-1.5 lg:hidden"
                     >
                       {docOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
                       Source
@@ -581,17 +586,13 @@ export default function CandidateIntake() {
                   </div>
                 </div>
 
-                {/* Right: doc viewer */}
-                <div className="hidden xl:flex xl:w-[clamp(360px,32vw,560px)] min-h-0 border-l border-border/60">
-                  <DocumentViewer section={current} zoom={zoom} setZoom={setZoom} />
-                </div>
                 {docOpen && (
                   <>
                     <div
-                      className="xl:hidden fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm"
+                      className="lg:hidden fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm"
                       onClick={() => setDocOpen(false)}
                     />
-                    <div className="xl:hidden fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-border/60 bg-background shadow-2xl animate-section-in">
+                    <div className="lg:hidden fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-border/60 bg-background shadow-2xl animate-section-in">
                       <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
                         <div className="text-xs font-medium">Source document</div>
                         <button onClick={() => setDocOpen(false)} className="rounded-md p-1.5 hover:bg-muted" aria-label="Close source">
@@ -606,6 +607,7 @@ export default function CandidateIntake() {
                 )}
               </div>
             )}
+
 
             {stage === 'review' && (
               <div className="flex flex-1 min-h-0">
@@ -1025,20 +1027,29 @@ function DocumentViewer({
   zoom: number;
   setZoom: (n: number) => void;
 }) {
+  const fields = FIELDS[section.id] ?? [];
+  const avgConf = fields.length
+    ? fields.reduce((a, f) => a + (f.confidence ?? 0.9), 0) / fields.length
+    : 0.95;
+
   return (
-    <aside className="flex min-h-0 flex-col bg-muted/40">
-      <div className="flex items-center justify-between border-b border-border/60 bg-background/70 px-4 py-2 backdrop-blur">
-        <div className="flex items-center gap-2 text-xs">
-          <FileText className="size-3.5 text-muted-foreground" />
-          <span className="font-medium">{section.doc}</span>
-          <span className="text-muted-foreground">· page 1 / 2</span>
+    <aside className="flex min-h-0 w-full flex-col bg-gradient-to-b from-slate-100 to-slate-200/60">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between border-b border-border/60 bg-background/80 px-4 py-2 backdrop-blur">
+        <div className="flex min-w-0 items-center gap-2 text-xs">
+          <FileText className="size-3.5 text-muted-foreground shrink-0" />
+          <span className="truncate font-medium">{section.doc}</span>
+          <span className="hidden sm:inline text-muted-foreground">· page 1 / 2</span>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="size-7" onClick={() => setZoom(Math.max(50, zoom - 10))}>
+          <span className="mr-2 hidden md:inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200">
+            <Sparkles className="size-3" /> AI · {Math.round(avgConf * 100)}%
+          </span>
+          <Button variant="ghost" size="icon" className="size-7" onClick={() => setZoom(Math.max(60, zoom - 10))}>
             <ZoomOut className="size-3.5" />
           </Button>
           <span className="w-10 text-center text-[11px] tabular-nums text-muted-foreground">{zoom}%</span>
-          <Button variant="ghost" size="icon" className="size-7" onClick={() => setZoom(Math.min(200, zoom + 10))}>
+          <Button variant="ghost" size="icon" className="size-7" onClick={() => setZoom(Math.min(180, zoom + 10))}>
             <ZoomIn className="size-3.5" />
           </Button>
           <Button variant="ghost" size="icon" className="size-7"><RotateCw className="size-3.5" /></Button>
@@ -1046,50 +1057,128 @@ function DocumentViewer({
         </div>
       </div>
 
+      {/* Document canvas */}
       <div className="flex-1 min-h-0 overflow-auto p-6">
         <div
-          className="mx-auto rounded-md bg-white shadow-md ring-1 ring-border/60"
-          style={{ width: `${(zoom / 100) * 460}px`, aspectRatio: '1 / 1.414' }}
+          className="mx-auto rounded-md bg-white shadow-xl ring-1 ring-black/5"
+          style={{ width: `${(zoom / 100) * 520}px`, aspectRatio: '1 / 1.414' }}
         >
-          <div className="flex h-full flex-col p-8 text-slate-800">
-            <div className="mb-6 flex items-center justify-between border-b pb-3">
-              <div className="text-[10px] uppercase tracking-widest text-slate-500">Source document</div>
-              <div className="text-[10px] text-slate-400">{section.doc}</div>
-            </div>
-            <div className="space-y-3 text-[11px] leading-relaxed">
-              <div className="h-3 w-3/4 rounded bg-slate-200" />
-              <div className="h-3 w-2/3 rounded bg-slate-200" />
-              <div className="mt-4 h-2 w-1/2 rounded bg-slate-100" />
-              <div className="h-2 w-4/5 rounded bg-slate-100" />
-              <div className="h-2 w-3/5 rounded bg-slate-100" />
-              <div className="mt-6 rounded-md border border-primary/30 bg-primary/5 p-3">
-                <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-primary">
-                  AI extracted from this region
-                </div>
-                <div className="space-y-1">
-                  {FIELDS[section.id]?.slice(0, 3).map((f) => (
-                    <div key={f.key} className="flex items-center justify-between text-[11px]">
-                      <span className="text-slate-500">{f.label}</span>
-                      <span className="font-medium tabular-nums">{f.aiValue}</span>
-                    </div>
-                  ))}
-                  {section.id === 'documents' && <div className="text-[11px] text-slate-500">All uploaded documents.</div>}
-                </div>
-              </div>
-              <div className="mt-4 h-2 w-2/3 rounded bg-slate-100" />
-              <div className="h-2 w-3/4 rounded bg-slate-100" />
-              <div className="h-2 w-1/2 rounded bg-slate-100" />
-            </div>
-            <div className="mt-auto pt-6 text-[9px] text-slate-400">
-              <Info className="mr-1 inline size-3" />
-              Preview is a rendered placeholder. Live document rendering with highlight-to-source is powered by the intake pipeline.
-            </div>
-          </div>
+          <DocumentPage section={section} />
         </div>
+      </div>
+
+      {/* Footer status strip */}
+      <div className="flex items-center justify-between border-t border-border/60 bg-background/80 px-4 py-2 text-[10px] text-muted-foreground backdrop-blur">
+        <span className="inline-flex items-center gap-1">
+          <Info className="size-3" /> {fields.length} field{fields.length === 1 ? '' : 's'} extracted · click any highlight to jump
+        </span>
+        <span className="tabular-nums">1 / 2</span>
       </div>
     </aside>
   );
 }
+
+// A section-aware, realistic-looking document render with a highlighted
+// AI-extraction region. Not a real PDF — a designed placeholder that
+// gives the recruiter a concrete document to verify against.
+function DocumentPage({ section }: { section: SectionDef }) {
+  const fields = FIELDS[section.id] ?? [];
+  const title = section.doc.toUpperCase();
+
+  const accent =
+    section.id === 'passport' || section.id === 'personal' ? 'from-blue-900 to-blue-700'
+    : section.id === 'education' ? 'from-amber-800 to-amber-600'
+    : section.id === 'language' ? 'from-emerald-800 to-emerald-600'
+    : section.id === 'medical' ? 'from-rose-800 to-rose-600'
+    : section.id === 'driving' ? 'from-slate-800 to-slate-600'
+    : 'from-indigo-800 to-indigo-600';
+
+  return (
+    <div className="flex h-full flex-col p-8 text-slate-800">
+      {/* Header band */}
+      <div className={cn('mb-5 rounded-sm bg-gradient-to-r px-4 py-3 text-white', accent)}>
+        <div className="text-[9px] uppercase tracking-[0.2em] opacity-80">Republic of India</div>
+        <div className="mt-0.5 text-[13px] font-semibold tracking-wide">{title}</div>
+      </div>
+
+      {/* Body: photo + preamble on some sections */}
+      {(section.id === 'personal' || section.id === 'passport') && (
+        <div className="mb-4 flex gap-4">
+          <div className="h-24 w-20 shrink-0 rounded-sm bg-gradient-to-br from-slate-300 to-slate-400 ring-1 ring-slate-400/50" />
+          <div className="flex-1 space-y-1.5 pt-1">
+            <div className="h-2 w-4/5 rounded bg-slate-200" />
+            <div className="h-2 w-3/5 rounded bg-slate-200" />
+            <div className="h-2 w-2/3 rounded bg-slate-100" />
+            <div className="h-2 w-1/2 rounded bg-slate-100" />
+          </div>
+        </div>
+      )}
+
+      {section.id !== 'personal' && section.id !== 'passport' && (
+        <div className="mb-4 space-y-1.5">
+          <div className="h-2 w-4/5 rounded bg-slate-200" />
+          <div className="h-2 w-3/4 rounded bg-slate-100" />
+          <div className="h-2 w-2/3 rounded bg-slate-100" />
+        </div>
+      )}
+
+      {/* AI-highlighted extraction region — the spine of verification */}
+      <div className="relative mt-1 rounded-md border-2 border-primary/50 bg-primary/[0.04] p-3 shadow-[0_0_0_4px_rgba(59,130,246,0.06)]">
+        <div className="absolute -top-2.5 left-3 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-primary-foreground shadow">
+          <Sparkles className="size-2.5" /> AI extracted
+        </div>
+        <div className="mt-1 divide-y divide-slate-200/70">
+          {fields.slice(0, 6).map((f) => {
+            const conf = f.confidence ?? 0.9;
+            const tone =
+              conf >= 0.9 ? 'text-emerald-700 bg-emerald-50 ring-emerald-200'
+              : conf >= 0.8 ? 'text-amber-700 bg-amber-50 ring-amber-200'
+              : 'text-rose-700 bg-rose-50 ring-rose-200';
+            return (
+              <div key={f.key} className="flex items-center justify-between gap-3 py-1.5 text-[11px]">
+                <span className="truncate text-slate-500">{f.label}</span>
+                <span className="flex items-center gap-2">
+                  <span className="truncate font-medium tabular-nums text-slate-800">
+                    {f.aiValue ?? '—'}
+                  </span>
+                  <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-[9px] font-medium tabular-nums ring-1', tone)}>
+                    {Math.round(conf * 100)}%
+                  </span>
+                </span>
+              </div>
+            );
+          })}
+          {section.id === 'documents' && (
+            <div className="py-2 text-[11px] text-slate-500">All uploaded documents referenced.</div>
+          )}
+        </div>
+      </div>
+
+      {/* Trailing body lines */}
+      <div className="mt-4 space-y-1.5">
+        <div className="h-2 w-2/3 rounded bg-slate-100" />
+        <div className="h-2 w-3/4 rounded bg-slate-100" />
+        <div className="h-2 w-1/2 rounded bg-slate-100" />
+      </div>
+
+      {/* MRZ-style footer for passport */}
+      {(section.id === 'passport' || section.id === 'personal') && (
+        <div className="mt-auto space-y-1 border-t border-slate-200 pt-3 font-mono text-[10px] tracking-[0.15em] text-slate-600">
+          <div>P&lt;INDRAJENDRAN&lt;&lt;DEEBAN&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;</div>
+          <div>N1234567&lt;7IND9604125M3104128&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;04</div>
+        </div>
+      )}
+
+      <div className="mt-4 flex items-center justify-between text-[9px] text-slate-400">
+        <span className="inline-flex items-center gap-1">
+          <Info className="size-3" /> Placeholder rendering · live doc served by intake pipeline
+        </span>
+        <span>{section.doc}</span>
+      </div>
+    </div>
+  );
+}
+
 
 // ─────────────────────────────────────────────────────────────
 // Review step
