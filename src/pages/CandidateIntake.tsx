@@ -542,13 +542,8 @@ export default function CandidateIntake() {
 
             {stage === 'section' && (
               <div className="relative flex flex-1 min-h-0 flex-row overflow-hidden min-w-0">
-                {/* Source document — always visible, the spine of verification */}
-                <div className="flex h-full min-h-0 w-[50%] shrink-0 overflow-hidden border-r border-border/60 bg-muted/30 sm:w-[52%] md:w-[55%] lg:w-[58%] xl:w-[60%]">
-                  <DocumentViewer section={current} zoom={zoom} setZoom={setZoom} />
-                </div>
-
-                {/* Form + section nav */}
-                <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                {/* Form — primary workspace (recognition before recall) */}
+                <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-r border-border/60">
                   <SectionNav
                     currentIndex={sectionIndex}
                     verified={verified}
@@ -575,6 +570,11 @@ export default function CandidateIntake() {
                       <ArrowRight className="size-4" />
                     </Button>
                   </div>
+                </div>
+
+                {/* Source document — supporting panel on the right */}
+                <div className="flex h-full min-h-0 w-[42%] shrink-0 overflow-hidden bg-muted/30 sm:w-[40%] md:w-[38%] lg:w-[36%] xl:w-[35%]">
+                  <DocumentViewer section={current} zoom={zoom} setZoom={setZoom} />
                 </div>
               </div>
             )}
