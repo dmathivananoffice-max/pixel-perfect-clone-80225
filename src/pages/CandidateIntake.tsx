@@ -543,7 +543,7 @@ export default function CandidateIntake() {
             {stage === 'section' && (
               <div className="relative flex flex-1 min-h-0 flex-col md:flex-row">
                 {/* Source document — always visible, the spine of verification */}
-                <div className="flex h-[62vh] min-h-0 shrink-0 border-b border-border/60 bg-muted/30 md:h-auto md:w-[62%] md:shrink md:border-b-0 md:border-r lg:w-[66%] xl:w-[68%]">
+                <div className="flex h-[45vh] min-h-0 shrink-0 border-b border-border/60 bg-muted/30 md:h-auto md:w-[55%] md:shrink md:border-b-0 md:border-r lg:w-[58%] xl:w-[60%]">
                   <DocumentViewer section={current} zoom={zoom} setZoom={setZoom} />
                 </div>
 
