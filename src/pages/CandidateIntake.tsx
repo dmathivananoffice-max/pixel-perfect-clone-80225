@@ -333,17 +333,60 @@ export default function CandidateIntake() {
     setStage('dashboard');
   }
 
+  function snapshotCurrent(): CandSnapshot {
+    return { values, edited, verified, uploads, declarations, sectionIndex };
+  }
+
   function openVerification(candidateId: string, focus?: FieldFocus) {
+    // Snapshot outgoing candidate
+    if (activeCandidateId && activeCandidateId !== candidateId) {
+      setSnapshots((prev) => ({ ...prev, [activeCandidateId]: snapshotCurrent() }));
+    }
     setActiveCandidateId(candidateId);
-    // Reset per-candidate verification state
-    setSectionIndex(focus ? Math.max(0, SECTIONS.findIndex((s) => s.id === focus.section)) : 0);
-    setValues({});
-    setEdited({});
-    setVerified(new Set());
-    setUploads({});
-    setDeclarations({ reviewed: false, matches: false, complete: false });
+
+    const snap = snapshots[candidateId];
+    if (snap && !focus) {
+      setValues(snap.values);
+      setEdited(snap.edited);
+      setVerified(snap.verified);
+      setUploads(snap.uploads);
+      setDeclarations(snap.declarations);
+      setSectionIndex(snap.sectionIndex);
+    } else {
+      setSectionIndex(focus ? Math.max(0, SECTIONS.findIndex((s) => s.id === focus.section)) : (snap?.sectionIndex ?? 0));
+      setValues(snap?.values ?? {});
+      setEdited(snap?.edited ?? {});
+      setVerified(snap?.verified ?? new Set());
+      setUploads(snap?.uploads ?? {});
+      setDeclarations(snap?.declarations ?? { reviewed: false, matches: false, complete: false });
+    }
     setPendingFocus(focus ?? null);
+    setShowApprovalOverlay(false);
     setStage('section');
+  }
+
+  function pickNextCandidate(): string | null {
+    if (!batch) return null;
+    const priority: Record<BatchStatus, number> = {
+      ready: 1, manual_review: 2, missing_docs: 3, low_confidence: 4, duplicate: 5, approved: 99,
+    };
+    const remaining = batch.candidates
+      .filter((c) => !approvedIds.has(c.id) && c.id !== activeCandidateId)
+      .sort((a, b) => (priority[a.status] ?? 50) - (priority[b.status] ?? 50));
+    return remaining[0]?.id ?? null;
+  }
+
+  function verifyNextCandidate() {
+    const next = pickNextCandidate();
+    setShowApprovalOverlay(false);
+    if (next) {
+      const cand = batch?.candidates.find((c) => c.id === next);
+      openVerification(next, cand?.focus);
+    } else {
+      toast.success('All candidates approved', { description: 'Returning to Mission Control.' });
+      setActiveCandidateId(null);
+      setStage('dashboard');
+    }
   }
 
   function approve() {
@@ -353,10 +396,14 @@ export default function CandidateIntake() {
     }
     if (activeCandidateId) {
       setApprovedIds((prev) => new Set(prev).add(activeCandidateId));
+      setSnapshots((prev) => ({ ...prev, [activeCandidateId]: snapshotCurrent() }));
+      const c = batch?.candidates.find((x) => x.id === activeCandidateId);
+      setLastApprovedName(c ? `${c.firstName} ${c.lastName}` : 'Candidate');
     }
-    toast.success('Candidate approved', { description: 'Draft is now a production candidate.' });
+    toast.success('Candidate approved');
+    // Never auto-return — recruiter chooses next action
     if (batch && batch.mode === 'bulk') {
-      setTimeout(() => setStage('dashboard'), 400);
+      setShowApprovalOverlay(true);
     } else {
       setTimeout(() => navigate('/candidates'), 500);
     }
