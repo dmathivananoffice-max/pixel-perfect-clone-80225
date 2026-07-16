@@ -30,7 +30,7 @@ import { UploadStep } from '@/components/intake/UploadStep';
 import { ProcessingStep } from '@/components/intake/ProcessingStep';
 import { ReviewDashboard } from '@/components/intake/ReviewDashboard';
 import { VerificationQueue, type QueueProgress } from '@/components/intake/VerificationQueue';
-import { makeMockBatch, statusMeta, type IntakeBatch, type IntakeMode, type FieldFocus, type BatchStatus } from '@/lib/intake/batch';
+import { makeMockBatch, type IntakeBatch, type IntakeMode, type FieldFocus, type BatchStatus } from '@/lib/intake/batch';
 
 // ─────────────────────────────────────────────────────────────
 // Product definitions (module-local — the intake decides workflow)
