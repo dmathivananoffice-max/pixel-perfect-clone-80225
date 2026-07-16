@@ -541,14 +541,14 @@ export default function CandidateIntake() {
             )}
 
             {stage === 'section' && (
-              <div className="relative flex flex-1 min-h-0 flex-row">
+              <div className="relative flex flex-1 min-h-0 flex-row overflow-hidden min-w-0">
                 {/* Source document — always visible, the spine of verification */}
-                <div className="flex h-full min-h-0 w-[50%] shrink-0 border-r border-border/60 bg-muted/30 sm:w-[52%] md:w-[55%] lg:w-[58%] xl:w-[60%]">
+                <div className="flex h-full min-h-0 w-[50%] shrink-0 overflow-hidden border-r border-border/60 bg-muted/30 sm:w-[52%] md:w-[55%] lg:w-[58%] xl:w-[60%]">
                   <DocumentViewer section={current} zoom={zoom} setZoom={setZoom} />
                 </div>
 
                 {/* Form + section nav */}
-                <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                   <SectionNav
                     currentIndex={sectionIndex}
                     verified={verified}
