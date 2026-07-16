@@ -541,13 +541,13 @@ export default function CandidateIntake() {
             )}
 
             {stage === 'section' && (
-              <div className="relative flex flex-1 min-h-0">
-                {/* Left: source document — the spine of verification */}
-                <div className="hidden lg:flex lg:w-[46%] xl:w-[52%] min-h-0 border-r border-border/60 bg-muted/30">
+              <div className="relative flex flex-1 min-h-0 flex-col md:flex-row">
+                {/* Source document — always visible, the spine of verification */}
+                <div className="flex h-[42vh] min-h-0 shrink-0 border-b border-border/60 bg-muted/30 md:h-auto md:w-[48%] md:shrink md:border-b-0 md:border-r lg:w-[52%]">
                   <DocumentViewer section={current} zoom={zoom} setZoom={setZoom} />
                 </div>
 
-                {/* Right: master data + section nav */}
+                {/* Form + section nav */}
                 <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                   <SectionNav
                     currentIndex={sectionIndex}
@@ -566,18 +566,9 @@ export default function CandidateIntake() {
                       firstName={firstName}
                     />
                   </div>
-                  <div className="flex items-center justify-between gap-2 border-t border-border/60 bg-background/95 px-6 py-3">
+                  <div className="flex items-center justify-between gap-2 border-t border-border/60 bg-background/95 px-4 py-3 sm:px-6">
                     <Button variant="ghost" size="sm" onClick={goBack} className="gap-1.5">
                       <ArrowLeft className="size-4" /> Back
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setDocOpen((v) => !v)}
-                      className="gap-1.5 lg:hidden"
-                    >
-                      {docOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
-                      Source
                     </Button>
                     <Button size="sm" onClick={verifyAndContinue} className="gap-1.5 shadow-sm">
                       <Check className="size-4" /> Verify &amp; continue
@@ -585,28 +576,9 @@ export default function CandidateIntake() {
                     </Button>
                   </div>
                 </div>
-
-                {docOpen && (
-                  <>
-                    <div
-                      className="lg:hidden fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm"
-                      onClick={() => setDocOpen(false)}
-                    />
-                    <div className="lg:hidden fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-border/60 bg-background shadow-2xl animate-section-in">
-                      <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
-                        <div className="text-xs font-medium">Source document</div>
-                        <button onClick={() => setDocOpen(false)} className="rounded-md p-1.5 hover:bg-muted" aria-label="Close source">
-                          <X className="size-4" />
-                        </button>
-                      </div>
-                      <div className="flex-1 min-h-0">
-                        <DocumentViewer section={current} zoom={zoom} setZoom={setZoom} />
-                      </div>
-                    </div>
-                  </>
-                )}
               </div>
             )}
+
 
 
             {stage === 'review' && (
