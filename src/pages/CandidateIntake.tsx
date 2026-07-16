@@ -29,7 +29,8 @@ import { IntakeTypeStep } from '@/components/intake/IntakeTypeStep';
 import { UploadStep } from '@/components/intake/UploadStep';
 import { ProcessingStep } from '@/components/intake/ProcessingStep';
 import { ReviewDashboard } from '@/components/intake/ReviewDashboard';
-import { makeMockBatch, type IntakeBatch, type IntakeMode, type FieldFocus } from '@/lib/intake/batch';
+import { VerificationQueue, type QueueProgress } from '@/components/intake/VerificationQueue';
+import { makeMockBatch, type IntakeBatch, type IntakeMode, type FieldFocus, type BatchStatus } from '@/lib/intake/batch';
 
 // ─────────────────────────────────────────────────────────────
 // Product definitions (module-local — the intake decides workflow)
@@ -210,6 +211,19 @@ export default function CandidateIntake() {
   const [docOpen, setDocOpen] = useState(false); // mobile / tablet drawer
   const [savedAt, setSavedAt] = useState<Date | null>(null);
 
+  // Per-candidate persisted verification state (for the persistent Queue)
+  interface CandSnapshot {
+    values: Record<string, Record<string, string>>;
+    edited: Record<string, Set<string>>;
+    verified: Set<SectionId>;
+    uploads: Record<string, boolean>;
+    declarations: { reviewed: boolean; matches: boolean; complete: boolean };
+    sectionIndex: number;
+  }
+  const [snapshots, setSnapshots] = useState<Record<string, CandSnapshot>>({});
+  const [showApprovalOverlay, setShowApprovalOverlay] = useState(false);
+  const [lastApprovedName, setLastApprovedName] = useState<string>('');
+
   const activeCandidate = useMemo(
     () => (batch && activeCandidateId ? batch.candidates.find((c) => c.id === activeCandidateId) ?? null : null),
     [batch, activeCandidateId],
@@ -319,17 +333,60 @@ export default function CandidateIntake() {
     setStage('dashboard');
   }
 
+  function snapshotCurrent(): CandSnapshot {
+    return { values, edited, verified, uploads, declarations, sectionIndex };
+  }
+
   function openVerification(candidateId: string, focus?: FieldFocus) {
+    // Snapshot outgoing candidate
+    if (activeCandidateId && activeCandidateId !== candidateId) {
+      setSnapshots((prev) => ({ ...prev, [activeCandidateId]: snapshotCurrent() }));
+    }
     setActiveCandidateId(candidateId);
-    // Reset per-candidate verification state
-    setSectionIndex(focus ? Math.max(0, SECTIONS.findIndex((s) => s.id === focus.section)) : 0);
-    setValues({});
-    setEdited({});
-    setVerified(new Set());
-    setUploads({});
-    setDeclarations({ reviewed: false, matches: false, complete: false });
+
+    const snap = snapshots[candidateId];
+    if (snap && !focus) {
+      setValues(snap.values);
+      setEdited(snap.edited);
+      setVerified(snap.verified);
+      setUploads(snap.uploads);
+      setDeclarations(snap.declarations);
+      setSectionIndex(snap.sectionIndex);
+    } else {
+      setSectionIndex(focus ? Math.max(0, SECTIONS.findIndex((s) => s.id === focus.section)) : (snap?.sectionIndex ?? 0));
+      setValues(snap?.values ?? {});
+      setEdited(snap?.edited ?? {});
+      setVerified(snap?.verified ?? new Set());
+      setUploads(snap?.uploads ?? {});
+      setDeclarations(snap?.declarations ?? { reviewed: false, matches: false, complete: false });
+    }
     setPendingFocus(focus ?? null);
+    setShowApprovalOverlay(false);
     setStage('section');
+  }
+
+  function pickNextCandidate(): string | null {
+    if (!batch) return null;
+    const priority: Record<BatchStatus, number> = {
+      ready: 1, manual_review: 2, missing_docs: 3, low_confidence: 4, duplicate: 5, approved: 99,
+    };
+    const remaining = batch.candidates
+      .filter((c) => !approvedIds.has(c.id) && c.id !== activeCandidateId)
+      .sort((a, b) => (priority[a.status] ?? 50) - (priority[b.status] ?? 50));
+    return remaining[0]?.id ?? null;
+  }
+
+  function verifyNextCandidate() {
+    const next = pickNextCandidate();
+    setShowApprovalOverlay(false);
+    if (next) {
+      const cand = batch?.candidates.find((c) => c.id === next);
+      openVerification(next, cand?.focus);
+    } else {
+      toast.success('All candidates approved', { description: 'Returning to Mission Control.' });
+      setActiveCandidateId(null);
+      setStage('dashboard');
+    }
   }
 
   function approve() {
@@ -339,10 +396,14 @@ export default function CandidateIntake() {
     }
     if (activeCandidateId) {
       setApprovedIds((prev) => new Set(prev).add(activeCandidateId));
+      setSnapshots((prev) => ({ ...prev, [activeCandidateId]: snapshotCurrent() }));
+      const c = batch?.candidates.find((x) => x.id === activeCandidateId);
+      setLastApprovedName(c ? `${c.firstName} ${c.lastName}` : 'Candidate');
     }
-    toast.success('Candidate approved', { description: 'Draft is now a production candidate.' });
+    toast.success('Candidate approved');
+    // Never auto-return — recruiter chooses next action
     if (batch && batch.mode === 'bulk') {
-      setTimeout(() => setStage('dashboard'), 400);
+      setShowApprovalOverlay(true);
     } else {
       setTimeout(() => navigate('/candidates'), 500);
     }
@@ -438,89 +499,175 @@ export default function CandidateIntake() {
       )}
 
 
-      {stage === 'section' && (
-        <div className="relative flex flex-1 min-h-0">
-          {/* Left: master data + section nav */}
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <SectionNav
-              currentIndex={sectionIndex}
-              verified={verified}
-              onJump={(i) => setSectionIndex(i)}
-            />
-            <div key={current.id} className="animate-section-in flex-1 min-h-0 overflow-y-auto">
-              <SectionForm
-                section={current}
-                fields={FIELDS[current.id]}
-                values={values[current.id] ?? {}}
-                edited={edited[current.id] ?? new Set()}
-                onChange={(k, v) => setFieldValue(current.id, k, v)}
-                uploads={uploads}
-                setUploads={setUploads}
-                firstName={firstName}
+      {(stage === 'section' || stage === 'review') && (() => {
+        const showQueue = !!batch && batch.mode === 'bulk';
+        const progressMap: Record<string, QueueProgress> = {};
+        if (batch) {
+          for (const c of batch.candidates) {
+            const isActive = c.id === activeCandidateId;
+            const snap = isActive
+              ? { verified, sectionIndex }
+              : snapshots[c.id];
+            const vCount = snap?.verified?.size ?? 0;
+            const idx = snap?.sectionIndex ?? 0;
+            progressMap[c.id] = {
+              verifiedCount: vCount,
+              totalSections: SECTIONS.length,
+              currentSectionLabel: SECTIONS[Math.min(idx, SECTIONS.length - 1)]?.label ?? '',
+              approved: approvedIds.has(c.id),
+            };
+          }
+        }
+        return (
+          <div className="relative flex flex-1 min-h-0">
+            {showQueue && (
+              <VerificationQueue
+                batch={batch!}
+                activeCandidateId={activeCandidateId}
+                approvedIds={approvedIds}
+                progressMap={progressMap}
+                onSelectCandidate={(id) => {
+                  const cand = batch!.candidates.find((c) => c.id === id);
+                  openVerification(id, snapshots[id] ? undefined : cand?.focus);
+                }}
+                onReturnToDashboard={() => {
+                  if (activeCandidateId) {
+                    setSnapshots((prev) => ({ ...prev, [activeCandidateId]: snapshotCurrent() }));
+                  }
+                  setShowApprovalOverlay(false);
+                  setStage('dashboard');
+                }}
               />
-            </div>
-            <div className="flex items-center justify-between gap-2 border-t border-border/60 bg-background/95 px-6 py-3">
-              <Button variant="ghost" size="sm" onClick={goBack} className="gap-1.5">
-                <ArrowLeft className="size-4" /> Back
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setDocOpen((v) => !v)}
-                className="gap-1.5 xl:hidden"
-              >
-                {docOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
-                Source
-              </Button>
-              <Button size="sm" onClick={verifyAndContinue} className="gap-1.5 shadow-sm">
-                <Check className="size-4" /> Verify &amp; continue
-                <ArrowRight className="size-4" />
-              </Button>
-            </div>
-          </div>
+            )}
 
-          {/* Right: doc viewer — inline on xl+, drawer below */}
-          <div className="hidden xl:flex xl:w-[clamp(420px,38vw,640px)] min-h-0 border-l border-border/60">
-            <DocumentViewer section={current} zoom={zoom} setZoom={setZoom} />
-          </div>
-          {docOpen && (
-            <>
-              <div
-                className="xl:hidden fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm"
-                onClick={() => setDocOpen(false)}
-              />
-              <div className="xl:hidden fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-border/60 bg-background shadow-2xl animate-section-in">
-                <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
-                  <div className="text-xs font-medium">Source document</div>
-                  <button onClick={() => setDocOpen(false)} className="rounded-md p-1.5 hover:bg-muted" aria-label="Close source">
-                    <X className="size-4" />
-                  </button>
+            {stage === 'section' && (
+              <div className="relative flex flex-1 min-h-0">
+                {/* Left: master data + section nav */}
+                <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                  <SectionNav
+                    currentIndex={sectionIndex}
+                    verified={verified}
+                    onJump={(i) => setSectionIndex(i)}
+                  />
+                  <div key={current.id} className="animate-section-in flex-1 min-h-0 overflow-y-auto">
+                    <SectionForm
+                      section={current}
+                      fields={FIELDS[current.id]}
+                      values={values[current.id] ?? {}}
+                      edited={edited[current.id] ?? new Set()}
+                      onChange={(k, v) => setFieldValue(current.id, k, v)}
+                      uploads={uploads}
+                      setUploads={setUploads}
+                      firstName={firstName}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-2 border-t border-border/60 bg-background/95 px-6 py-3">
+                    <Button variant="ghost" size="sm" onClick={goBack} className="gap-1.5">
+                      <ArrowLeft className="size-4" /> Back
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDocOpen((v) => !v)}
+                      className="gap-1.5 xl:hidden"
+                    >
+                      {docOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
+                      Source
+                    </Button>
+                    <Button size="sm" onClick={verifyAndContinue} className="gap-1.5 shadow-sm">
+                      <Check className="size-4" /> Verify &amp; continue
+                      <ArrowRight className="size-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex-1 min-h-0">
+
+                {/* Right: doc viewer */}
+                <div className="hidden xl:flex xl:w-[clamp(360px,32vw,560px)] min-h-0 border-l border-border/60">
                   <DocumentViewer section={current} zoom={zoom} setZoom={setZoom} />
                 </div>
+                {docOpen && (
+                  <>
+                    <div
+                      className="xl:hidden fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm"
+                      onClick={() => setDocOpen(false)}
+                    />
+                    <div className="xl:hidden fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-border/60 bg-background shadow-2xl animate-section-in">
+                      <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
+                        <div className="text-xs font-medium">Source document</div>
+                        <button onClick={() => setDocOpen(false)} className="rounded-md p-1.5 hover:bg-muted" aria-label="Close source">
+                          <X className="size-4" />
+                        </button>
+                      </div>
+                      <div className="flex-1 min-h-0">
+                        <DocumentViewer section={current} zoom={zoom} setZoom={setZoom} />
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
-            </>
-          )}
-        </div>
-      )}
+            )}
 
-      {stage === 'review' && (
-        <ReviewStep
-          product={product!}
-          values={values}
-          uploads={uploads}
-          declarations={declarations}
-          setDeclarations={setDeclarations}
-          firstName={firstName}
-          onEditSection={(id) => {
-            const idx = SECTIONS.findIndex((s) => s.id === id);
-            if (idx >= 0) { setSectionIndex(idx); setStage('section'); }
-          }}
-          onBack={goBack}
-          onApprove={approve}
-        />
-      )}
+            {stage === 'review' && (
+              <div className="flex flex-1 min-h-0">
+                <ReviewStep
+                  product={product!}
+                  values={values}
+                  uploads={uploads}
+                  declarations={declarations}
+                  setDeclarations={setDeclarations}
+                  firstName={firstName}
+                  onEditSection={(id) => {
+                    const idx = SECTIONS.findIndex((s) => s.id === id);
+                    if (idx >= 0) { setSectionIndex(idx); setStage('section'); }
+                  }}
+                  onBack={goBack}
+                  onApprove={approve}
+                />
+              </div>
+            )}
+
+            {showApprovalOverlay && (
+              <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/70 backdrop-blur-sm animate-section-in">
+                <div className="w-full max-w-md rounded-2xl border border-border/60 bg-background p-8 text-center shadow-2xl">
+                  <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-4 ring-emerald-100">
+                    <Check className="size-7" />
+                  </div>
+                  <h3 className="font-display text-2xl font-semibold tracking-tight">Candidate approved</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {lastApprovedName} is now a production candidate.
+                  </p>
+                  <div className="mt-6 flex flex-col gap-2">
+                    <Button
+                      size="lg"
+                      onClick={verifyNextCandidate}
+                      className="gap-2"
+                      disabled={!pickNextCandidate()}
+                    >
+                      Verify next candidate <ArrowRight className="size-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setShowApprovalOverlay(false);
+                        setActiveCandidateId(null);
+                        setStage('dashboard');
+                      }}
+                      className="gap-1.5"
+                    >
+                      <ArrowLeft className="size-4" /> Return to Mission Control
+                    </Button>
+                  </div>
+                  {!pickNextCandidate() && (
+                    <p className="mt-3 text-[11px] text-muted-foreground">
+                      All candidates in this batch have been approved.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
