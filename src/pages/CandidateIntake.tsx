@@ -542,7 +542,12 @@ export default function CandidateIntake() {
 
             {stage === 'section' && (
               <div className="relative flex flex-1 min-h-0">
-                {/* Left: master data + section nav */}
+                {/* Left: source document — the spine of verification */}
+                <div className="hidden lg:flex lg:w-[46%] xl:w-[52%] min-h-0 border-r border-border/60 bg-muted/30">
+                  <DocumentViewer section={current} zoom={zoom} setZoom={setZoom} />
+                </div>
+
+                {/* Right: master data + section nav */}
                 <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                   <SectionNav
                     currentIndex={sectionIndex}
@@ -569,7 +574,7 @@ export default function CandidateIntake() {
                       variant="outline"
                       size="sm"
                       onClick={() => setDocOpen((v) => !v)}
-                      className="gap-1.5 xl:hidden"
+                      className="gap-1.5 lg:hidden"
                     >
                       {docOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
                       Source
@@ -581,17 +586,13 @@ export default function CandidateIntake() {
                   </div>
                 </div>
 
-                {/* Right: doc viewer */}
-                <div className="hidden xl:flex xl:w-[clamp(360px,32vw,560px)] min-h-0 border-l border-border/60">
-                  <DocumentViewer section={current} zoom={zoom} setZoom={setZoom} />
-                </div>
                 {docOpen && (
                   <>
                     <div
-                      className="xl:hidden fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm"
+                      className="lg:hidden fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm"
                       onClick={() => setDocOpen(false)}
                     />
-                    <div className="xl:hidden fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-border/60 bg-background shadow-2xl animate-section-in">
+                    <div className="lg:hidden fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-border/60 bg-background shadow-2xl animate-section-in">
                       <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
                         <div className="text-xs font-medium">Source document</div>
                         <button onClick={() => setDocOpen(false)} className="rounded-md p-1.5 hover:bg-muted" aria-label="Close source">
@@ -606,6 +607,7 @@ export default function CandidateIntake() {
                 )}
               </div>
             )}
+
 
             {stage === 'review' && (
               <div className="flex flex-1 min-h-0">
