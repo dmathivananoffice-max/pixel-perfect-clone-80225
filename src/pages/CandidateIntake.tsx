@@ -211,6 +211,19 @@ export default function CandidateIntake() {
   const [docOpen, setDocOpen] = useState(false); // mobile / tablet drawer
   const [savedAt, setSavedAt] = useState<Date | null>(null);
 
+  // Per-candidate persisted verification state (for the persistent Queue)
+  interface CandSnapshot {
+    values: Record<string, Record<string, string>>;
+    edited: Record<string, Set<string>>;
+    verified: Set<SectionId>;
+    uploads: Record<string, boolean>;
+    declarations: { reviewed: boolean; matches: boolean; complete: boolean };
+    sectionIndex: number;
+  }
+  const [snapshots, setSnapshots] = useState<Record<string, CandSnapshot>>({});
+  const [showApprovalOverlay, setShowApprovalOverlay] = useState(false);
+  const [lastApprovedName, setLastApprovedName] = useState<string>('');
+
   const activeCandidate = useMemo(
     () => (batch && activeCandidateId ? batch.candidates.find((c) => c.id === activeCandidateId) ?? null : null),
     [batch, activeCandidateId],
