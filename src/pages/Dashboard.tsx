@@ -12,7 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { ProductSelector } from '@/components/dashboard/ProductSelector';
 import { WidgetCard } from '@/components/dashboard/WidgetCard';
 import { QuickActions } from '@/components/dashboard/QuickActions';
-import { mockCandidates } from '@/lib/mockData';
+import { useAllCandidates } from '@/hooks/useAllCandidates';
 import { cn } from '@/lib/utils';
 
 
