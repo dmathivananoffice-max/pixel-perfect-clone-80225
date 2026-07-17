@@ -578,9 +578,7 @@ export default function CandidateIntake() {
         />
       )}
 
-      {stage === 'processing' && (
-        <ProcessingStep fileCount={uploadedCount} onDone={finishProcessing} />
-      )}
+
 
       {stage === 'dashboard' && batch && (
         <ReviewDashboard
