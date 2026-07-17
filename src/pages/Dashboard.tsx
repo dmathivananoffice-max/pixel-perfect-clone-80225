@@ -42,10 +42,11 @@ function inferProduct(programName?: string): ProductId {
 }
 
 function useProductMetrics(productId: ProductId) {
+  const { candidates } = useAllCandidates();
   return useMemo(() => {
     const list = productId === 'all'
-      ? mockCandidates
-      : mockCandidates.filter((c) => inferProduct(c.program_name) === productId);
+      ? candidates
+      : candidates.filter((c) => inferProduct(c.program_name) === productId);
 
     const byStatus = (status: string) => list.filter((c) => c.status === status).length;
     return {
@@ -58,7 +59,7 @@ function useProductMetrics(productId: ProductId) {
       rejected: byStatus('rejected'),
       waiting: byStatus('waiting'),
     };
-  }, [productId]);
+  }, [productId, candidates]);
 }
 
 export default function Dashboard() {
