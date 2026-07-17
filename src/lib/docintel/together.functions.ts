@@ -215,8 +215,9 @@ export const extractDocumentWithTogether = createServerFn({ method: 'POST' })
             text: '',
             fields: [],
             warnings: [`invalid_json:${parsed.error}`],
-            raw: { rawContent: content },
-            usage,
+            rawJson: JSON.stringify({ rawContent: content }),
+            usage: usage ? { prompt_tokens: usage.prompt_tokens ?? 0, completion_tokens: usage.completion_tokens ?? 0, total_tokens: usage.total_tokens ?? 0 } : null,
+
           });
           continue;
         }
@@ -251,8 +252,9 @@ export const extractDocumentWithTogether = createServerFn({ method: 'POST' })
           text: typeof v.text === 'string' ? v.text : '',
           fields,
           warnings: Array.isArray(v.warnings) ? v.warnings.map(String) : [],
-          raw: v,
-          usage,
+          rawJson: JSON.stringify(v),
+          usage: usage ? { prompt_tokens: usage.prompt_tokens ?? 0, completion_tokens: usage.completion_tokens ?? 0, total_tokens: usage.total_tokens ?? 0 } : null,
+
         });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
@@ -264,7 +266,7 @@ export const extractDocumentWithTogether = createServerFn({ method: 'POST' })
           text: '',
           fields: [],
           warnings: [`page_failed:${msg}`],
-          raw: null,
+          rawJson: 'null',
         });
       }
     }
