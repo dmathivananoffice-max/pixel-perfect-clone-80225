@@ -87,10 +87,11 @@ export default function CandidateList() {
   const [rowOverrides, setRowOverrides] = useState<Record<string, CandidateStatus>>({});
   const [extraCandidates, setExtraCandidates] = useState<Candidate[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
+  const { candidates: dbCandidates } = useAllCandidates();
 
   // Filtered dataset
   const candidates = useMemo(() => {
-    let data = [...extraCandidates, ...mockCandidates].map((c) => ({
+    let data = [...extraCandidates, ...dbCandidates].map((c) => ({
       ...c,
       status: rowOverrides[c.candidate_id] ?? c.status,
     }));
