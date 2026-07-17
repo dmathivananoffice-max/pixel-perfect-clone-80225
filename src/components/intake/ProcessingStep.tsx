@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Sparkles, ScanText, FileSearch, Users, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
@@ -12,18 +12,38 @@ const STEPS = [
 ];
 
 export function ProcessingStep({
-  fileCount, onDone,
+  fileCount, run, onDone, onError,
 }: {
   fileCount: number;
+  /** Async work (uploads + DB inserts). Progress bar caps at 90% until this resolves. */
+  run?: () => Promise<void>;
   onDone: () => void;
+  onError?: (err: string) => void;
 }) {
   const [pct, setPct] = useState(0);
   const [step, setStep] = useState(0);
+  const doneRef = useRef(false);
+  const finishedRef = useRef(false);
+
+  // Kick off the real work once
+  useEffect(() => {
+    if (!run) { doneRef.current = true; return; }
+    let cancelled = false;
+    run()
+      .then(() => { if (!cancelled) doneRef.current = true; })
+      .catch((err) => {
+        if (cancelled) return;
+        doneRef.current = true;
+        onError?.(err instanceof Error ? err.message : String(err));
+      });
+    return () => { cancelled = true; };
+  }, [run, onError]);
 
   useEffect(() => {
     const t = setInterval(() => {
       setPct((p) => {
-        const next = Math.min(100, p + 4 + Math.random() * 6);
+        const cap = doneRef.current ? 100 : 90;
+        const next = Math.min(cap, p + 4 + Math.random() * 6);
         return next;
       });
     }, 220);
@@ -33,7 +53,8 @@ export function ProcessingStep({
   useEffect(() => {
     const s = Math.min(STEPS.length - 1, Math.floor((pct / 100) * STEPS.length));
     setStep(s);
-    if (pct >= 100) {
+    if (pct >= 100 && !finishedRef.current) {
+      finishedRef.current = true;
       const t = setTimeout(onDone, 600);
       return () => clearTimeout(t);
     }
@@ -51,7 +72,7 @@ export function ProcessingStep({
             AI is reading your documents
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            {fileCount} file{fileCount === 1 ? '' : 's'} · everything below happens in parallel
+            {fileCount} file{fileCount === 1 ? '' : 's'} · uploading & extracting in parallel
           </p>
         </div>
 
@@ -96,8 +117,7 @@ export function ProcessingStep({
         </ul>
 
         <p className="mt-10 text-center text-xs text-muted-foreground">
-          AI keeps extracting the rest of the batch in the background while you review.
-          You never wait.
+          Documents are being uploaded to secure storage and linked to candidate records.
         </p>
       </div>
     </div>
