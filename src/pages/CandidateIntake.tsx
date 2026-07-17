@@ -417,15 +417,33 @@ export default function CandidateIntake() {
     setStage('dashboard');
   }
 
-  // ─── Layout ──────────────────────────────────────────────
+  // Candidate position among non-approved (1-indexed) / total in batch
+  const candidatePosition = (() => {
+    if (!batch || !activeCandidateId) return null;
+    const total = batch.candidates.length;
+    const idx = batch.candidates.findIndex((c) => c.id === activeCandidateId);
+    return idx >= 0 ? { pos: idx + 1, total } : null;
+  })();
+  const inStudio = stage === 'section' || stage === 'review';
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground">
       {/* Top bar */}
-      <header className="flex items-center justify-between border-b border-border/60 bg-background/95 px-6 py-3 backdrop-blur">
+      <header className="flex items-center justify-between border-b border-border/60 bg-background/95 px-4 py-3 backdrop-blur sm:px-6">
         <div className="flex items-center gap-3 min-w-0">
-          <button onClick={exit} className="rounded-md p-1.5 hover:bg-muted" aria-label="Close intake">
-            <X className="size-4" />
-          </button>
+          {inStudio && batch ? (
+            <button
+              onClick={returnToMissionControl}
+              className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="Return to Mission Control"
+            >
+              <ArrowLeft className="size-3.5" /> Mission Control
+            </button>
+          ) : (
+            <button onClick={exit} className="rounded-md p-1.5 hover:bg-muted" aria-label="Close intake">
+              <X className="size-4" />
+            </button>
+          )}
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
               <Sparkles className="size-3" /> Candidate Intake Engine
@@ -438,35 +456,45 @@ export default function CandidateIntake() {
               {stage === 'upload'     && 'Step 3 · Upload documents'}
               {stage === 'processing' && 'Step 4 · AI processing'}
               {stage === 'dashboard'  && 'Step 5 · AI Intake Review'}
-              {stage === 'section'    && `Step 6 · ${current.label}${activeCandidate ? ' · ' + activeCandidate.firstName + ' ' + activeCandidate.lastName : ''}`}
-              {stage === 'review'     && 'Final review'}
+              {stage === 'section'    && `${current.label}${activeCandidate ? ' · ' + activeCandidate.firstName + ' ' + activeCandidate.lastName : ''}`}
+              {stage === 'review'     && `Final review${activeCandidate ? ' · ' + activeCandidate.firstName + ' ' + activeCandidate.lastName : ''}`}
             </h1>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="hidden md:flex items-center gap-2 text-[11px] text-muted-foreground">
-            <Keyboard className="size-3.5" />
-            <span className="rounded border bg-muted px-1.5 py-0.5">⌘↵</span> verify
-            <span className="rounded border bg-muted px-1.5 py-0.5">⌘S</span> save
-            <span className="rounded border bg-muted px-1.5 py-0.5">Esc</span> exit
-          </div>
+          {inStudio && (
+            <div className="hidden md:flex items-center gap-4 text-[11px] text-muted-foreground">
+              {candidatePosition && (
+                <div className="flex flex-col items-end leading-tight">
+                  <span className="text-[9px] uppercase tracking-widest">Candidate</span>
+                  <span className="text-foreground font-medium tabular-nums">{candidatePosition.pos} of {candidatePosition.total}</span>
+                </div>
+              )}
+              {stage === 'section' && (
+                <div className="flex flex-col items-end leading-tight">
+                  <span className="text-[9px] uppercase tracking-widest">Section</span>
+                  <span className="text-foreground font-medium tabular-nums">
+                    {current.label} · {sectionIndex + 1} of {SECTIONS.length}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
           <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <Cloud className="size-3.5 text-emerald-600" />
             {savedAt ? <>Saved · {savedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</> : 'Autosave on'}
           </div>
-          <div className="w-44">
+          <div className="hidden lg:block w-36">
             <Progress value={progress} className="h-1.5" />
             <div className="mt-1 flex justify-between text-[10px] tabular-nums text-muted-foreground">
               <span>{progress}%</span>
-              <span>{completedCount} / {totalSteps} verified</span>
+              <span>{completedCount}/{totalSteps}</span>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={saveDraft} className="gap-1.5">
-            <Save className="size-3.5" /> Save draft
-          </Button>
         </div>
       </header>
+
 
       {/* Body */}
       {stage === 'type' && (
