@@ -112,6 +112,7 @@ export default function RolesPermissions() {
     // Persist to audit_events so it shows up in the Dashboard activity feed.
     void supabase.from('audit_events').insert({
       entity_type: 'role',
+      entity_id: crypto.randomUUID(),
       event_type: 'role_permission_change',
       actor_name: entry.actor,
       new_value: {
