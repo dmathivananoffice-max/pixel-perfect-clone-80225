@@ -130,7 +130,12 @@ export const updateAppUser = createServerFn({ method: 'POST' })
       throw new Error('Forbidden: administrator access required');
     }
 
-    const patch: Record<string, unknown> = {};
+    const patch: {
+      role_key?: string;
+      active?: boolean;
+      full_name?: string;
+      metadata?: { department: string };
+    } = {};
     if (data.role !== undefined) patch.role_key = data.role;
     if (data.active !== undefined) patch.active = data.active;
     if (data.fullName !== undefined) patch.full_name = data.fullName;
@@ -149,7 +154,7 @@ export const updateAppUser = createServerFn({ method: 'POST' })
       entity_id: data.id,
       event_type: 'user.updated',
       actor_id: context.userId,
-      new_value: patch,
+      new_value: patch as Record<string, string | boolean | { department: string }>,
     });
 
     return { ok: true };
