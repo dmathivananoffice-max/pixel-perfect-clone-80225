@@ -1,84 +1,72 @@
-# Candidate Intelligence Center — Phased Implementation Plan
+# Verification Studio V2 — Continuous Workflow
 
-All 42 recommendations accepted. Delivering in 6 phases so each phase ships a usable slice and we can course-correct between them. Current data layer is `mockData` — plan works against that now and swaps to Lovable Cloud tables in Phase 6 without changing UI code (single `useCandidatesQuery` hook is the seam).
+All 10 items from your feedback plus the sticky action bar. Single file: `src/pages/CandidateIntake.tsx` (plus small tweaks to `VerificationQueue.tsx`).
 
----
+## 1. Layout rebalance (Form 56% / Doc 44%)
+Widen the document panel by ~8–10%. New widths: form pane `flex-1`, doc pane `w-[44%] md:w-[43%] lg:w-[42%] xl:w-[42%]` (min-width guarded so it never squeezes below ~360px). Doc panel is the evidence — always readable without zoom at ≥1024px.
 
-## Phase 1 — Design system + shell (foundation)
+## 2. Persistent Verification Queue
+Queue is already rendered — verify it stays visible in `section`, `review`, AND all overlay states (never unmounted). Add columns already surfaced (status dot, product tag, current section, %). Ensure it does not close on mobile mid-verify. Confirm the queue is inside the studio flex row, not a modal.
 
-Goal: Apple/Linear/Stripe/Notion visual language, applied app-wide.
+## 3. Success overlays — never force back
+Replace immediate stage transitions with a centered success card overlay (blur backdrop, queue still visible behind). Three trigger points:
 
-- Refresh `src/styles.css` tokens: neutral-first palette, refined radii, elevation scale (subtle shadows only), motion tokens (150/220/320ms), focus rings.
-- Typography: Inter Display for UI + Söhne-like body via system stack fallback; tabular numerals for tables.
-- New primitives: `DataTable`, `Drawer`, `CommandPalette`, `Kbd`, `Toolbar`, `FilterChip`, `StatusPill`, `CountryFlag` (uses `country-flag-icons`), `Avatar`, `EmptyState`, `SkeletonRow`.
-- Global `⌘K` command palette (`cmdk`), global toast (`sonner`), global keyboard map hook.
-- Sticky app chrome; remove heavy borders across existing pages.
+- **Missing document resolved** (after uploading a passport/medical/etc from within a section):
+  - `✓ [Doc] Uploaded Successfully`
+  - Primary: **Continue Verification** → resumes at the exact section it came from
+  - Secondary: **Return to Mission Control**
+- **Candidate approved** (after Approve on review step):
+  - `✓ [Name] Approved`
+  - Primary: **Verify Next Candidate** → loads next unapproved candidate at their first unverified section, form already AI pre-filled
+  - Secondary: **Return to Mission Control**
+- **Batch complete** (last candidate approved):
+  - `✓ All [N] candidates verified`
+  - Primary: **Return to Mission Control**
 
-## Phase 2 — Candidate list core (the operational spine)
+No auto-advance. Recruiter clicks to move on.
 
-Goal: replace `src/pages/CandidateList.tsx` with the Intelligence Center list.
+## 4. Preserve verification context
+When a section triggers "upload missing doc", store `{ candidateId, sectionId }` before switching to the upload sub-flow. On success overlay → Continue: restore that exact section, scroll form to the field that flagged it. Never restart from section 1.
 
-- Header: sticky, product selector, global search, filter button, saved-views menu, Import, Export, Bulk Actions, primary **+ Add Candidate** (shortcut `A`).
-- URL-synced state via TanStack Router `validateSearch` (page, q, filters, view, open drawer id, sort). All filter/search/sort live in the URL.
-- Columns (product-adaptive presets): Rank · Candidate (avatar + name + flag tooltip) · Product · Stage (inline editable) · AI Score (bar+num) · Language Level · Speaking · STI/Training · Interview · Status pills · Recruiter · Last Activity · Actions.
-- Virtual scrolling via `@tanstack/react-virtual`, sticky header + sticky first column.
-- Row hover prefetches drawer data (250ms intent).
-- Keyboard: `j/k` row, `Enter` drawer, `x` select, `Shift+x` range select, `/` search, `F` filter, `E` export, `A` add.
-- Inline stage editor: popover with allowed transitions + optional ≤120-char note; optimistic update with 5s undo toast; writes to `candidate_status_history`.
-- Duplicate detection on Add (email/phone/passport fuzzy).
+## 5. Two progress indicators in the header
+- **Candidate** `3 of 42` (position in queue of non-approved candidates)
+- **Section** `Passport · 3 of 12`
 
-## Phase 3 — Filters, saved views, bulk actions
+Both live in the sticky top bar of the studio.
 
-- Filter panel: multi-select product, country, country-group, language level, speaking/STI/interview/visa/recognition status, recruiter, trainer, assessor, employer, score range, registration date, document status, placement-ready, consent status, passport-expiry window.
-- Saved Views: per-user, pinnable to sidebar; stored in Cloud (Phase 6) with localStorage fallback until then.
-- Bulk actions bar (appears on selection): Assign Speaking / STI / Interview / Recruiter / Employer, Move Stage, Request Documents, Email, WhatsApp, SMS, Generate Report, Export. Each opens a compact modal (trainer + date for Speaking, etc.) and shows per-row success/fail summary.
+## 6. Sticky bottom action bar (always visible)
+New component at bottom of the form pane, `sticky bottom-0`, backdrop blur, single row that adapts to state:
 
-## Phase 4 — Candidate Drawer (Candidate 360° compact)
+```
+[← Previous]  [Save Draft]  [Verify & Continue →]         [Approve Candidate]
+```
 
-Right-side drawer, deep-linkable (`?open=CID`). Sections as tabs: Overview · Timeline · Documents · Assessments (Speaking, Training, Interview 1, Interview 2 — each independent) · Visa · Recognition · Communication · Notes · History · AI. Drawer and `/candidates/:id` full page share the same section components (single source of truth = the Candidate 360° pattern).
+On review step: `Approve Candidate` becomes primary. On overlay states, the bar is replaced by the two overlay buttons. `Return to Mission Control` moves to the header (persistent, no confirm dialog — drafts autosave).
 
-- AI panel: strengths, weaknesses, placement probability, recommended employers, recommended product, missing docs, next best action, risk flags. Uses Lovable AI Gateway (server function, no key exposed).
-- Comments with `@mentions`, internal-only visibility.
+## 7. Queue intelligence
+Real-time state map: `approved` (green ✓, row collapses to one line), `verifying` (blue ring, current), `waiting` (dim), `missing_docs` (red), `manual_review` (orange). After approval → candidate row collapses in place, next candidate gets the blue "next up" highlight but does NOT open until the recruiter clicks Verify Next.
 
-## Phase 5 — Assessment split + workflow config
+## 8. Persistent Mission Control button
+Header keeps `← Mission Control` at all times (already there — verify it's shown during overlays and doesn't confirm).
 
-- Split STI into two independent modules: **Speaking Assessment** and **Training** (separate tables, separate scoring rubrics, separate queues, separate filters). Types + mock data updated.
-- Workflow config: `workflow_stages`, `workflow_transitions`, `products`, `assessments`, `country_groups`, `filters_config` — seeded from current hard-coded values but editable in an Admin → Configuration page.
-- Table columns/quick-actions read from product config (already the pattern in `src/config/products.ts`) — extended to include column presets.
+## 9. Verify Next flow
+`verifyNextCandidate()`: from `approvedIds` + queue order, pick first non-approved candidate, restore their snapshot (or seed if none), jump to first non-verified section, close overlay. If none remain → batch-complete overlay.
 
-## Phase 6 — Lovable Cloud data layer
+## Technical section
 
-Migrate mock data behind server functions + RLS. Tables (all with GRANT + RLS + `service_role`):
+Changes are all in `src/pages/CandidateIntake.tsx`:
 
-- `candidates` (add `nationality`, `current_country`, `passport_country`, `passport_expiry`, `consent_flags jsonb`, `assigned_team jsonb`, `last_activity_at`, `placement_readiness numeric`, `org_id`, `region_id`, `deleted_at`)
-- `speaking_assessments`, `training_assessments`, `interview_rounds` (round 1..n)
-- `candidate_status_history` (append-only; actor, from, to, note ≤120, at)
-- `workflow_stages`, `workflow_transitions`, `products`, `assessments_config`, `country_groups`
-- `saved_views`, `candidate_comments`, `candidate_ai_summaries` (cached)
-- Materialized view `candidate_intelligence_v` (joins latest scores, doc completeness, days-since-activity) — refreshed on write via trigger.
-- Postgres `tsvector` search column + GIN index.
-- Roles: `user_roles` + `has_role()` (per knowledge). Field-level PII redaction handled in server function based on `pii:read` role.
-- GDPR: soft-delete + 30-day purge cron via `/api/public/cron/purge` (secret-verified), consent gate on any bulk email/SMS/WhatsApp action, data-residency tag.
-- Server functions: `listCandidates`, `getCandidate`, `updateStage`, `assignSpeaking`, `assignTraining`, `assignInterview`, `bulkAction`, `aiSummary`, `savedViews.*`, `commentAdd`. All authenticated; audit every mutation.
+- **New state**: `overlay: null | { kind: 'doc_uploaded' | 'candidate_approved' | 'batch_done'; label: string; resumeSection?: SectionId }`, `resumeContext: { candidateId, sectionId } | null`.
+- **New helpers**: `openApprovalOverlay()`, `verifyNextCandidate()`, `resumeAfterUpload()`, `getNextCandidateId()`.
+- **Refactor**: split studio JSX so the queue + header + sticky action bar remain mounted while an overlay is shown (overlay is an absolute-positioned card, not a stage replacement).
+- **Layout**: adjust the two flex panels' widths only; no structural change to `SectionForm` / `DocumentViewer`.
+- **VerificationQueue.tsx**: add a `currentlyVerifyingId` visual state (blue ring) distinct from `activeCandidateId`, and collapse approved rows to a compact single line.
 
----
+No new routes, no backend changes, no schema. Pure UI + local state.
 
-## Technical notes
+## Out of scope (this pass)
+- Real AI pre-fill for candidate N (mock data is reused; the "already pre-filled" claim holds because seeds are per-section).
+- Persisting snapshots across page reloads (in-memory only, matches current behavior).
+- Animating queue row collapse (simple conditional render for now).
 
-- No new page routes for drawer; state lives in URL search params.
-- Virtual list uses server-side pagination (cursor) from Phase 6; Phase 2 uses in-memory pagination over mock data with the same hook signature.
-- All colors/shadows via CSS tokens — no hard-coded hex in components.
-- No Supabase Edge Functions; all app logic via `createServerFn`. Cron/webhooks via `/api/public/*` server routes.
-- AI calls go through Lovable AI Gateway from a server function; no key in browser.
-
-## Out of scope for this pass
-
-- Native mobile shell (responsive web only).
-- White-label theme editor UI (tokens ready, admin UI later).
-- Full multi-tenant org switcher UI (schema ready, single-org default).
-
----
-
-**Proposed execution order:** ship Phase 1 + Phase 2 in the first build (visible transformation), then Phase 3, then Phase 4+5 together (drawer needs the split assessments), then Phase 6 (Cloud).
-
-Reply **"go"** to start with Phase 1 + 2, or tell me to reorder / drop specific items.
+Reply **go** to build, or tell me which items to drop/reorder.
