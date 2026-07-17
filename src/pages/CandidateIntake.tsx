@@ -544,6 +544,7 @@ export default function CandidateIntake() {
         <ReviewDashboard
           batch={batch}
           approvedIds={approvedIds}
+          resumableIds={new Set(Object.keys(snapshots).filter((id) => !approvedIds.has(id)))}
           onBack={() => setStage('upload')}
           onVerify={openVerification}
         />
