@@ -110,24 +110,43 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
       return;
     }
-    const profile = await loadProfile(session.user.id, session.user.email);
-    if (!profile) {
-      // Signed in via Supabase but no active app_users record — sign back out.
-      await supabase.auth.signOut();
+    try {
+      const profile = await loadProfile(session.user.id, session.user.email);
+      if (!profile) {
+        // Signed in via Supabase but no active app_users record — sign back out.
+        try {
+          await supabase.auth.signOut();
+        } catch (signOutErr) {
+          console.error('[auth] signOut after missing profile failed', signOutErr);
+        }
+        set({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+          isHydrating: false,
+        });
+        return;
+      }
+      set({
+        user: profile,
+        token: session.access_token,
+        isAuthenticated: true,
+        isHydrating: false,
+      });
+    } catch (err) {
+      console.error('[auth] hydrateFromSession failed', err);
+      try {
+        await supabase.auth.signOut();
+      } catch (signOutErr) {
+        console.error('[auth] signOut after hydrate error failed', signOutErr);
+      }
       set({
         user: null,
         token: null,
         isAuthenticated: false,
         isHydrating: false,
       });
-      return;
     }
-    set({
-      user: profile,
-      token: session.access_token,
-      isAuthenticated: true,
-      isHydrating: false,
-    });
   },
 }));
 

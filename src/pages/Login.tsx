@@ -10,9 +10,24 @@ import toast from 'react-hot-toast';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
+  const [startupError, setStartupError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const { sendMagicLink, isLoading, isAuthenticated } = useAuthStore();
+
+  // Surface any startup error captured during app bootstrap (e.g. bad/expired
+  // magic link, missing app_users record, Supabase failure).
+  useEffect(() => {
+    try {
+      const msg = sessionStorage.getItem('wf:login-error');
+      if (msg) {
+        setStartupError(msg);
+        sessionStorage.removeItem('wf:login-error');
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   // If session hydrates while sitting on /login (e.g. after clicking magic link), go to dashboard.
   useEffect(() => {
@@ -43,6 +58,14 @@ export default function Login() {
         </div>
 
         <div className="bg-white rounded-xl shadow-lg border p-8">
+          {startupError && !sent && (
+            <div
+              role="alert"
+              className="mb-5 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+            >
+              {startupError}
+            </div>
+          )}
           {sent ? (
             <div className="text-center space-y-4">
               <div className="inline-flex w-12 h-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
