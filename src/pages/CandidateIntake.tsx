@@ -731,6 +731,33 @@ export default function CandidateIntake() {
                   <DocumentViewer section={current} zoom={zoom} setZoom={setZoom} />
                 </div>
 
+                {/* Staff-only Document Fingerprint drawer — audit trail overlay */}
+                {canSeeFingerprint && activeCandidateId && fingerprintOpen && (
+                  <div className="absolute right-0 top-0 bottom-0 z-30 flex w-[380px] flex-col border-l border-border/60 bg-background shadow-2xl animate-section-in">
+                    <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">
+                          <ShieldCheck className="size-3" /> Document Fingerprints
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          Staff audit · {RLS_MODE_DESCRIPTOR.label}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setFingerprintOpen(false)}
+                        className="gap-1 text-xs"
+                        aria-label="Close fingerprint panel"
+                      >
+                        <X className="size-3.5" />
+                      </Button>
+                    </div>
+                    <div className="flex-1 min-h-0 overflow-y-auto">
+                      <DocumentFingerprintPanel candidateId={activeCandidateId} hideHeader />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
