@@ -192,6 +192,6 @@ export async function approveCandidate(candidateDbId: string, snapshot: {
     entity_type: 'candidate',
     entity_id: candidateDbId,
     event_type: 'intake_approved',
-    payload: { verifiedSections: snapshot.verifiedSections },
+    new_value: { verifiedSections: snapshot.verifiedSections },
   });
 }
