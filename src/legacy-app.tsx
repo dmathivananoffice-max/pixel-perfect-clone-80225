@@ -20,6 +20,7 @@ import CandidatePortal from '@/pages/CandidatePortal';
 import ContractSigning from '@/pages/ContractSigning';
 import EmailCenter from '@/pages/EmailCenter';
 import UserManagement from '@/pages/UserManagement';
+import RolesPermissions from '@/pages/RolesPermissions';
 import Reports from '@/pages/Reports';
 
 function App() {
@@ -47,6 +48,7 @@ function App() {
           <Route path="/documents/import" element={<Navigate to="/candidates/new" replace />} />
           <Route path="/documents/bulk" element={<Navigate to="/candidates/new" replace />} />
           <Route path="/admin/users" element={<UserManagement />} />
+          <Route path="/admin/roles" element={<RolesPermissions />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Route>
