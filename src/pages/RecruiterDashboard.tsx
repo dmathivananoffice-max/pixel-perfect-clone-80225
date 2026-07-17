@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useReports } from '@/hooks/useReports';
-import { mockCandidates, mockSTISpeaking } from '@/lib/mockData';
+import { mockSTISpeaking } from '@/lib/mockData';
+import { useAllCandidates } from '@/hooks/useAllCandidates';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/StatusBadge';
