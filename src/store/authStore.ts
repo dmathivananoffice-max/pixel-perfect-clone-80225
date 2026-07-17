@@ -111,7 +111,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setUser: (user) => set({ user, isAuthenticated: !!user }),
 
-  hydrateFromSession: async (session) => {
+  hydrateFromSession: async (_session) => {
+    // ⚠️ DEV BYPASS: keep the fake super_admin no matter what Supabase says.
+    set({ isHydrating: false });
+    return;
+    // eslint-disable-next-line no-unreachable
+    // @ts-expect-error legacy code preserved below for restore
+    // prettier-ignore
+    // eslint-disable-next-line
+    async (session: never) => {
     if (!session?.user?.email) {
       set({
         user: null,
