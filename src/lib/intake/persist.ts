@@ -256,6 +256,12 @@ export async function persistIntakeBatch(params: {
     if (!candDbId) continue;
 
     for (const f of groups[gi]) {
+      // TODO(security): Add virus/malware scanning here (e.g. MetaDefender
+      // Cloud API or Cloudmersive) BEFORE this upload path is opened to
+      // external candidates or agencies. Currently only internal team
+      // members upload test documents — acceptable for internal testing
+      // only, not for any candidate-facing or agency-facing upload.
+
       // Pre-OCR gate: validate before touching storage.
       const validationErr = validateFile(f.file);
       if (validationErr) {
@@ -264,6 +270,7 @@ export async function persistIntakeBatch(params: {
         onProgress?.(done, total);
         continue;
       }
+
 
       // Fingerprint — deterministic, tamper-evident, dedupe key.
       let sha256: string;
