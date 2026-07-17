@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { IntakeMode } from '@/lib/intake/batch';
 
-interface UploadedFile {
+export interface UploadedFile {
   id: string;
   name: string;
   size: number;
