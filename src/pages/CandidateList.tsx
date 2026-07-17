@@ -199,7 +199,7 @@ export default function CandidateList() {
               <h1 className="text-2xl font-semibold tracking-tight">Candidate Intelligence</h1>
               <p className="mt-0.5 text-sm text-muted-foreground">
                 <span className="tabular-nums">{candidates.length}</span> of{' '}
-                <span className="tabular-nums">{mockCandidates.length}</span> candidates
+                <span className="tabular-nums">{dbCandidates.length}</span> candidates
                 {productFilter && productFilter !== 'all' && (
                   <> · {PRODUCTS.find((p) => p.id === productFilter)?.label}</>
                 )}
