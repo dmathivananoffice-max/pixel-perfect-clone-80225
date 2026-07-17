@@ -346,17 +346,48 @@ export default function CandidateIntake() {
     if (stage === 'product')    { setStage('type'); return; }
   }
 
-  function beginProcessing(count: number) {
-    setUploadedCount(count);
+  function beginProcessing(files: UploadedFile[]) {
+    setUploadedCount(files.length);
+    setPendingFiles(files);
     setStage('processing');
   }
 
-  function finishProcessing() {
+  // Real intake persistence: batch → candidates → storage uploads → docs
+  async function runIntakePersistence(): Promise<void> {
     const p = product ?? 'nurses';
     const productDef = INTAKE_PRODUCTS.find((x) => x.id === p)!;
-    setBatch(makeMockBatch(mode ?? 'single', p, productDef.label));
+    const m = mode ?? 'single';
+    const intakeFiles: IntakeFile[] = pendingFiles.map((f) => ({
+      id: f.id, file: f.file, path: f.path, kind: f.kind,
+    }));
+    const groups = m === 'single' ? [intakeFiles] : groupFilesByFolder(intakeFiles);
+    const candidateCount = m === 'single' ? 1 : Math.max(1, groups.length);
+    const localBatch = makeMockBatch(m, p, productDef.label, candidateCount);
+    try {
+      const { batch: persisted } = await persistIntakeBatch({
+        mode: m,
+        productId: p,
+        localBatch,
+        files: intakeFiles,
+        onFileError: (name, err) => toast.error(`Upload failed: ${name}`, { description: err }),
+      });
+      setBatch(persisted);
+      toast.success('Batch ready', {
+        description: `${persisted.candidates.length} candidate${persisted.candidates.length === 1 ? '' : 's'} · ${intakeFiles.length} document${intakeFiles.length === 1 ? '' : 's'} saved.`,
+      });
+    } catch (err) {
+      toast.error('Intake failed', {
+        description: err instanceof Error ? err.message : String(err),
+      });
+      // Fallback so the recruiter can still exercise the UI
+      setBatch(localBatch);
+    }
+  }
+
+  function finishProcessing() {
     setStage('dashboard');
   }
+
 
   function snapshotCurrent(): CandSnapshot {
     return { values, edited, verified, uploads, declarations, sectionIndex };
