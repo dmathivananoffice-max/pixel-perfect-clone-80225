@@ -376,8 +376,20 @@ export default function CandidateIntake() {
         description: `${persisted.candidates.length} candidate${persisted.candidates.length === 1 ? '' : 's'} · ${intakeFiles.length} document${intakeFiles.length === 1 ? '' : 's'} saved.`,
       });
     } catch (err) {
-      toast.error('Intake failed', {
+      const title =
+        err instanceof IntakeError && err.kind === 'validation'
+          ? 'Please fix these issues before submitting'
+          : err instanceof IntakeError && err.kind === 'permission'
+            ? 'Not authorized — contact your admin'
+            : err instanceof IntakeError && err.kind === 'network'
+              ? 'Network issue — you can retry'
+              : 'Intake failed';
+      toast.error(title, {
         description: err instanceof Error ? err.message : String(err),
+        action:
+          err instanceof IntakeError && isTransient(err.kind)
+            ? { label: 'Retry', onClick: () => { void runIntakePersistence(); } }
+            : undefined,
       });
       // Fallback so the recruiter can still exercise the UI
       setBatch(localBatch);
