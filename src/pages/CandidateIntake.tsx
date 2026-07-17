@@ -198,6 +198,7 @@ export default function CandidateIntake() {
   const [mode, setMode] = useState<IntakeMode | null>(null);
   const [product, setProduct] = useState<IntakeProductId | null>(null);
   const [uploadedCount, setUploadedCount] = useState(0);
+  const [pendingFiles, setPendingFiles] = useState<UploadedFile[]>([]);
   const [batch, setBatch] = useState<IntakeBatch | null>(null);
   const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
   const [activeCandidateId, setActiveCandidateId] = useState<string | null>(null);
