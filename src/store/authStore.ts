@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { User, UserRole } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
+import { authSupabase } from '@/lib/authClient';
 
 interface AuthState {
   user: User | null;
@@ -27,7 +27,7 @@ async function loadProfile(
   email: string,
 ): Promise<User | null> {
   // Fetch the app_users row (role, department, activation state).
-  const { data, error } = await supabase
+  const { data, error } = await authSupabase
     .from('app_users')
     .select('id, email, full_name, role_key, active, metadata, created_at')
     .eq('auth_user_id', authUserId)
@@ -62,7 +62,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   sendMagicLink: async (email: string) => {
     set({ isLoading: true });
     try {
-      const { error } = await supabase.auth.signInWithOtp({
+      const { error } = await authSupabase.auth.signInWithOtp({
         email,
         options: {
           emailRedirectTo:
@@ -79,7 +79,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
-    await supabase.auth.signOut();
+    await authSupabase.auth.signOut();
     set({
       user: null,
       token: null,
@@ -115,7 +115,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (!profile) {
         // Signed in via Supabase but no active app_users record — sign back out.
         try {
-          await supabase.auth.signOut();
+          await authSupabase.auth.signOut();
         } catch (signOutErr) {
           console.error('[auth] signOut after missing profile failed', signOutErr);
         }
@@ -136,7 +136,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (err) {
       console.error('[auth] hydrateFromSession failed', err);
       try {
-        await supabase.auth.signOut();
+        await authSupabase.auth.signOut();
       } catch (signOutErr) {
         console.error('[auth] signOut after hydrate error failed', signOutErr);
       }
@@ -152,7 +152,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
 // Wire Supabase → store. Runs once on module load in the browser.
 if (typeof window !== 'undefined') {
-  supabase.auth.onAuthStateChange((event, session) => {
+  authSupabase.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') {
       useAuthStore.setState({
         user: null,

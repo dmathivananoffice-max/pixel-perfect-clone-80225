@@ -28,7 +28,7 @@ function getAuthReturnState() {
 }
 
 async function waitForHydratedSession(
-  supabase: typeof import("@/integrations/supabase/client").supabase,
+  supabase: typeof import("@/lib/authClient").authSupabase,
   timeoutMs = 2500,
 ) {
   const startedAt = Date.now();
@@ -61,7 +61,7 @@ export function LegacyAppMount() {
       const [rr, mod, clientMod, storeMod] = await Promise.all([
         import("react-router-dom"),
         import("./legacy-app"),
-        import("@/integrations/supabase/client"),
+        import("@/lib/authClient"),
         import("@/store/authStore"),
       ]);
 
@@ -84,13 +84,13 @@ export function LegacyAppMount() {
         // implicit token hash. Complete that exchange before mounting routes;
         // otherwise /login can briefly render the send-link form again.
         if (authReturn.code) {
-          const { error } = await clientMod.supabase.auth.exchangeCodeForSession(authReturn.code);
+          const { error } = await clientMod.authSupabase.auth.exchangeCodeForSession(authReturn.code);
           if (error) throw error;
         }
 
         const session = authReturn.code || authReturn.hasTokenHash
-          ? await waitForHydratedSession(clientMod.supabase)
-          : (await clientMod.supabase.auth.getSession()).data.session;
+          ? await waitForHydratedSession(clientMod.authSupabase)
+          : (await clientMod.authSupabase.auth.getSession()).data.session;
 
         await storeMod.useAuthStore.getState().hydrateFromSession(session ?? null);
       } catch (innerErr) {
