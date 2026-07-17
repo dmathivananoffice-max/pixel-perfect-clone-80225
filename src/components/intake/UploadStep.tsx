@@ -53,8 +53,8 @@ export function UploadStep({
         name: f.name,
         size: f.size,
         kind: kindOf(f.name),
-        // webkitRelativePath is set when using directory uploads
         path: (f as File & { webkitRelativePath?: string }).webkitRelativePath || undefined,
+        file: f,
       })),
     ]);
   }, []);
