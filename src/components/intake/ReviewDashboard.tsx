@@ -311,7 +311,11 @@ export function ReviewDashboard({
                       className="gap-1.5"
                       disabled={done}
                     >
-                      {done ? <><CheckCircle2 className="size-3.5 text-emerald-600" /> Approved</> : <>Verify <ArrowRight className="size-3.5" /></>}
+                      {done
+                        ? <><CheckCircle2 className="size-3.5 text-emerald-600" /> Approved</>
+                        : resumableIds?.has(c.id)
+                          ? <>Resume <ArrowRight className="size-3.5" /></>
+                          : <>Verify <ArrowRight className="size-3.5" /></>}
                     </Button>
                   </li>
                 );
