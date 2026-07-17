@@ -58,6 +58,14 @@ export default function Login() {
         </div>
 
         <div className="bg-white rounded-xl shadow-lg border p-8">
+          {startupError && !sent && (
+            <div
+              role="alert"
+              className="mb-5 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+            >
+              {startupError}
+            </div>
+          )}
           {sent ? (
             <div className="text-center space-y-4">
               <div className="inline-flex w-12 h-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
