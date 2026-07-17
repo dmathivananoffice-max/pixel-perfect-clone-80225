@@ -95,16 +95,31 @@ export default function RolesPermissions() {
   // ---------- Mutations ----------
 
   const logAudit = (entry: Omit<AuditEntry, 'id' | 'timestamp' | 'roleId' | 'roleName'>) => {
+    const roleId = selectedRole.id;
+    const roleName = selectedRole.name;
+    const timestamp = new Date().toISOString();
     setAudit((prev) => [
       {
         ...entry,
         id: `a-${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        roleId: selectedRole.id,
-        roleName: selectedRole.name,
+        timestamp,
+        roleId,
+        roleName,
       },
       ...prev,
     ]);
+    // Persist to audit_events so it shows up in the Dashboard activity feed.
+    void supabase.from('audit_events').insert({
+      entity_type: 'role',
+      event_type: 'role_permission_change',
+      actor_name: entry.actor,
+      new_value: {
+        role: roleName,
+        note: entry.summary,
+        before: entry.before,
+        after: entry.after,
+      },
+    });
   };
 
   const updateRole = (id: string, patch: Partial<Role>) => {
