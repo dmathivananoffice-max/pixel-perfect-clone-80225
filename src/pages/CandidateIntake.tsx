@@ -223,6 +223,28 @@ export default function CandidateIntake() {
   const [snapshots, setSnapshots] = useState<Record<string, CandSnapshot>>({});
   const [showApprovalOverlay, setShowApprovalOverlay] = useState(false);
   const [lastApprovedName, setLastApprovedName] = useState<string>('');
+  const [docUploadOverlay, setDocUploadOverlay] = useState<
+    { docLabel: string; candidateId: string; sectionId: SectionId } | null
+  >(null);
+
+  // Wrap setUploads so any newly-uploaded document surfaces the success overlay.
+  // Preserves candidate + section context so the recruiter can Continue right where they left off.
+  function handleSetUploads(next: Record<string, boolean>) {
+    const newlyKey = Object.keys(next).find((k) => next[k] && !uploads[k]);
+    setUploads(next);
+    if (newlyKey && activeCandidateId && current) {
+      const label =
+        REQUIRED_UPLOADS.find((u) => u.key === newlyKey)?.label ??
+        (newlyKey.startsWith('driving_')
+          ? `Driving licence (${newlyKey.replace('driving_', '')})`
+          : 'Document');
+      setDocUploadOverlay({
+        docLabel: label,
+        candidateId: activeCandidateId,
+        sectionId: current.id,
+      });
+    }
+  }
 
   const activeCandidate = useMemo(
     () => (batch && activeCandidateId ? batch.candidates.find((c) => c.id === activeCandidateId) ?? null : null),
@@ -522,6 +544,7 @@ export default function CandidateIntake() {
         <ReviewDashboard
           batch={batch}
           approvedIds={approvedIds}
+          resumableIds={new Set(Object.keys(snapshots).filter((id) => !approvedIds.has(id)))}
           onBack={() => setStage('upload')}
           onVerify={openVerification}
         />
@@ -555,6 +578,7 @@ export default function CandidateIntake() {
                 activeCandidateId={activeCandidateId}
                 approvedIds={approvedIds}
                 progressMap={progressMap}
+                nextUpId={showApprovalOverlay ? pickNextCandidate() : null}
                 onSelectCandidate={(id) => {
                   const cand = batch!.candidates.find((c) => c.id === id);
                   openVerification(id, snapshots[id] ? undefined : cand?.focus);
@@ -586,7 +610,7 @@ export default function CandidateIntake() {
                       edited={edited[current.id] ?? new Set()}
                       onChange={(k, v) => setFieldValue(current.id, k, v)}
                       uploads={uploads}
-                      setUploads={setUploads}
+                      setUploads={handleSetUploads}
                       firstName={firstName}
                     />
                   </div>
@@ -693,6 +717,49 @@ export default function CandidateIntake() {
                 </div>
               );
             })()}
+
+            {docUploadOverlay && (
+              <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/70 backdrop-blur-sm animate-section-in">
+                <div className="w-full max-w-md rounded-2xl border border-border/60 bg-background p-8 text-center shadow-2xl">
+                  <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-4 ring-emerald-100">
+                    <Check className="size-7" />
+                  </div>
+                  <h3 className="font-display text-2xl font-semibold tracking-tight">
+                    {docUploadOverlay.docLabel} uploaded successfully
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    AI extracted the document and updated the candidate master record.
+                    {activeCandidate && (
+                      <> Resume verification for <span className="font-medium text-foreground">{activeCandidate.firstName} {activeCandidate.lastName}</span>.</>
+                    )}
+                  </p>
+                  <div className="mt-6 flex flex-col gap-2">
+                    <Button
+                      size="lg"
+                      onClick={() => {
+                        // Restore exact section the recruiter came from
+                        const idx = SECTIONS.findIndex((s) => s.id === docUploadOverlay.sectionId);
+                        if (idx >= 0) setSectionIndex(idx);
+                        setDocUploadOverlay(null);
+                      }}
+                      className="gap-2"
+                    >
+                      Continue candidate verification <ArrowRight className="size-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setDocUploadOverlay(null);
+                        returnToMissionControl();
+                      }}
+                      className="gap-1.5"
+                    >
+                      <ArrowLeft className="size-4" /> Return to Mission Control
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         );
       })()}

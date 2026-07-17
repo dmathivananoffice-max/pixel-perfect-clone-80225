@@ -17,10 +17,12 @@ type CardId = 'ready' | 'duplicate' | 'missing_docs' | 'manual_review' | 'low_co
 type SortId = 'priority' | 'name' | 'country' | 'confidence';
 
 export function ReviewDashboard({
-  batch, approvedIds, onBack, onVerify, onApproveInline,
+  batch, approvedIds, resumableIds, onBack, onVerify, onApproveInline,
 }: {
   batch: IntakeBatch;
   approvedIds: Set<string>;
+  /** Candidates with a saved partial-verification snapshot — show "Resume". */
+  resumableIds?: Set<string>;
   onBack: () => void;
   /** Open Candidate Verification Studio. Optional focus tells it where to land. */
   onVerify: (candidateId: string, focus?: FieldFocus) => void;
@@ -309,7 +311,11 @@ export function ReviewDashboard({
                       className="gap-1.5"
                       disabled={done}
                     >
-                      {done ? <><CheckCircle2 className="size-3.5 text-emerald-600" /> Approved</> : <>Verify <ArrowRight className="size-3.5" /></>}
+                      {done
+                        ? <><CheckCircle2 className="size-3.5 text-emerald-600" /> Approved</>
+                        : resumableIds?.has(c.id)
+                          ? <>Resume <ArrowRight className="size-3.5" /></>
+                          : <>Verify <ArrowRight className="size-3.5" /></>}
                     </Button>
                   </li>
                 );
