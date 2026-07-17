@@ -50,12 +50,23 @@ async function loadProfile(
   };
 }
 
+// ⚠️ DEV BYPASS: login disabled during rapid build phase.
+const DEV_USER: User = {
+  id: 'dev-super-admin',
+  email: 'dev@workforce-europe.local',
+  name: 'Dev Super Admin',
+  role: 'super_admin',
+  status: 'active',
+  mfa_enabled: false,
+  created_at: new Date().toISOString(),
+};
+
 export const useAuthStore = create<AuthState>((set, get) => ({
-  user: null,
-  token: null,
-  isAuthenticated: false,
+  user: DEV_USER,
+  token: 'dev-bypass',
+  isAuthenticated: true,
   isLoading: false,
-  isHydrating: true,
+  isHydrating: false,
   showMFA: false,
   tempToken: null,
 
