@@ -43,7 +43,7 @@ function App() {
     <>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} />
+          <Route path="/login" element={<Navigate to="/dashboard" replace />} />
           {/* Full-screen module — no AppLayout chrome */}
           <Route path="/candidates/new" element={<RouteGuard><CandidateIntake /></RouteGuard>} />
           <Route element={<RouteGuard><AppLayout /></RouteGuard>}>

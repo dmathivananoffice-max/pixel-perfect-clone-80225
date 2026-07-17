@@ -50,12 +50,23 @@ async function loadProfile(
   };
 }
 
+// ⚠️ DEV BYPASS: login disabled during rapid build phase.
+const DEV_USER: User = {
+  id: 'dev-super-admin',
+  email: 'dev@workforce-europe.local',
+  name: 'Dev Super Admin',
+  role: 'super_admin',
+  status: 'active',
+  mfa_enabled: false,
+  created_at: new Date().toISOString(),
+};
+
 export const useAuthStore = create<AuthState>((set, get) => ({
-  user: null,
-  token: null,
-  isAuthenticated: false,
+  user: DEV_USER,
+  token: 'dev-bypass',
+  isAuthenticated: true,
   isLoading: false,
-  isHydrating: true,
+  isHydrating: false,
   showMFA: false,
   tempToken: null,
 
@@ -100,70 +111,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setUser: (user) => set({ user, isAuthenticated: !!user }),
 
-  hydrateFromSession: async (session) => {
-    if (!session?.user?.email) {
-      set({
-        user: null,
-        token: null,
-        isAuthenticated: false,
-        isHydrating: false,
-      });
-      return;
-    }
-    try {
-      const profile = await loadProfile(session.user.id, session.user.email);
-      if (!profile) {
-        // Signed in via Supabase but no active app_users record — sign back out.
-        try {
-          await authSupabase.auth.signOut();
-        } catch (signOutErr) {
-          console.error('[auth] signOut after missing profile failed', signOutErr);
-        }
-        set({
-          user: null,
-          token: null,
-          isAuthenticated: false,
-          isHydrating: false,
-        });
-        return;
-      }
-      set({
-        user: profile,
-        token: session.access_token,
-        isAuthenticated: true,
-        isHydrating: false,
-      });
-    } catch (err) {
-      console.error('[auth] hydrateFromSession failed', err);
-      try {
-        await authSupabase.auth.signOut();
-      } catch (signOutErr) {
-        console.error('[auth] signOut after hydrate error failed', signOutErr);
-      }
-      set({
-        user: null,
-        token: null,
-        isAuthenticated: false,
-        isHydrating: false,
-      });
-    }
+  hydrateFromSession: async (_session) => {
+    // ⚠️ DEV BYPASS: keep the fake super_admin regardless of Supabase session.
+    set({ isHydrating: false });
   },
 }));
 
-// Wire Supabase → store. Runs once on module load in the browser.
-if (typeof window !== 'undefined') {
-  authSupabase.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_OUT') {
-      useAuthStore.setState({
-        user: null,
-        token: null,
-        isAuthenticated: false,
-        isHydrating: false,
-      });
-      return;
-    }
-    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-      void useAuthStore.getState().hydrateFromSession(session);
-    }
-  });
-}
+// ⚠️ DEV BYPASS: Supabase auth listener disabled during rapid build phase.
+
