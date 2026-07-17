@@ -215,7 +215,17 @@ export default function CandidateIntake() {
   const [declarations, setDeclarations] = useState({ reviewed: false, matches: false, complete: false });
   const [zoom, setZoom] = useState(100);
   const [docOpen, setDocOpen] = useState(false); // mobile / tablet drawer
+  const [fingerprintOpen, setFingerprintOpen] = useState(false); // staff audit panel
   const [savedAt, setSavedAt] = useState<Date | null>(null);
+
+  // Staff-only audit panel: Documentation Officer, Operations Manager
+  // (mapped to managing_director in current role model), Super Admin.
+  const { user } = useAuth();
+  const canSeeFingerprint =
+    !!user &&
+    (user.role === 'super_admin' ||
+      user.role === 'managing_director' ||
+      user.role === 'documentation_officer');
 
   // Per-candidate persisted verification state (for the persistent Queue)
   interface CandSnapshot {
