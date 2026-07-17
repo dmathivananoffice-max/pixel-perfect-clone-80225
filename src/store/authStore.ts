@@ -67,7 +67,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         options: {
           emailRedirectTo:
             typeof window !== 'undefined'
-              ? window.location.origin + '/dashboard'
+              ? window.location.origin + '/login'
               : undefined,
           shouldCreateUser: true,
         },
