@@ -28,6 +28,7 @@ import {
   PERMISSION_GROUPS, ROLE_TEMPLATES, ACTION_LABEL, MOCK_USERS_BY_ROLE, INITIAL_AUDIT,
   type Role, type PermissionAction, type AuditEntry, type RoleUser,
 } from '@/lib/rbac';
+import { supabase } from '@/integrations/supabase/client';
 
 type SortMode = 'name' | 'users' | 'modified';
 
