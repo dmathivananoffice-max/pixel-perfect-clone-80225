@@ -166,8 +166,10 @@ export type Database = {
       }
       candidate_documents: {
         Row: {
+          ai_model_version: string | null
           candidate_id: string
           created_at: string
+          document_state: string
           document_type: string
           expiry_date: string | null
           extracted_fields: Json
@@ -176,18 +178,31 @@ export type Database = {
           mime_type: string | null
           ocr_complete: boolean
           ocr_confidence: number | null
+          ocr_error: string | null
+          ocr_provider: string | null
+          ocr_raw: Json | null
+          ocr_status: string
+          ocr_version: string | null
+          page_count: number | null
+          processed_at: string | null
+          sha256: string | null
           size_bytes: number | null
+          standardized_filename: string | null
           storage_path: string
           updated_at: string
+          upload_id: string
           uploaded_by: string | null
+          uploaded_by_name: string | null
           verified: boolean
           verified_at: string | null
           verified_by: string | null
           version: number
         }
         Insert: {
+          ai_model_version?: string | null
           candidate_id: string
           created_at?: string
+          document_state?: string
           document_type?: string
           expiry_date?: string | null
           extracted_fields?: Json
@@ -196,18 +211,31 @@ export type Database = {
           mime_type?: string | null
           ocr_complete?: boolean
           ocr_confidence?: number | null
+          ocr_error?: string | null
+          ocr_provider?: string | null
+          ocr_raw?: Json | null
+          ocr_status?: string
+          ocr_version?: string | null
+          page_count?: number | null
+          processed_at?: string | null
+          sha256?: string | null
           size_bytes?: number | null
+          standardized_filename?: string | null
           storage_path: string
           updated_at?: string
+          upload_id?: string
           uploaded_by?: string | null
+          uploaded_by_name?: string | null
           verified?: boolean
           verified_at?: string | null
           verified_by?: string | null
           version?: number
         }
         Update: {
+          ai_model_version?: string | null
           candidate_id?: string
           created_at?: string
+          document_state?: string
           document_type?: string
           expiry_date?: string | null
           extracted_fields?: Json
@@ -216,10 +244,21 @@ export type Database = {
           mime_type?: string | null
           ocr_complete?: boolean
           ocr_confidence?: number | null
+          ocr_error?: string | null
+          ocr_provider?: string | null
+          ocr_raw?: Json | null
+          ocr_status?: string
+          ocr_version?: string | null
+          page_count?: number | null
+          processed_at?: string | null
+          sha256?: string | null
           size_bytes?: number | null
+          standardized_filename?: string | null
           storage_path?: string
           updated_at?: string
+          upload_id?: string
           uploaded_by?: string | null
+          uploaded_by_name?: string | null
           verified?: boolean
           verified_at?: string | null
           verified_by?: string | null
@@ -410,6 +449,81 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      document_extractions: {
+        Row: {
+          ai_model_version: string | null
+          ai_value: string | null
+          bbox: Json | null
+          candidate_id: string
+          confidence: number | null
+          created_at: string
+          document_id: string
+          field_name: string
+          human_value: string | null
+          id: string
+          ocr_provider: string | null
+          ocr_version: string | null
+          page_number: number | null
+          processed_at: string
+          section: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          ai_model_version?: string | null
+          ai_value?: string | null
+          bbox?: Json | null
+          candidate_id: string
+          confidence?: number | null
+          created_at?: string
+          document_id: string
+          field_name: string
+          human_value?: string | null
+          id?: string
+          ocr_provider?: string | null
+          ocr_version?: string | null
+          page_number?: number | null
+          processed_at?: string
+          section?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          ai_model_version?: string | null
+          ai_value?: string | null
+          bbox?: Json | null
+          candidate_id?: string
+          confidence?: number | null
+          created_at?: string
+          document_id?: string
+          field_name?: string
+          human_value?: string | null
+          id?: string
+          ocr_provider?: string | null
+          ocr_version?: string | null
+          page_number?: number | null
+          processed_at?: string
+          section?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_extractions_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "document_extractions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_documents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       employers: {
         Row: {

@@ -11,6 +11,8 @@
 // ─────────────────────────────────────────────────────────────
 import { supabase } from '@/integrations/supabase/client';
 import type { IntakeBatch, IntakeMode, BatchCandidate } from './batch';
+import { computeSha256, validateFile, standardizeFilename } from '@/lib/docintel/fingerprint';
+import { runDocumentIntelligencePipeline } from '@/lib/docintel/pipeline';
 
 /** File carried through the upload step, keeping the raw browser File handle. */
 export interface IntakeFile {
@@ -254,8 +256,28 @@ export async function persistIntakeBatch(params: {
     if (!candDbId) continue;
 
     for (const f of groups[gi]) {
-      const cleanName = f.file.name.replace(/[^\w.\-]/g, '_');
-      const objectPath = `${batchDbId}/${candDbId}/${Date.now()}-${cleanName}`;
+      // Pre-OCR gate: validate before touching storage.
+      const validationErr = validateFile(f.file);
+      if (validationErr) {
+        onFileError?.(f.file.name, validationErr.message);
+        done += 1;
+        onProgress?.(done, total);
+        continue;
+      }
+
+      // Fingerprint — deterministic, tamper-evident, dedupe key.
+      let sha256: string;
+      try {
+        sha256 = await computeSha256(f.file);
+      } catch (e) {
+        onFileError?.(f.file.name, `Hash failed: ${e instanceof Error ? e.message : 'unknown'}`);
+        done += 1;
+        onProgress?.(done, total);
+        continue;
+      }
+
+      const stdName = standardizeFilename(f.file.name);
+      const objectPath = `${batchDbId}/${candDbId}/${Date.now()}-${stdName}`;
       const { error: upErr } = await supabase.storage
         .from('candidate-documents')
         .upload(objectPath, f.file, {
@@ -267,30 +289,50 @@ export async function persistIntakeBatch(params: {
         onFileError?.(f.file.name, upErr.message);
       } else {
         const docType = guessDocType(f.file.name);
-        const { error: docErr } = await supabase.from('candidate_documents').insert({
+        const docInsert: Record<string, unknown> = {
           candidate_id: candDbId,
           document_type: docType,
           file_name: f.file.name,
+          standardized_filename: stdName,
           storage_path: objectPath,
           mime_type: f.file.type || null,
           size_bytes: f.file.size,
+          sha256,
+          uploaded_by_name: actorName ?? 'Recruiter',
           ocr_complete: false,
-        });
+          ocr_status: 'pending',
+          document_state: 'draft',
+        };
+        const { error: docErr } = await supabase
+          .from('candidate_documents')
+          .insert(docInsert as never);
         if (docErr) {
-          onFileError?.(f.file.name, docErr.message);
+          // Duplicate hash within the same candidate is not fatal — surface it clearly.
+          const dupe = /duplicate key/.test(docErr.message);
+          onFileError?.(f.file.name, dupe ? 'Duplicate file (same content already uploaded for this candidate).' : docErr.message);
         } else {
-          // Audit: document_uploaded
+          // Audit: document_uploaded (includes hash for traceability)
           void supabase.from('audit_events').insert({
             entity_type: 'candidate',
             entity_id: candDbId,
             event_type: 'document_uploaded',
             actor_name: actorName ?? 'Recruiter',
-            new_value: { document_type: docType, file_name: f.file.name },
+            new_value: { document_type: docType, file_name: f.file.name, sha256, storage_path: objectPath },
           });
         }
       }
       done += 1;
       onProgress?.(done, total);
+    }
+  }
+
+  // 5b. Kick off Document Intelligence pipeline per candidate (isolated, sequential).
+  //     Failures here don't roll back the intake — the fingerprint panel will show the state.
+  for (const candDbId of idMap.values()) {
+    try {
+      await runDocumentIntelligencePipeline({ candidateId: candDbId });
+    } catch (e) {
+      console.warn('[intake] pipeline failed for', candDbId, e);
     }
   }
 
