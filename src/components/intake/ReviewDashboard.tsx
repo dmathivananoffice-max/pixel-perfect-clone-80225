@@ -17,10 +17,12 @@ type CardId = 'ready' | 'duplicate' | 'missing_docs' | 'manual_review' | 'low_co
 type SortId = 'priority' | 'name' | 'country' | 'confidence';
 
 export function ReviewDashboard({
-  batch, approvedIds, onBack, onVerify, onApproveInline,
+  batch, approvedIds, resumableIds, onBack, onVerify, onApproveInline,
 }: {
   batch: IntakeBatch;
   approvedIds: Set<string>;
+  /** Candidates with a saved partial-verification snapshot — show "Resume". */
+  resumableIds?: Set<string>;
   onBack: () => void;
   /** Open Candidate Verification Studio. Optional focus tells it where to land. */
   onVerify: (candidateId: string, focus?: FieldFocus) => void;
