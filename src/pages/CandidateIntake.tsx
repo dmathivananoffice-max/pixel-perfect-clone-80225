@@ -410,10 +410,16 @@ export default function CandidateIntake() {
   }
 
   function exit() {
-    if (verified.size > 0 || product || batch) {
-      if (!confirm('Leave intake? Progress is saved as draft.')) return;
-    }
+    // Drafts autosave — no confirm dialog per Mission Control UX spec
     navigate('/candidates');
+  }
+
+  function returnToMissionControl() {
+    if (activeCandidateId) {
+      setSnapshots((prev) => ({ ...prev, [activeCandidateId]: snapshotCurrent() }));
+    }
+    setShowApprovalOverlay(false);
+    setStage('dashboard');
   }
 
   // ─── Layout ──────────────────────────────────────────────
