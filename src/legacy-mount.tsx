@@ -27,12 +27,7 @@ export function LegacyAppMount() {
 
       // Force the supabase client to instantiate and parse the URL hash.
       const { data } = await clientMod.supabase.auth.getSession();
-      const session = data.session;
-      if (session?.user?.email) {
-        storeMod.useAuthStore
-          .getState()
-          .setSession(session.user.email, session.access_token, session.user.id);
-      }
+      await storeMod.useAuthStore.getState().hydrateFromSession(data.session ?? null);
 
       // Clean the token fragment from the URL so it doesn't linger.
       if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
