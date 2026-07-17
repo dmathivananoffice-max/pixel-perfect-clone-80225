@@ -400,31 +400,50 @@ export default function CandidateIntake() {
       const c = batch?.candidates.find((x) => x.id === activeCandidateId);
       setLastApprovedName(c ? `${c.firstName} ${c.lastName}` : 'Candidate');
     }
-    toast.success('Candidate approved');
-    // Never auto-return — recruiter chooses next action
-    if (batch && batch.mode === 'bulk') {
-      setShowApprovalOverlay(true);
-    } else {
-      setTimeout(() => navigate('/candidates'), 500);
-    }
+    // Never auto-navigate — the recruiter chooses the next action.
+    setShowApprovalOverlay(true);
   }
 
   function exit() {
-    if (verified.size > 0 || product || batch) {
-      if (!confirm('Leave intake? Progress is saved as draft.')) return;
-    }
+    // Drafts autosave — no confirm dialog per Mission Control UX spec
     navigate('/candidates');
   }
 
-  // ─── Layout ──────────────────────────────────────────────
+  function returnToMissionControl() {
+    if (activeCandidateId) {
+      setSnapshots((prev) => ({ ...prev, [activeCandidateId]: snapshotCurrent() }));
+    }
+    setShowApprovalOverlay(false);
+    setStage('dashboard');
+  }
+
+  // Candidate position among non-approved (1-indexed) / total in batch
+  const candidatePosition = (() => {
+    if (!batch || !activeCandidateId) return null;
+    const total = batch.candidates.length;
+    const idx = batch.candidates.findIndex((c) => c.id === activeCandidateId);
+    return idx >= 0 ? { pos: idx + 1, total } : null;
+  })();
+  const inStudio = stage === 'section' || stage === 'review';
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground">
       {/* Top bar */}
-      <header className="flex items-center justify-between border-b border-border/60 bg-background/95 px-6 py-3 backdrop-blur">
+      <header className="flex items-center justify-between border-b border-border/60 bg-background/95 px-4 py-3 backdrop-blur sm:px-6">
         <div className="flex items-center gap-3 min-w-0">
-          <button onClick={exit} className="rounded-md p-1.5 hover:bg-muted" aria-label="Close intake">
-            <X className="size-4" />
-          </button>
+          {inStudio && batch ? (
+            <button
+              onClick={returnToMissionControl}
+              className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="Return to Mission Control"
+            >
+              <ArrowLeft className="size-3.5" /> Mission Control
+            </button>
+          ) : (
+            <button onClick={exit} className="rounded-md p-1.5 hover:bg-muted" aria-label="Close intake">
+              <X className="size-4" />
+            </button>
+          )}
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
               <Sparkles className="size-3" /> Candidate Intake Engine
@@ -437,35 +456,45 @@ export default function CandidateIntake() {
               {stage === 'upload'     && 'Step 3 · Upload documents'}
               {stage === 'processing' && 'Step 4 · AI processing'}
               {stage === 'dashboard'  && 'Step 5 · AI Intake Review'}
-              {stage === 'section'    && `Step 6 · ${current.label}${activeCandidate ? ' · ' + activeCandidate.firstName + ' ' + activeCandidate.lastName : ''}`}
-              {stage === 'review'     && 'Final review'}
+              {stage === 'section'    && `${current.label}${activeCandidate ? ' · ' + activeCandidate.firstName + ' ' + activeCandidate.lastName : ''}`}
+              {stage === 'review'     && `Final review${activeCandidate ? ' · ' + activeCandidate.firstName + ' ' + activeCandidate.lastName : ''}`}
             </h1>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="hidden md:flex items-center gap-2 text-[11px] text-muted-foreground">
-            <Keyboard className="size-3.5" />
-            <span className="rounded border bg-muted px-1.5 py-0.5">⌘↵</span> verify
-            <span className="rounded border bg-muted px-1.5 py-0.5">⌘S</span> save
-            <span className="rounded border bg-muted px-1.5 py-0.5">Esc</span> exit
-          </div>
+          {inStudio && (
+            <div className="hidden md:flex items-center gap-4 text-[11px] text-muted-foreground">
+              {candidatePosition && (
+                <div className="flex flex-col items-end leading-tight">
+                  <span className="text-[9px] uppercase tracking-widest">Candidate</span>
+                  <span className="text-foreground font-medium tabular-nums">{candidatePosition.pos} of {candidatePosition.total}</span>
+                </div>
+              )}
+              {stage === 'section' && (
+                <div className="flex flex-col items-end leading-tight">
+                  <span className="text-[9px] uppercase tracking-widest">Section</span>
+                  <span className="text-foreground font-medium tabular-nums">
+                    {current.label} · {sectionIndex + 1} of {SECTIONS.length}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
           <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <Cloud className="size-3.5 text-emerald-600" />
             {savedAt ? <>Saved · {savedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</> : 'Autosave on'}
           </div>
-          <div className="w-44">
+          <div className="hidden lg:block w-36">
             <Progress value={progress} className="h-1.5" />
             <div className="mt-1 flex justify-between text-[10px] tabular-nums text-muted-foreground">
               <span>{progress}%</span>
-              <span>{completedCount} / {totalSteps} verified</span>
+              <span>{completedCount}/{totalSteps}</span>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={saveDraft} className="gap-1.5">
-            <Save className="size-3.5" /> Save draft
-          </Button>
         </div>
       </header>
+
 
       {/* Body */}
       {stage === 'type' && (
@@ -561,21 +590,32 @@ export default function CandidateIntake() {
                       firstName={firstName}
                     />
                   </div>
-                  <div className="flex items-center justify-between gap-2 border-t border-border/60 bg-background/95 px-4 py-3 sm:px-6">
-                    <Button variant="ghost" size="sm" onClick={goBack} className="gap-1.5">
-                      <ArrowLeft className="size-4" /> Back
-                    </Button>
-                    <Button size="sm" onClick={verifyAndContinue} className="gap-1.5 shadow-sm">
-                      <Check className="size-4" /> Verify &amp; continue
-                      <ArrowRight className="size-4" />
-                    </Button>
+                  <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-2 border-t border-border/60 bg-background/95 px-4 py-2.5 backdrop-blur sm:px-6">
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={goBack} className="gap-1.5" disabled={sectionIndex === 0}>
+                        <ArrowLeft className="size-4" /> Previous
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={saveDraft} className="gap-1.5 text-muted-foreground">
+                        <Save className="size-3.5" /> Save draft
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="hidden md:inline text-[10px] text-muted-foreground">
+                        <span className="rounded border bg-muted px-1.5 py-0.5">⌘↵</span> to continue
+                      </span>
+                      <Button size="sm" onClick={verifyAndContinue} className="gap-1.5 shadow-sm">
+                        <Check className="size-4" /> Verify &amp; continue
+                        <ArrowRight className="size-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
-                {/* Source document — supporting panel on the right */}
-                <div className="flex h-full min-h-0 w-[42%] shrink-0 overflow-hidden bg-muted/30 sm:w-[40%] md:w-[38%] lg:w-[36%] xl:w-[35%]">
+                {/* Source document — evidence panel (widened for legibility) */}
+                <div className="flex h-full min-h-0 w-[44%] shrink-0 overflow-hidden bg-muted/30 md:w-[43%] lg:w-[43%] xl:w-[42%]" style={{ minWidth: 320 }}>
                   <DocumentViewer section={current} zoom={zoom} setZoom={setZoom} />
                 </div>
+
               </div>
             )}
 
@@ -600,51 +640,66 @@ export default function CandidateIntake() {
               </div>
             )}
 
-            {showApprovalOverlay && (
-              <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/70 backdrop-blur-sm animate-section-in">
-                <div className="w-full max-w-md rounded-2xl border border-border/60 bg-background p-8 text-center shadow-2xl">
-                  <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-4 ring-emerald-100">
-                    <Check className="size-7" />
+            {showApprovalOverlay && (() => {
+              const nextId = pickNextCandidate();
+              const totalInBatch = batch?.candidates.length ?? 1;
+              const approvedCount = approvedIds.size;
+              const batchDone = !nextId;
+              return (
+                <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/70 backdrop-blur-sm animate-section-in">
+                  <div className="w-full max-w-md rounded-2xl border border-border/60 bg-background p-8 text-center shadow-2xl">
+                    <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-4 ring-emerald-100">
+                      <Check className="size-7" />
+                    </div>
+                    {batchDone ? (
+                      <>
+                        <h3 className="font-display text-2xl font-semibold tracking-tight">
+                          All {totalInBatch} candidate{totalInBatch === 1 ? '' : 's'} verified
+                        </h3>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {lastApprovedName} approved · batch complete.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <h3 className="font-display text-2xl font-semibold tracking-tight">
+                          {lastApprovedName} approved
+                        </h3>
+                        <p className="mt-1 text-sm text-muted-foreground tabular-nums">
+                          {approvedCount} of {totalInBatch} verified · next candidate is AI pre-filled and waiting.
+                        </p>
+                      </>
+                    )}
+                    <div className="mt-6 flex flex-col gap-2">
+                      {!batchDone && (
+                        <Button size="lg" onClick={verifyNextCandidate} className="gap-2">
+                          Verify next candidate <ArrowRight className="size-4" />
+                        </Button>
+                      )}
+                      <Button
+                        variant={batchDone ? 'default' : 'ghost'}
+                        size={batchDone ? 'lg' : 'default'}
+                        onClick={() => {
+                          setShowApprovalOverlay(false);
+                          setActiveCandidateId(null);
+                          setStage('dashboard');
+                        }}
+                        className="gap-1.5"
+                      >
+                        <ArrowLeft className="size-4" /> Return to Mission Control
+                      </Button>
+                    </div>
                   </div>
-                  <h3 className="font-display text-2xl font-semibold tracking-tight">Candidate approved</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {lastApprovedName} is now a production candidate.
-                  </p>
-                  <div className="mt-6 flex flex-col gap-2">
-                    <Button
-                      size="lg"
-                      onClick={verifyNextCandidate}
-                      className="gap-2"
-                      disabled={!pickNextCandidate()}
-                    >
-                      Verify next candidate <ArrowRight className="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        setShowApprovalOverlay(false);
-                        setActiveCandidateId(null);
-                        setStage('dashboard');
-                      }}
-                      className="gap-1.5"
-                    >
-                      <ArrowLeft className="size-4" /> Return to Mission Control
-                    </Button>
-                  </div>
-                  {!pickNextCandidate() && (
-                    <p className="mt-3 text-[11px] text-muted-foreground">
-                      All candidates in this batch have been approved.
-                    </p>
-                  )}
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         );
       })()}
     </div>
   );
 }
+
 
 // ─────────────────────────────────────────────────────────────
 // Product step
