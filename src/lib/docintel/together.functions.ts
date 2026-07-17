@@ -51,8 +51,9 @@ export interface TogetherPageRaw {
   text: string;
   fields: TogetherFieldRaw[];
   warnings?: string[];
-  raw: unknown; // full model response for this page (JSON parsed content)
-  usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+  raw: Record<string, unknown> | null; // full model response for this page (JSON parsed content)
+  usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null;
+
 }
 
 export interface TogetherExtractResult {

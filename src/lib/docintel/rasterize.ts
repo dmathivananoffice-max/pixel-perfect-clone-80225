@@ -66,7 +66,7 @@ async function pdfToPages(file: File): Promise<RasterizedPage[]> {
     // release
     page.cleanup();
   }
-  await doc.destroy();
+  // pdfjs cleans up per-page above; the document handle is released when it goes out of scope.
   return out;
 }
 
