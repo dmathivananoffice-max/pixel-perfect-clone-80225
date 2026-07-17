@@ -7,13 +7,27 @@ import { Label } from '@/components/ui/label';
 import { GraduationCap, Loader2, Mail, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+function hasAuthReturnParams() {
+  if (typeof window === 'undefined') return false;
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const search = new URLSearchParams(window.location.search);
+  return (
+    hash.has('access_token') ||
+    hash.has('refresh_token') ||
+    hash.has('error') ||
+    search.has('code') ||
+    search.has('error')
+  );
+}
+
 export default function Login() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [startupError, setStartupError] = useState<string | null>(null);
+  const [isCompletingLink, setIsCompletingLink] = useState(() => hasAuthReturnParams());
   const navigate = useNavigate();
 
-  const { sendMagicLink, isLoading, isAuthenticated } = useAuthStore();
+  const { sendMagicLink, isLoading, isAuthenticated, isHydrating } = useAuthStore();
 
   // Surface any startup error captured during app bootstrap (e.g. bad/expired
   // magic link, missing app_users record, Supabase failure).
@@ -33,6 +47,19 @@ export default function Login() {
   useEffect(() => {
     if (isAuthenticated) navigate('/dashboard', { replace: true });
   }, [isAuthenticated, navigate]);
+
+  useEffect(() => {
+    if (!hasAuthReturnParams()) return;
+
+    const finish = window.setTimeout(() => {
+      if (!useAuthStore.getState().isAuthenticated) {
+        setIsCompletingLink(false);
+        setStartupError('That sign-in link could not be completed. Please request a fresh magic link.');
+      }
+    }, 5000);
+
+    return () => window.clearTimeout(finish);
+  }, []);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +93,19 @@ export default function Login() {
               {startupError}
             </div>
           )}
-          {sent ? (
+          {(isCompletingLink || isHydrating) && !startupError ? (
+            <div className="text-center space-y-4">
+              <div className="inline-flex w-12 h-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <Loader2 className="w-6 h-6 animate-spin" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold">Signing you in</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Please wait while we complete your secure sign-in.
+                </p>
+              </div>
+            </div>
+          ) : sent ? (
             <div className="text-center space-y-4">
               <div className="inline-flex w-12 h-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
                 <CheckCircle2 className="w-6 h-6" />
