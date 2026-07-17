@@ -608,7 +608,7 @@ export default function CandidateIntake() {
                       edited={edited[current.id] ?? new Set()}
                       onChange={(k, v) => setFieldValue(current.id, k, v)}
                       uploads={uploads}
-                      setUploads={setUploads}
+                      setUploads={handleSetUploads}
                       firstName={firstName}
                     />
                   </div>
