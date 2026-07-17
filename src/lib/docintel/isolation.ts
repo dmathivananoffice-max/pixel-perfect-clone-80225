@@ -26,6 +26,7 @@ export interface IsolatedDocument {
   uploaded_by: string | null;
   uploaded_by_name: string | null;
   ocr_status: string;
+  ocr_raw: unknown;
   ocr_provider: string | null;
   ocr_version: string | null;
   ocr_confidence: number | null;

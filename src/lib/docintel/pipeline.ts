@@ -138,7 +138,7 @@ export async function runDocumentIntelligencePipeline(opts: PipelineOptions): Pr
     ai_value: f.value || null,
     confidence: f.confidence,
     page_number: f.page,
-    bbox: f.bbox ?? null,
+    bbox: (f.bbox ?? null) as unknown as Record<string, unknown> | null,
     ocr_provider: getOcrProvider().name,
     ocr_version: getOcrProvider().version,
     ai_model_version: aiResult.modelVersion,
@@ -146,7 +146,7 @@ export async function runDocumentIntelligencePipeline(opts: PipelineOptions): Pr
   }));
 
   if (rows.length > 0) {
-    const { error } = await supabase.from('document_extractions').insert(rows);
+    const { error } = await supabase.from('document_extractions').insert(rows as never);
     if (error) {
       onStep?.('extraction_persist_failed', error.message);
     } else {
