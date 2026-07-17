@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 
-import { useAllCandidates } from '@/hooks/useAllCandidates';
+import { usePaginatedCandidates } from '@/hooks/usePaginatedCandidates';
 import { PRODUCTS, type ProductId } from '@/config/products';
 import { useProductStore } from '@/store/productStore';
 import { getCountry, COUNTRY_GROUPS } from '@/lib/countries';
@@ -33,7 +33,7 @@ import { CandidateDrawer } from '@/components/candidates/CandidateDrawer';
 
 import {
   Plus, Search, SlidersHorizontal, Download, Upload, Command as CommandIcon,
-  MoreHorizontal, X, Sparkles,
+  MoreHorizontal, X, Sparkles, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
@@ -87,7 +87,13 @@ export default function CandidateList() {
   const [rowOverrides, setRowOverrides] = useState<Record<string, CandidateStatus>>({});
   const [extraCandidates, setExtraCandidates] = useState<Candidate[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
-  const { candidates: dbCandidates } = useAllCandidates();
+
+  // Server-side pagination — avoids downloading the full candidates table.
+  const PAGE_SIZE = 50;
+  const [page, setPage] = useState(1);
+  const { candidates: dbCandidates, total: dbTotal, loading: dbLoading } =
+    usePaginatedCandidates({ page, pageSize: PAGE_SIZE });
+  const pageCount = Math.max(1, Math.ceil(dbTotal / PAGE_SIZE));
 
   // Filtered dataset
   const candidates = useMemo(() => {
@@ -198,8 +204,8 @@ export default function CandidateList() {
             <div className="min-w-0">
               <h1 className="text-2xl font-semibold tracking-tight">Candidate Intelligence</h1>
               <p className="mt-0.5 text-sm text-muted-foreground">
-                <span className="tabular-nums">{candidates.length}</span> of{' '}
-                <span className="tabular-nums">{dbCandidates.length}</span> candidates
+                <span className="tabular-nums">{candidates.length}</span> on page ·{' '}
+                <span className="tabular-nums">{dbTotal}</span> total
                 {productFilter && productFilter !== 'all' && (
                   <> · {PRODUCTS.find((p) => p.id === productFilter)?.label}</>
                 )}
@@ -436,10 +442,34 @@ export default function CandidateList() {
             </table>
           </div>
           <div className="flex items-center justify-between border-t border-border/60 px-4 py-2.5 text-xs text-muted-foreground">
-            <span>Showing {candidates.length} candidates</span>
-            <span className="flex items-center gap-1">
-              <Kbd>↑↓</Kbd> navigate · <Kbd>Enter</Kbd> open · <Kbd>A</Kbd> add · <Kbd>/</Kbd> search
+            <span>
+              {dbLoading ? 'Loading…' : `Page ${page} of ${pageCount} · ${dbTotal} candidates`}
+              {(q.trim() || activeFilterCount > 0) && (
+                <span className="ml-2 text-amber-600">
+                  (filters/search apply to current page only)
+                </span>
+              )}
             </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1"
+                disabled={page <= 1 || dbLoading}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                <ChevronLeft className="size-3.5" /> Prev
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1"
+                disabled={page >= pageCount || dbLoading}
+                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+              >
+                Next <ChevronRight className="size-3.5" />
+              </Button>
+            </div>
           </div>
         </div>
 
