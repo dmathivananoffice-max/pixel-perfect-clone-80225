@@ -715,6 +715,49 @@ export default function CandidateIntake() {
                 </div>
               );
             })()}
+
+            {docUploadOverlay && (
+              <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/70 backdrop-blur-sm animate-section-in">
+                <div className="w-full max-w-md rounded-2xl border border-border/60 bg-background p-8 text-center shadow-2xl">
+                  <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-4 ring-emerald-100">
+                    <Check className="size-7" />
+                  </div>
+                  <h3 className="font-display text-2xl font-semibold tracking-tight">
+                    {docUploadOverlay.docLabel} uploaded successfully
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    AI extracted the document and updated the candidate master record.
+                    {activeCandidate && (
+                      <> Resume verification for <span className="font-medium text-foreground">{activeCandidate.firstName} {activeCandidate.lastName}</span>.</>
+                    )}
+                  </p>
+                  <div className="mt-6 flex flex-col gap-2">
+                    <Button
+                      size="lg"
+                      onClick={() => {
+                        // Restore exact section the recruiter came from
+                        const idx = SECTIONS.findIndex((s) => s.id === docUploadOverlay.sectionId);
+                        if (idx >= 0) setSectionIndex(idx);
+                        setDocUploadOverlay(null);
+                      }}
+                      className="gap-2"
+                    >
+                      Continue candidate verification <ArrowRight className="size-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setDocUploadOverlay(null);
+                        returnToMissionControl();
+                      }}
+                      className="gap-1.5"
+                    >
+                      <ArrowLeft className="size-4" /> Return to Mission Control
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         );
       })()}
