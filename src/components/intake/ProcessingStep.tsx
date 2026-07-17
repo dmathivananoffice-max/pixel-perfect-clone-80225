@@ -24,9 +24,12 @@ export function ProcessingStep({
   const [step, setStep] = useState(0);
   const doneRef = useRef(false);
   const finishedRef = useRef(false);
+  const startedRef = useRef(false);
 
   // Kick off the real work once
   useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
     if (!run) { doneRef.current = true; return; }
     let cancelled = false;
     run()
@@ -37,7 +40,9 @@ export function ProcessingStep({
         onError?.(err instanceof Error ? err.message : String(err));
       });
     return () => { cancelled = true; };
-  }, [run, onError]);
+     
+  }, []);
+
 
   useEffect(() => {
     const t = setInterval(() => {
