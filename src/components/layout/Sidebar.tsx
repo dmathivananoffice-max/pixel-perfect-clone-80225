@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   LayoutDashboard, Users, Settings, FileText, BarChart3,
   ClipboardCheck, Briefcase, Building2, UserCircle, Mail,
-  Sparkles, Shield, GraduationCap, ChevronLeft, ChevronRight,
+  Sparkles, Shield, ShieldCheck, GraduationCap, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -31,6 +31,7 @@ const navItems: NavItem[] = [
   { label: 'My Portal', path: '/candidate', icon: <UserCircle className="w-5 h-5" />, roles: ['candidate'] },
   { label: 'Email Center', path: '/emails', icon: <Mail className="w-5 h-5" />, roles: ['super_admin', 'recruiter', 'managing_director'] },
   { label: 'User Management', path: '/admin/users', icon: <Shield className="w-5 h-5" />, roles: ['super_admin', 'managing_director'] },
+  { label: 'Roles & Permissions', path: '/admin/roles', icon: <ShieldCheck className="w-5 h-5" />, roles: ['super_admin', 'managing_director'] },
   { label: 'Reports', path: '/reports', icon: <BarChart3 className="w-5 h-5" />, roles: ['super_admin', 'managing_director', 'recruiter'] },
 ];
 
