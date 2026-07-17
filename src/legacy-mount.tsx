@@ -12,6 +12,39 @@ import { useEffect, useState, type ComponentType } from "react";
  */
 const STARTUP_TIMEOUT_MS = 8000;
 
+function getAuthReturnState() {
+  if (typeof window === "undefined") {
+    return { code: null, error: null, hasTokenHash: false };
+  }
+
+  const search = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+
+  return {
+    code: search.get("code"),
+    error: search.get("error_description") ?? search.get("error") ?? hash.get("error_description") ?? hash.get("error"),
+    hasTokenHash: hash.has("access_token") || hash.has("refresh_token"),
+  };
+}
+
+async function waitForHydratedSession(
+  supabase: typeof import("@/integrations/supabase/client").supabase,
+  timeoutMs = 2500,
+) {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    if (data.session) return data.session;
+    await new Promise((resolve) => window.setTimeout(resolve, 100));
+  }
+
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  return data.session ?? null;
+}
+
 function timeout<T>(ms: number, label: string): Promise<T> {
   return new Promise((_resolve, reject) => {
     setTimeout(() => reject(new Error(`Startup timeout after ${ms}ms: ${label}`)), ms);
@@ -33,10 +66,10 @@ export function LegacyAppMount() {
       ]);
 
       try {
-        // Force the supabase client to instantiate and parse the URL hash.
-        const { data, error } = await clientMod.supabase.auth.getSession();
-        if (error) {
-          console.error("[startup] supabase.auth.getSession error", error);
+        const authReturn = getAuthReturnState();
+
+        if (authReturn.error) {
+          console.error("[startup] auth return error", authReturn.error);
           try {
             sessionStorage.setItem(
               "wf:login-error",
@@ -46,7 +79,20 @@ export function LegacyAppMount() {
             /* ignore storage failures */
           }
         }
-        await storeMod.useAuthStore.getState().hydrateFromSession(data?.session ?? null);
+
+        // Magic links may return either a PKCE `code` query parameter or an
+        // implicit token hash. Complete that exchange before mounting routes;
+        // otherwise /login can briefly render the send-link form again.
+        if (authReturn.code) {
+          const { error } = await clientMod.supabase.auth.exchangeCodeForSession(authReturn.code);
+          if (error) throw error;
+        }
+
+        const session = authReturn.code || authReturn.hasTokenHash
+          ? await waitForHydratedSession(clientMod.supabase)
+          : (await clientMod.supabase.auth.getSession()).data.session;
+
+        await storeMod.useAuthStore.getState().hydrateFromSession(session ?? null);
       } catch (innerErr) {
         console.error("[startup] hydrate step failed", innerErr);
         // Ensure the store is not stuck in the hydrating state.
@@ -71,9 +117,18 @@ export function LegacyAppMount() {
       }
 
       // Clean the token fragment from the URL so it doesn't linger.
-      if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
+      if (
+        typeof window !== "undefined" &&
+        (window.location.hash || window.location.search.includes("code=") || window.location.search.includes("error="))
+      ) {
         try {
-          window.history.replaceState(null, "", window.location.pathname + window.location.search);
+          const cleanSearch = new URLSearchParams(window.location.search);
+          cleanSearch.delete("code");
+          cleanSearch.delete("error");
+          cleanSearch.delete("error_code");
+          cleanSearch.delete("error_description");
+          const nextSearch = cleanSearch.toString();
+          window.history.replaceState(null, "", window.location.pathname + (nextSearch ? `?${nextSearch}` : ""));
         } catch (cleanupErr) {
           console.error("[startup] URL hash cleanup failed", cleanupErr);
         }
