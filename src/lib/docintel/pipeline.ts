@@ -96,7 +96,7 @@ export async function runDocumentIntelligencePipeline(opts: PipelineOptions): Pr
           ocr_complete: true,
           ocr_provider: ocr.provider,
           ocr_version: ocr.version,
-          ocr_raw: ocr as unknown as Record<string, unknown>,
+          ocr_raw: JSON.parse(JSON.stringify(ocr)),
           page_count: ocr.pageCount,
           processed_at: ocr.processedAt,
           document_state: 'ai_processed',
