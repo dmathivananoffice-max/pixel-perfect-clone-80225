@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 
-import { mockCandidates } from '@/lib/mockData';
+import { useAllCandidates } from '@/hooks/useAllCandidates';
 import { PRODUCTS, type ProductId } from '@/config/products';
 import { useProductStore } from '@/store/productStore';
 import { getCountry, COUNTRY_GROUPS } from '@/lib/countries';
@@ -87,10 +87,11 @@ export default function CandidateList() {
   const [rowOverrides, setRowOverrides] = useState<Record<string, CandidateStatus>>({});
   const [extraCandidates, setExtraCandidates] = useState<Candidate[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
+  const { candidates: dbCandidates } = useAllCandidates();
 
   // Filtered dataset
   const candidates = useMemo(() => {
-    let data = [...extraCandidates, ...mockCandidates].map((c) => ({
+    let data = [...extraCandidates, ...dbCandidates].map((c) => ({
       ...c,
       status: rowOverrides[c.candidate_id] ?? c.status,
     }));
@@ -124,7 +125,7 @@ export default function CandidateList() {
     }
 
     return data;
-  }, [productFilter, filters, q, rowOverrides, extraCandidates]);
+  }, [productFilter, filters, q, rowOverrides, extraCandidates, dbCandidates]);
 
   const allSelected = candidates.length > 0 && candidates.every((c) => selection.has(c.candidate_id));
   const someSelected = candidates.some((c) => selection.has(c.candidate_id)) && !allSelected;
@@ -198,7 +199,7 @@ export default function CandidateList() {
               <h1 className="text-2xl font-semibold tracking-tight">Candidate Intelligence</h1>
               <p className="mt-0.5 text-sm text-muted-foreground">
                 <span className="tabular-nums">{candidates.length}</span> of{' '}
-                <span className="tabular-nums">{mockCandidates.length}</span> candidates
+                <span className="tabular-nums">{dbCandidates.length}</span> candidates
                 {productFilter && productFilter !== 'all' && (
                   <> · {PRODUCTS.find((p) => p.id === productFilter)?.label}</>
                 )}

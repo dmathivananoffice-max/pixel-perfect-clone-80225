@@ -12,7 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { ProductSelector } from '@/components/dashboard/ProductSelector';
 import { WidgetCard } from '@/components/dashboard/WidgetCard';
 import { QuickActions } from '@/components/dashboard/QuickActions';
-import { mockCandidates } from '@/lib/mockData';
+import { useAllCandidates } from '@/hooks/useAllCandidates';
 import { cn } from '@/lib/utils';
 
 
@@ -42,10 +42,11 @@ function inferProduct(programName?: string): ProductId {
 }
 
 function useProductMetrics(productId: ProductId) {
+  const { candidates } = useAllCandidates();
   return useMemo(() => {
     const list = productId === 'all'
-      ? mockCandidates
-      : mockCandidates.filter((c) => inferProduct(c.program_name) === productId);
+      ? candidates
+      : candidates.filter((c) => inferProduct(c.program_name) === productId);
 
     const byStatus = (status: string) => list.filter((c) => c.status === status).length;
     return {
@@ -58,7 +59,7 @@ function useProductMetrics(productId: ProductId) {
       rejected: byStatus('rejected'),
       waiting: byStatus('waiting'),
     };
-  }, [productId]);
+  }, [productId, candidates]);
 }
 
 export default function Dashboard() {
@@ -109,10 +110,11 @@ export default function Dashboard() {
 function ExecutiveDashboard({ product }: { product: ProductConfig }) {
   const metrics = useReports();
   const navigate = useNavigate();
+  const { candidates } = useAllCandidates();
 
   const productDistribution = useMemo(() => {
     const buckets = new Map<ProductId, number>();
-    mockCandidates.forEach((c) => {
+    candidates.forEach((c) => {
       const pid = inferProduct(c.program_name);
       buckets.set(pid, (buckets.get(pid) ?? 0) + 1);
     });
@@ -120,7 +122,7 @@ function ExecutiveDashboard({ product }: { product: ProductConfig }) {
       name: p.short,
       value: buckets.get(p.id) ?? 0,
     }));
-  }, []);
+  }, [candidates]);
 
   const widgets: Array<{ label: string; value: string | number; icon: LucideIcon; accent: string }> = [
     { label: 'Total Candidates', value: metrics.totalCandidates, icon: Users, accent: 'text-blue-600 bg-blue-50' },
