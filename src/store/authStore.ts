@@ -112,60 +112,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setUser: (user) => set({ user, isAuthenticated: !!user }),
 
   hydrateFromSession: async (_session) => {
-    // ⚠️ DEV BYPASS: keep the fake super_admin no matter what Supabase says.
+    // ⚠️ DEV BYPASS: keep the fake super_admin regardless of Supabase session.
     set({ isHydrating: false });
-    return;
-    // eslint-disable-next-line no-unreachable
-    // @ts-expect-error legacy code preserved below for restore
-    // prettier-ignore
-    // eslint-disable-next-line
-    async (session: never) => {
-    if (!session?.user?.email) {
-      set({
-        user: null,
-        token: null,
-        isAuthenticated: false,
-        isHydrating: false,
-      });
-      return;
-    }
-    try {
-      const profile = await loadProfile(session.user.id, session.user.email);
-      if (!profile) {
-        // Signed in via Supabase but no active app_users record — sign back out.
-        try {
-          await authSupabase.auth.signOut();
-        } catch (signOutErr) {
-          console.error('[auth] signOut after missing profile failed', signOutErr);
-        }
-        set({
-          user: null,
-          token: null,
-          isAuthenticated: false,
-          isHydrating: false,
-        });
-        return;
-      }
-      set({
-        user: profile,
-        token: session.access_token,
-        isAuthenticated: true,
-        isHydrating: false,
-      });
-    } catch (err) {
-      console.error('[auth] hydrateFromSession failed', err);
-      try {
-        await authSupabase.auth.signOut();
-      } catch (signOutErr) {
-        console.error('[auth] signOut after hydrate error failed', signOutErr);
-      }
-      set({
-        user: null,
-        token: null,
-        isAuthenticated: false,
-        isHydrating: false,
-      });
-    }
+  },
   },
 }));
 
