@@ -13,11 +13,9 @@ interface RouteGuardProps {
  * listed roles are redirected to /dashboard (which itself is gated).
  */
 export function RouteGuard({ children, roles }: RouteGuardProps) {
-  const { isAuthenticated, isHydrating, user } = useAuthStore((s) => ({
-    isAuthenticated: s.isAuthenticated,
-    isHydrating: s.isHydrating,
-    user: s.user,
-  }));
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isHydrating = useAuthStore((s) => s.isHydrating);
+  const user = useAuthStore((s) => s.user);
   const location = useLocation();
 
   if (isHydrating) {
