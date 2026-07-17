@@ -640,51 +640,66 @@ export default function CandidateIntake() {
               </div>
             )}
 
-            {showApprovalOverlay && (
-              <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/70 backdrop-blur-sm animate-section-in">
-                <div className="w-full max-w-md rounded-2xl border border-border/60 bg-background p-8 text-center shadow-2xl">
-                  <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-4 ring-emerald-100">
-                    <Check className="size-7" />
+            {showApprovalOverlay && (() => {
+              const nextId = pickNextCandidate();
+              const totalInBatch = batch?.candidates.length ?? 1;
+              const approvedCount = approvedIds.size;
+              const batchDone = !nextId;
+              return (
+                <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/70 backdrop-blur-sm animate-section-in">
+                  <div className="w-full max-w-md rounded-2xl border border-border/60 bg-background p-8 text-center shadow-2xl">
+                    <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-4 ring-emerald-100">
+                      <Check className="size-7" />
+                    </div>
+                    {batchDone ? (
+                      <>
+                        <h3 className="font-display text-2xl font-semibold tracking-tight">
+                          All {totalInBatch} candidate{totalInBatch === 1 ? '' : 's'} verified
+                        </h3>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {lastApprovedName} approved · batch complete.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <h3 className="font-display text-2xl font-semibold tracking-tight">
+                          {lastApprovedName} approved
+                        </h3>
+                        <p className="mt-1 text-sm text-muted-foreground tabular-nums">
+                          {approvedCount} of {totalInBatch} verified · next candidate is AI pre-filled and waiting.
+                        </p>
+                      </>
+                    )}
+                    <div className="mt-6 flex flex-col gap-2">
+                      {!batchDone && (
+                        <Button size="lg" onClick={verifyNextCandidate} className="gap-2">
+                          Verify next candidate <ArrowRight className="size-4" />
+                        </Button>
+                      )}
+                      <Button
+                        variant={batchDone ? 'default' : 'ghost'}
+                        size={batchDone ? 'lg' : 'default'}
+                        onClick={() => {
+                          setShowApprovalOverlay(false);
+                          setActiveCandidateId(null);
+                          setStage('dashboard');
+                        }}
+                        className="gap-1.5"
+                      >
+                        <ArrowLeft className="size-4" /> Return to Mission Control
+                      </Button>
+                    </div>
                   </div>
-                  <h3 className="font-display text-2xl font-semibold tracking-tight">Candidate approved</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {lastApprovedName} is now a production candidate.
-                  </p>
-                  <div className="mt-6 flex flex-col gap-2">
-                    <Button
-                      size="lg"
-                      onClick={verifyNextCandidate}
-                      className="gap-2"
-                      disabled={!pickNextCandidate()}
-                    >
-                      Verify next candidate <ArrowRight className="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        setShowApprovalOverlay(false);
-                        setActiveCandidateId(null);
-                        setStage('dashboard');
-                      }}
-                      className="gap-1.5"
-                    >
-                      <ArrowLeft className="size-4" /> Return to Mission Control
-                    </Button>
-                  </div>
-                  {!pickNextCandidate() && (
-                    <p className="mt-3 text-[11px] text-muted-foreground">
-                      All candidates in this batch have been approved.
-                    </p>
-                  )}
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         );
       })()}
     </div>
   );
 }
+
 
 // ─────────────────────────────────────────────────────────────
 // Product step
