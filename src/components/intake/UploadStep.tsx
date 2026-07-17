@@ -13,6 +13,7 @@ interface UploadedFile {
   size: number;
   kind: 'pdf' | 'image' | 'doc' | 'zip' | 'other';
   path?: string; // preserved webkitRelativePath for folder uploads
+  file: File;   // real File handle for upload
 }
 
 function kindOf(name: string): UploadedFile['kind'] {
