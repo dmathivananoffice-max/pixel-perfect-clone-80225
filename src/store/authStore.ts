@@ -115,23 +115,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // ⚠️ DEV BYPASS: keep the fake super_admin regardless of Supabase session.
     set({ isHydrating: false });
   },
-  },
 }));
 
-// Wire Supabase → store. Runs once on module load in the browser.
-if (typeof window !== 'undefined') {
-  authSupabase.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_OUT') {
-      useAuthStore.setState({
-        user: null,
-        token: null,
-        isAuthenticated: false,
-        isHydrating: false,
-      });
-      return;
-    }
-    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-      void useAuthStore.getState().hydrateFromSession(session);
-    }
-  });
-}
+// ⚠️ DEV BYPASS: Supabase auth listener disabled during rapid build phase.
+
