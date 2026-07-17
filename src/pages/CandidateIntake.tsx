@@ -30,9 +30,12 @@ import { UploadStep } from '@/components/intake/UploadStep';
 import { ProcessingStep } from '@/components/intake/ProcessingStep';
 import { ReviewDashboard } from '@/components/intake/ReviewDashboard';
 import { VerificationQueue, type QueueProgress } from '@/components/intake/VerificationQueue';
+import { DocumentFingerprintPanel } from '@/components/intake/DocumentFingerprintPanel';
 import { makeMockBatch, type IntakeBatch, type IntakeMode, type FieldFocus, type BatchStatus } from '@/lib/intake/batch';
 import { persistIntakeBatch, approveCandidate, groupFilesByFolder, saveCandidateDraft, IntakeError, isTransient, type IntakeFile } from '@/lib/intake/persist';
 import type { UploadedFile } from '@/components/intake/UploadStep';
+import { useAuth } from '@/hooks/useAuth';
+import { RLS_MODE_DESCRIPTOR } from '@/lib/security/rls-mode';
 
 // ─────────────────────────────────────────────────────────────
 // Product definitions (module-local — the intake decides workflow)
@@ -212,7 +215,17 @@ export default function CandidateIntake() {
   const [declarations, setDeclarations] = useState({ reviewed: false, matches: false, complete: false });
   const [zoom, setZoom] = useState(100);
   const [docOpen, setDocOpen] = useState(false); // mobile / tablet drawer
+  const [fingerprintOpen, setFingerprintOpen] = useState(false); // staff audit panel
   const [savedAt, setSavedAt] = useState<Date | null>(null);
+
+  // Staff-only audit panel: Documentation Officer, Operations Manager
+  // (mapped to managing_director in current role model), Super Admin.
+  const { user } = useAuth();
+  const canSeeFingerprint =
+    !!user &&
+    (user.role === 'super_admin' ||
+      user.role === 'managing_director' ||
+      user.role === 'documentation_officer');
 
   // Per-candidate persisted verification state (for the persistent Queue)
   interface CandSnapshot {
@@ -586,6 +599,18 @@ export default function CandidateIntake() {
               <span>{completedCount}/{totalSteps}</span>
             </div>
           </div>
+          {inStudio && canSeeFingerprint && activeCandidateId && (
+            <Button
+              variant={fingerprintOpen ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setFingerprintOpen((v) => !v)}
+              className="gap-1.5 text-[11px]"
+              title="Document Fingerprints — staff audit"
+            >
+              <ShieldCheck className="size-3.5" />
+              <span className="hidden md:inline">Fingerprints</span>
+            </Button>
+          )}
         </div>
       </header>
 
@@ -718,6 +743,33 @@ export default function CandidateIntake() {
                   <DocumentViewer section={current} zoom={zoom} setZoom={setZoom} />
                 </div>
 
+                {/* Staff-only Document Fingerprint drawer — audit trail overlay */}
+                {canSeeFingerprint && activeCandidateId && fingerprintOpen && (
+                  <div className="absolute right-0 top-0 bottom-0 z-30 flex w-[380px] flex-col border-l border-border/60 bg-background shadow-2xl animate-section-in">
+                    <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">
+                          <ShieldCheck className="size-3" /> Document Fingerprints
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          Staff audit · {RLS_MODE_DESCRIPTOR.label}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setFingerprintOpen(false)}
+                        className="gap-1 text-xs"
+                        aria-label="Close fingerprint panel"
+                      >
+                        <X className="size-3.5" />
+                      </Button>
+                    </div>
+                    <div className="flex-1 min-h-0 overflow-y-auto">
+                      <DocumentFingerprintPanel candidateId={activeCandidateId} hideHeader />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
