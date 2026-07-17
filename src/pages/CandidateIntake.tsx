@@ -323,7 +323,15 @@ export default function CandidateIntake() {
         toast.error('Missing required fields', { description: missing.join(', ') });
         return;
       }
-      setVerified((s) => new Set(s).add(current.id));
+      const nextVerified = new Set(verified).add(current.id);
+      setVerified(nextVerified);
+      // Sprint 4 — autosave draft to DB (non-blocking)
+      if (activeCandidateId) {
+        void saveCandidateDraft(activeCandidateId, {
+          values,
+          verifiedSections: Array.from(nextVerified),
+        });
+      }
       if (sectionIndex < SECTIONS.length - 1) {
         setSectionIndex((i) => i + 1);
         toast.success(`${current.label} verified`, { description: `Next: ${SECTIONS[sectionIndex + 1].label}` });
