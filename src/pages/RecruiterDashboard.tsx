@@ -16,15 +16,16 @@ export default function RecruiterDashboard() {
   const navigate = useNavigate();
   const _metrics = useReports();
   void _metrics;
+  const { candidates: allCandidates } = useAllCandidates();
 
-  const myCandidates = mockCandidates.filter((c) => c.assigned_recruiter_id === user?.id);
+  const myCandidates = allCandidates.filter((c) => c.assigned_recruiter_id === user?.id);
   const candidatesNeedingAction = myCandidates.filter(
     (c) => c.status === 'waiting' || c.status === 'interview1'
   );
   const pendingSTI = myCandidates.filter(
     (c) => c.status === 'shortlisted' && !mockSTISpeaking.find((s) => s.candidate_id === c.candidate_id)
   );
-  const upcomingInterviews = mockCandidates
+  const upcomingInterviews = allCandidates
     .filter((c) => c.status === 'interview1' || c.status === 'interview2')
     .slice(0, 5);
 
