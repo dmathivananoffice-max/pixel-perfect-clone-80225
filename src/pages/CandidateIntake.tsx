@@ -31,7 +31,7 @@ import { ProcessingStep } from '@/components/intake/ProcessingStep';
 import { ReviewDashboard } from '@/components/intake/ReviewDashboard';
 import { VerificationQueue, type QueueProgress } from '@/components/intake/VerificationQueue';
 import { makeMockBatch, type IntakeBatch, type IntakeMode, type FieldFocus, type BatchStatus } from '@/lib/intake/batch';
-import { persistIntakeBatch, approveCandidate, groupFilesByFolder, type IntakeFile } from '@/lib/intake/persist';
+import { persistIntakeBatch, approveCandidate, groupFilesByFolder, saveCandidateDraft, IntakeError, isTransient, type IntakeFile } from '@/lib/intake/persist';
 import type { UploadedFile } from '@/components/intake/UploadStep';
 
 // ─────────────────────────────────────────────────────────────
@@ -323,7 +323,15 @@ export default function CandidateIntake() {
         toast.error('Missing required fields', { description: missing.join(', ') });
         return;
       }
-      setVerified((s) => new Set(s).add(current.id));
+      const nextVerified = new Set(verified).add(current.id);
+      setVerified(nextVerified);
+      // Sprint 4 — autosave draft to DB (non-blocking)
+      if (activeCandidateId) {
+        void saveCandidateDraft(activeCandidateId, {
+          values,
+          verifiedSections: Array.from(nextVerified),
+        });
+      }
       if (sectionIndex < SECTIONS.length - 1) {
         setSectionIndex((i) => i + 1);
         toast.success(`${current.label} verified`, { description: `Next: ${SECTIONS[sectionIndex + 1].label}` });
@@ -376,8 +384,20 @@ export default function CandidateIntake() {
         description: `${persisted.candidates.length} candidate${persisted.candidates.length === 1 ? '' : 's'} · ${intakeFiles.length} document${intakeFiles.length === 1 ? '' : 's'} saved.`,
       });
     } catch (err) {
-      toast.error('Intake failed', {
+      const title =
+        err instanceof IntakeError && err.kind === 'validation'
+          ? 'Please fix these issues before submitting'
+          : err instanceof IntakeError && err.kind === 'permission'
+            ? 'Not authorized — contact your admin'
+            : err instanceof IntakeError && err.kind === 'network'
+              ? 'Network issue — you can retry'
+              : 'Intake failed';
+      toast.error(title, {
         description: err instanceof Error ? err.message : String(err),
+        action:
+          err instanceof IntakeError && isTransient(err.kind)
+            ? { label: 'Retry', onClick: () => { void runIntakePersistence(); } }
+            : undefined,
       });
       // Fallback so the recruiter can still exercise the UI
       setBatch(localBatch);
@@ -462,7 +482,13 @@ export default function CandidateIntake() {
         verifiedSections: Array.from(verified),
         declarations,
       }).catch((err) => {
-        toast.error('Could not save approval', {
+        const title =
+          err instanceof IntakeError && err.kind === 'permission'
+            ? 'Not authorized to approve — contact your admin'
+            : err instanceof IntakeError && err.kind === 'network'
+              ? 'Network issue saving approval'
+              : 'Could not save approval';
+        toast.error(title, {
           description: err instanceof Error ? err.message : String(err),
         });
       });
