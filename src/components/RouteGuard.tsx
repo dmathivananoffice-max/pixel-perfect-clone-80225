@@ -1,4 +1,5 @@
-import { Navigate, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 
 interface RouteGuardProps {
@@ -13,12 +14,22 @@ interface RouteGuardProps {
  * listed roles are redirected to /dashboard (which itself is gated).
  */
 export function RouteGuard({ children, roles }: RouteGuardProps) {
-  const { isAuthenticated, isHydrating, user } = useAuthStore((s) => ({
-    isAuthenticated: s.isAuthenticated,
-    isHydrating: s.isHydrating,
-    user: s.user,
-  }));
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isHydrating = useAuthStore((s) => s.isHydrating);
+  const user = useAuthStore((s) => s.user);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isHydrating) return;
+    if (!isAuthenticated) {
+      navigate('/login', { replace: true, state: { from: location.pathname } });
+      return;
+    }
+    if (roles && user && !roles.includes(user.role)) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isHydrating, isAuthenticated, location.pathname, navigate, roles, user]);
 
   if (isHydrating) {
     return (
@@ -29,11 +40,11 @@ export function RouteGuard({ children, roles }: RouteGuardProps) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    return null;
   }
 
   if (roles && user && !roles.includes(user.role)) {
-    return <Navigate to="/dashboard" replace />;
+    return null;
   }
 
   return <>{children}</>;
