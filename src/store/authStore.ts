@@ -7,55 +7,57 @@ interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isHydrating: boolean;
   showMFA: boolean;
   tempToken: string | null;
   sendMagicLink: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   verifyMFA: (code: string) => Promise<void>;
   setUser: (user: User | null) => void;
-  setSession: (email: string | null, token: string | null, userId: string | null) => void;
-  // legacy compatibility (unused) - kept so any lingering callers compile
+  hydrateFromSession: (session: {
+    user: { id: string; email?: string | null };
+    access_token: string;
+  } | null) => Promise<void>;
+  /** Legacy no-op — password login disabled. */
   login: (email: string, password: string) => Promise<void>;
 }
 
-// Email → profile map. New emails default to recruiter; the founder gets admin.
-const PROFILES: Record<string, { name: string; role: UserRole; department: string }> = {
-  'deeban@workforce-europe.com': { name: 'Deeban', role: 'super_admin', department: 'Management' },
-  'lisa@workforce-europe.com':   { name: 'Lisa Anderson', role: 'recruiter', department: 'Recruitment' },
-  'klaus@workforce-europe.com':  { name: 'Klaus Mueller', role: 'german_trainer', department: 'Training' },
-  'sarah@workforce-europe.com':  { name: 'Sarah Johnson', role: 'documentation_officer', department: 'Documentation' },
-  'james@workforce-europe.com':  { name: 'James Smith', role: 'sales_executive', department: 'Sales' },
-  'rajesh@gts.com':              { name: 'Rajesh Kumar', role: 'agency_partner', department: 'External' },
-  'hans@charite.de':             { name: 'Dr. Hans Mueller', role: 'employer', department: 'External' },
-};
+async function loadProfile(
+  authUserId: string,
+  email: string,
+): Promise<User | null> {
+  // Fetch the app_users row (role, department, activation state).
+  const { data, error } = await supabase
+    .from('app_users')
+    .select('id, email, full_name, role_key, active, metadata, created_at')
+    .eq('auth_user_id', authUserId)
+    .maybeSingle();
 
-function buildUser(email: string, id: string): User {
-  const profile = PROFILES[email.toLowerCase()] ?? {
-    name: email.split('@')[0],
-    role: 'recruiter' as UserRole,
-    department: 'Recruitment',
-  };
+  if (error || !data) return null;
+  if (!data.active) return null; // deactivated accounts cannot use the app
+
+  const metadata = (data.metadata ?? {}) as { department?: string };
+
   return {
-    id,
-    email,
-    name: profile.name,
-    role: profile.role,
-    department: profile.department,
+    id: data.id,
+    email: data.email ?? email,
+    name: data.full_name,
+    role: data.role_key as UserRole,
+    department: metadata.department,
     status: 'active',
     mfa_enabled: false,
-    created_at: new Date().toISOString(),
+    created_at: data.created_at,
   };
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  // DEV BYPASS: auto-signed-in as super admin so /dashboard is reachable without login.
-  user: buildUser('deeban@workforce-europe.com', 'dev-bypass-user'),
-  token: 'dev-bypass-token',
-  isAuthenticated: true,
+export const useAuthStore = create<AuthState>((set, get) => ({
+  user: null,
+  token: null,
+  isAuthenticated: false,
   isLoading: false,
+  isHydrating: true,
   showMFA: false,
   tempToken: null,
-
 
   sendMagicLink: async (email: string) => {
     set({ isLoading: true });
@@ -63,7 +65,10 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: typeof window !== 'undefined' ? window.location.origin + '/dashboard' : undefined,
+          emailRedirectTo:
+            typeof window !== 'undefined'
+              ? window.location.origin + '/dashboard'
+              : undefined,
           shouldCreateUser: true,
         },
       });
@@ -85,31 +90,61 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
   },
 
-  // Kept for backwards-compat with the (now unused) MFA screen.
   verifyMFA: async () => {
     set({ isLoading: false, showMFA: false });
   },
 
-  // Legacy password path — no longer used. Kept as a no-op reject to satisfy the type.
   login: async () => {
     throw new Error('Password login is disabled. Please use the magic link.');
   },
 
   setUser: (user) => set({ user, isAuthenticated: !!user }),
 
-  setSession: (email, token, userId) => {
-    if (!email || !token || !userId) {
-      set({ user: null, token: null, isAuthenticated: false });
+  hydrateFromSession: async (session) => {
+    if (!session?.user?.email) {
+      set({
+        user: null,
+        token: null,
+        isAuthenticated: false,
+        isHydrating: false,
+      });
+      return;
+    }
+    const profile = await loadProfile(session.user.id, session.user.email);
+    if (!profile) {
+      // Signed in via Supabase but no active app_users record — sign back out.
+      await supabase.auth.signOut();
+      set({
+        user: null,
+        token: null,
+        isAuthenticated: false,
+        isHydrating: false,
+      });
       return;
     }
     set({
-      user: buildUser(email, userId),
-      token,
+      user: profile,
+      token: session.access_token,
       isAuthenticated: true,
+      isHydrating: false,
     });
   },
 }));
 
-// DEV BYPASS: Supabase session hydration disabled so the hardcoded dev user
-// isn't cleared by an empty onAuthStateChange event. Re-enable when restoring real auth.
-
+// Wire Supabase → store. Runs once on module load in the browser.
+if (typeof window !== 'undefined') {
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_OUT') {
+      useAuthStore.setState({
+        user: null,
+        token: null,
+        isAuthenticated: false,
+        isHydrating: false,
+      });
+      return;
+    }
+    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+      void useAuthStore.getState().hydrateFromSession(session);
+    }
+  });
+}
