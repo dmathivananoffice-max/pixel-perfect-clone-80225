@@ -110,10 +110,11 @@ export default function Dashboard() {
 function ExecutiveDashboard({ product }: { product: ProductConfig }) {
   const metrics = useReports();
   const navigate = useNavigate();
+  const { candidates } = useAllCandidates();
 
   const productDistribution = useMemo(() => {
     const buckets = new Map<ProductId, number>();
-    mockCandidates.forEach((c) => {
+    candidates.forEach((c) => {
       const pid = inferProduct(c.program_name);
       buckets.set(pid, (buckets.get(pid) ?? 0) + 1);
     });
@@ -121,7 +122,7 @@ function ExecutiveDashboard({ product }: { product: ProductConfig }) {
       name: p.short,
       value: buckets.get(p.id) ?? 0,
     }));
-  }, []);
+  }, [candidates]);
 
   const widgets: Array<{ label: string; value: string | number; icon: LucideIcon; accent: string }> = [
     { label: 'Total Candidates', value: metrics.totalCandidates, icon: Users, accent: 'text-blue-600 bg-blue-50' },
