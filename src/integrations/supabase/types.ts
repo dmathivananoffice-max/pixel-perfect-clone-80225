@@ -14,7 +14,250 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      audit_events: {
+        Row: {
+          actor_id: string | null
+          actor_name: string | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          event_type: string
+          id: string
+          new_value: Json | null
+          old_value: Json | null
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_name?: string | null
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          event_type: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+        }
+        Update: {
+          actor_id?: string | null
+          actor_name?: string | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          event_type?: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+        }
+        Relationships: []
+      }
+      candidate_documents: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          document_type: string
+          expiry_date: string | null
+          extracted_fields: Json
+          file_name: string
+          id: string
+          mime_type: string | null
+          ocr_complete: boolean
+          ocr_confidence: number | null
+          size_bytes: number | null
+          storage_path: string
+          updated_at: string
+          uploaded_by: string | null
+          verified: boolean
+          verified_at: string | null
+          verified_by: string | null
+          version: number
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          document_type?: string
+          expiry_date?: string | null
+          extracted_fields?: Json
+          file_name: string
+          id?: string
+          mime_type?: string | null
+          ocr_complete?: boolean
+          ocr_confidence?: number | null
+          size_bytes?: number | null
+          storage_path: string
+          updated_at?: string
+          uploaded_by?: string | null
+          verified?: boolean
+          verified_at?: string | null
+          verified_by?: string | null
+          version?: number
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          document_type?: string
+          expiry_date?: string | null
+          extracted_fields?: Json
+          file_name?: string
+          id?: string
+          mime_type?: string | null
+          ocr_complete?: boolean
+          ocr_confidence?: number | null
+          size_bytes?: number | null
+          storage_path?: string
+          updated_at?: string
+          uploaded_by?: string | null
+          verified?: boolean
+          verified_at?: string | null
+          verified_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_documents_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["candidate_id"]
+          },
+        ]
+      }
+      candidates: {
+        Row: {
+          assigned_recruiter_id: string | null
+          assigned_recruiter_name: string | null
+          batch_id: string | null
+          candidate_id: string
+          country: string
+          created_at: string
+          created_by: string | null
+          dob: string | null
+          email: string
+          extracted_fields: Json
+          first_name: string
+          gate_status: string
+          gender: string | null
+          highest_qualification: string | null
+          is_mock: boolean
+          last_name: string
+          phone: string
+          product_id: string
+          program_name: string | null
+          rank: number | null
+          source_agency_id: string | null
+          source_agency_name: string | null
+          source_type: string
+          status: string
+          total_score: number | null
+          updated_at: string
+          verification_state: Json
+        }
+        Insert: {
+          assigned_recruiter_id?: string | null
+          assigned_recruiter_name?: string | null
+          batch_id?: string | null
+          candidate_id?: string
+          country?: string
+          created_at?: string
+          created_by?: string | null
+          dob?: string | null
+          email?: string
+          extracted_fields?: Json
+          first_name: string
+          gate_status?: string
+          gender?: string | null
+          highest_qualification?: string | null
+          is_mock?: boolean
+          last_name: string
+          phone?: string
+          product_id: string
+          program_name?: string | null
+          rank?: number | null
+          source_agency_id?: string | null
+          source_agency_name?: string | null
+          source_type?: string
+          status?: string
+          total_score?: number | null
+          updated_at?: string
+          verification_state?: Json
+        }
+        Update: {
+          assigned_recruiter_id?: string | null
+          assigned_recruiter_name?: string | null
+          batch_id?: string | null
+          candidate_id?: string
+          country?: string
+          created_at?: string
+          created_by?: string | null
+          dob?: string | null
+          email?: string
+          extracted_fields?: Json
+          first_name?: string
+          gate_status?: string
+          gender?: string | null
+          highest_qualification?: string | null
+          is_mock?: boolean
+          last_name?: string
+          phone?: string
+          product_id?: string
+          program_name?: string | null
+          rank?: number | null
+          source_agency_id?: string | null
+          source_agency_name?: string | null
+          source_type?: string
+          status?: string
+          total_score?: number | null
+          updated_at?: string
+          verification_state?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidates_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "intake_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      intake_batches: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          mode: string
+          product_id: string
+          resume_state: Json
+          status: string
+          total_candidates: number
+          total_files: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mode?: string
+          product_id: string
+          resume_state?: Json
+          status?: string
+          total_candidates?: number
+          total_files?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mode?: string
+          product_id?: string
+          resume_state?: Json
+          status?: string
+          total_candidates?: number
+          total_files?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
