@@ -400,13 +400,8 @@ export default function CandidateIntake() {
       const c = batch?.candidates.find((x) => x.id === activeCandidateId);
       setLastApprovedName(c ? `${c.firstName} ${c.lastName}` : 'Candidate');
     }
-    toast.success('Candidate approved');
-    // Never auto-return — recruiter chooses next action
-    if (batch && batch.mode === 'bulk') {
-      setShowApprovalOverlay(true);
-    } else {
-      setTimeout(() => navigate('/candidates'), 500);
-    }
+    // Never auto-navigate — the recruiter chooses the next action.
+    setShowApprovalOverlay(true);
   }
 
   function exit() {
