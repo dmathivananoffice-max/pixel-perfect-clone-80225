@@ -599,6 +599,18 @@ export default function CandidateIntake() {
               <span>{completedCount}/{totalSteps}</span>
             </div>
           </div>
+          {inStudio && canSeeFingerprint && activeCandidateId && (
+            <Button
+              variant={fingerprintOpen ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setFingerprintOpen((v) => !v)}
+              className="gap-1.5 text-[11px]"
+              title="Document Fingerprints — staff audit"
+            >
+              <ShieldCheck className="size-3.5" />
+              <span className="hidden md:inline">Fingerprints</span>
+            </Button>
+          )}
         </div>
       </header>
 
