@@ -381,7 +381,10 @@ export async function saveCandidateDraft(
   },
 ): Promise<{ ok: boolean; savedAt: string; error?: string }> {
   const savedAt = new Date().toISOString();
-  const patch: Record<string, unknown> = {};
+  const patch: {
+    extracted_fields?: Record<string, Record<string, string>>;
+    verification_state?: { draft: true; draftSavedAt: string; verifiedSections: string[] };
+  } = {};
   if (draft.values) patch.extracted_fields = draft.values;
   if (draft.verifiedSections) {
     patch.verification_state = {
