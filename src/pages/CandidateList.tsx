@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 
-import { mockCandidates } from '@/lib/mockData';
+import { useAllCandidates } from '@/hooks/useAllCandidates';
 import { PRODUCTS, type ProductId } from '@/config/products';
 import { useProductStore } from '@/store/productStore';
 import { getCountry, COUNTRY_GROUPS } from '@/lib/countries';
