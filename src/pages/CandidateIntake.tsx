@@ -31,6 +31,8 @@ import { ProcessingStep } from '@/components/intake/ProcessingStep';
 import { ReviewDashboard } from '@/components/intake/ReviewDashboard';
 import { VerificationQueue, type QueueProgress } from '@/components/intake/VerificationQueue';
 import { makeMockBatch, type IntakeBatch, type IntakeMode, type FieldFocus, type BatchStatus } from '@/lib/intake/batch';
+import { persistIntakeBatch, approveCandidate, groupFilesByFolder, type IntakeFile } from '@/lib/intake/persist';
+import type { UploadedFile } from '@/components/intake/UploadStep';
 
 // ─────────────────────────────────────────────────────────────
 // Product definitions (module-local — the intake decides workflow)
