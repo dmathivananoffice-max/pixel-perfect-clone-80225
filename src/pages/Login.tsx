@@ -10,9 +10,24 @@ import toast from 'react-hot-toast';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
+  const [startupError, setStartupError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const { sendMagicLink, isLoading, isAuthenticated } = useAuthStore();
+
+  // Surface any startup error captured during app bootstrap (e.g. bad/expired
+  // magic link, missing app_users record, Supabase failure).
+  useEffect(() => {
+    try {
+      const msg = sessionStorage.getItem('wf:login-error');
+      if (msg) {
+        setStartupError(msg);
+        sessionStorage.removeItem('wf:login-error');
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   // If session hydrates while sitting on /login (e.g. after clicking magic link), go to dashboard.
   useEffect(() => {
