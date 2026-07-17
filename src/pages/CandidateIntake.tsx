@@ -223,6 +223,28 @@ export default function CandidateIntake() {
   const [snapshots, setSnapshots] = useState<Record<string, CandSnapshot>>({});
   const [showApprovalOverlay, setShowApprovalOverlay] = useState(false);
   const [lastApprovedName, setLastApprovedName] = useState<string>('');
+  const [docUploadOverlay, setDocUploadOverlay] = useState<
+    { docLabel: string; candidateId: string; sectionId: SectionId } | null
+  >(null);
+
+  // Wrap setUploads so any newly-uploaded document surfaces the success overlay.
+  // Preserves candidate + section context so the recruiter can Continue right where they left off.
+  function handleSetUploads(next: Record<string, boolean>) {
+    const newlyKey = Object.keys(next).find((k) => next[k] && !uploads[k]);
+    setUploads(next);
+    if (newlyKey && activeCandidateId && current) {
+      const label =
+        REQUIRED_UPLOADS.find((u) => u.key === newlyKey)?.label ??
+        (newlyKey.startsWith('driving_')
+          ? `Driving licence (${newlyKey.replace('driving_', '')})`
+          : 'Document');
+      setDocUploadOverlay({
+        docLabel: label,
+        candidateId: activeCandidateId,
+        sectionId: current.id,
+      });
+    }
+  }
 
   const activeCandidate = useMemo(
     () => (batch && activeCandidateId ? batch.candidates.find((c) => c.id === activeCandidateId) ?? null : null),
