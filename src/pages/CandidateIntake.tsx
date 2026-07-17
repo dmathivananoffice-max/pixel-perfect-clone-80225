@@ -590,21 +590,32 @@ export default function CandidateIntake() {
                       firstName={firstName}
                     />
                   </div>
-                  <div className="flex items-center justify-between gap-2 border-t border-border/60 bg-background/95 px-4 py-3 sm:px-6">
-                    <Button variant="ghost" size="sm" onClick={goBack} className="gap-1.5">
-                      <ArrowLeft className="size-4" /> Back
-                    </Button>
-                    <Button size="sm" onClick={verifyAndContinue} className="gap-1.5 shadow-sm">
-                      <Check className="size-4" /> Verify &amp; continue
-                      <ArrowRight className="size-4" />
-                    </Button>
+                  <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-2 border-t border-border/60 bg-background/95 px-4 py-2.5 backdrop-blur sm:px-6">
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={goBack} className="gap-1.5" disabled={sectionIndex === 0}>
+                        <ArrowLeft className="size-4" /> Previous
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={saveDraft} className="gap-1.5 text-muted-foreground">
+                        <Save className="size-3.5" /> Save draft
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="hidden md:inline text-[10px] text-muted-foreground">
+                        <span className="rounded border bg-muted px-1.5 py-0.5">⌘↵</span> to continue
+                      </span>
+                      <Button size="sm" onClick={verifyAndContinue} className="gap-1.5 shadow-sm">
+                        <Check className="size-4" /> Verify &amp; continue
+                        <ArrowRight className="size-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
-                {/* Source document — supporting panel on the right */}
-                <div className="flex h-full min-h-0 w-[42%] shrink-0 overflow-hidden bg-muted/30 sm:w-[40%] md:w-[38%] lg:w-[36%] xl:w-[35%]">
+                {/* Source document — evidence panel (widened for legibility) */}
+                <div className="flex h-full min-h-0 w-[44%] shrink-0 overflow-hidden bg-muted/30 md:w-[43%] lg:w-[43%] xl:w-[42%]" style={{ minWidth: 320 }}>
                   <DocumentViewer section={current} zoom={zoom} setZoom={setZoom} />
                 </div>
+
               </div>
             )}
 
