@@ -577,6 +577,7 @@ export default function CandidateIntake() {
                 activeCandidateId={activeCandidateId}
                 approvedIds={approvedIds}
                 progressMap={progressMap}
+                nextUpId={showApprovalOverlay ? pickNextCandidate() : null}
                 onSelectCandidate={(id) => {
                   const cand = batch!.candidates.find((c) => c.id === id);
                   openVerification(id, snapshots[id] ? undefined : cand?.focus);
