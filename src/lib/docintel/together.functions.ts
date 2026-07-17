@@ -51,8 +51,10 @@ export interface TogetherPageRaw {
   text: string;
   fields: TogetherFieldRaw[];
   warnings?: string[];
-  raw: Record<string, unknown> | null; // full model response for this page (JSON parsed content)
-  usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null;
+  /** Full model response for this page, JSON-stringified so it round-trips through the RPC boundary. */
+  rawJson: string;
+  usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number } | null;
+
 
 }
 
