@@ -100,8 +100,8 @@ function seededDocs(seed: number): { docs: BatchDocument[]; missing: number; low
 }
 
 /** Generate a realistic mock batch for the dashboard. */
-export function makeMockBatch(mode: IntakeMode, product: string, productLabel: string): IntakeBatch {
-  const size = mode === 'single' ? 1 : 42;
+export function makeMockBatch(mode: IntakeMode, product: string, productLabel: string, count?: number): IntakeBatch {
+  const size = count ?? (mode === 'single' ? 1 : 42);
   const candidates: BatchCandidate[] = [];
   const takenNames = new Set<string>();
 

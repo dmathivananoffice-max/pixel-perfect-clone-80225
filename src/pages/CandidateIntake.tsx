@@ -31,6 +31,8 @@ import { ProcessingStep } from '@/components/intake/ProcessingStep';
 import { ReviewDashboard } from '@/components/intake/ReviewDashboard';
 import { VerificationQueue, type QueueProgress } from '@/components/intake/VerificationQueue';
 import { makeMockBatch, type IntakeBatch, type IntakeMode, type FieldFocus, type BatchStatus } from '@/lib/intake/batch';
+import { persistIntakeBatch, approveCandidate, groupFilesByFolder, type IntakeFile } from '@/lib/intake/persist';
+import type { UploadedFile } from '@/components/intake/UploadStep';
 
 // ─────────────────────────────────────────────────────────────
 // Product definitions (module-local — the intake decides workflow)
@@ -196,6 +198,7 @@ export default function CandidateIntake() {
   const [mode, setMode] = useState<IntakeMode | null>(null);
   const [product, setProduct] = useState<IntakeProductId | null>(null);
   const [uploadedCount, setUploadedCount] = useState(0);
+  const [pendingFiles, setPendingFiles] = useState<UploadedFile[]>([]);
   const [batch, setBatch] = useState<IntakeBatch | null>(null);
   const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
   const [activeCandidateId, setActiveCandidateId] = useState<string | null>(null);
@@ -343,17 +346,48 @@ export default function CandidateIntake() {
     if (stage === 'product')    { setStage('type'); return; }
   }
 
-  function beginProcessing(count: number) {
-    setUploadedCount(count);
+  function beginProcessing(files: UploadedFile[]) {
+    setUploadedCount(files.length);
+    setPendingFiles(files);
     setStage('processing');
   }
 
-  function finishProcessing() {
+  // Real intake persistence: batch → candidates → storage uploads → docs
+  async function runIntakePersistence(): Promise<void> {
     const p = product ?? 'nurses';
     const productDef = INTAKE_PRODUCTS.find((x) => x.id === p)!;
-    setBatch(makeMockBatch(mode ?? 'single', p, productDef.label));
+    const m = mode ?? 'single';
+    const intakeFiles: IntakeFile[] = pendingFiles.map((f) => ({
+      id: f.id, file: f.file, path: f.path, kind: f.kind,
+    }));
+    const groups = m === 'single' ? [intakeFiles] : groupFilesByFolder(intakeFiles);
+    const candidateCount = m === 'single' ? 1 : Math.max(1, groups.length);
+    const localBatch = makeMockBatch(m, p, productDef.label, candidateCount);
+    try {
+      const { batch: persisted } = await persistIntakeBatch({
+        mode: m,
+        productId: p,
+        localBatch,
+        files: intakeFiles,
+        onFileError: (name, err) => toast.error(`Upload failed: ${name}`, { description: err }),
+      });
+      setBatch(persisted);
+      toast.success('Batch ready', {
+        description: `${persisted.candidates.length} candidate${persisted.candidates.length === 1 ? '' : 's'} · ${intakeFiles.length} document${intakeFiles.length === 1 ? '' : 's'} saved.`,
+      });
+    } catch (err) {
+      toast.error('Intake failed', {
+        description: err instanceof Error ? err.message : String(err),
+      });
+      // Fallback so the recruiter can still exercise the UI
+      setBatch(localBatch);
+    }
+  }
+
+  function finishProcessing() {
     setStage('dashboard');
   }
+
 
   function snapshotCurrent(): CandSnapshot {
     return { values, edited, verified, uploads, declarations, sectionIndex };
@@ -411,20 +445,32 @@ export default function CandidateIntake() {
     }
   }
 
-  function approve() {
+  async function approve() {
     if (!declarations.reviewed || !declarations.matches || !declarations.complete) {
       toast.error('Confirm all three declarations to approve.');
       return;
     }
     if (activeCandidateId) {
-      setApprovedIds((prev) => new Set(prev).add(activeCandidateId));
-      setSnapshots((prev) => ({ ...prev, [activeCandidateId]: snapshotCurrent() }));
-      const c = batch?.candidates.find((x) => x.id === activeCandidateId);
+      const candId = activeCandidateId;
+      setApprovedIds((prev) => new Set(prev).add(candId));
+      setSnapshots((prev) => ({ ...prev, [candId]: snapshotCurrent() }));
+      const c = batch?.candidates.find((x) => x.id === candId);
       setLastApprovedName(c ? `${c.firstName} ${c.lastName}` : 'Candidate');
+      // Persist to DB — non-blocking for UX, but surface errors
+      approveCandidate(candId, {
+        values,
+        verifiedSections: Array.from(verified),
+        declarations,
+      }).catch((err) => {
+        toast.error('Could not save approval', {
+          description: err instanceof Error ? err.message : String(err),
+        });
+      });
     }
     // Never auto-navigate — the recruiter chooses the next action.
     setShowApprovalOverlay(true);
   }
+
 
   function exit() {
     // Drafts autosave — no confirm dialog per Mission Control UX spec
@@ -532,13 +578,19 @@ export default function CandidateIntake() {
           mode={mode ?? 'single'}
           productLabel={INTAKE_PRODUCTS.find((p) => p.id === product)?.label ?? 'Product'}
           onBack={goBack}
-          onContinue={(files) => beginProcessing(files.length)}
+          onContinue={(files) => beginProcessing(files)}
         />
       )}
 
       {stage === 'processing' && (
-        <ProcessingStep fileCount={uploadedCount} onDone={finishProcessing} />
+        <ProcessingStep
+          fileCount={uploadedCount}
+          run={runIntakePersistence}
+          onDone={finishProcessing}
+        />
       )}
+
+
 
       {stage === 'dashboard' && batch && (
         <ReviewDashboard
