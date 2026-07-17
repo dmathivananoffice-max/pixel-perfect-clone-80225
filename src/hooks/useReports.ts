@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { mockActivityItems } from '@/lib/mockData';
 import type { DashboardMetrics, Candidate } from '@/types';
 
 interface CandidateRow {
@@ -9,16 +8,42 @@ interface CandidateRow {
   created_at: string;
 }
 
+interface AuditRow {
+  id: string;
+  entity_type: string;
+  entity_id: string;
+  event_type: string;
+  actor_name: string | null;
+  new_value: unknown;
+  created_at: string;
+}
+
+function humanize(event: AuditRow): string {
+  const label = event.event_type.replace(/_/g, ' ');
+  const nv = event.new_value as { status?: string; note?: string } | null;
+  if (nv?.status) return `${label} → ${nv.status}`;
+  if (nv?.note) return `${label}: ${nv.note}`;
+  return `${label} on ${event.entity_type}`;
+}
+
 export function useReports(): DashboardMetrics {
   const [rows, setRows] = useState<CandidateRow[]>([]);
+  const [events, setEvents] = useState<AuditRow[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
-        .from('candidates')
-        .select('status, program_name, created_at');
-      if (!cancelled && data) setRows(data as CandidateRow[]);
+      const [cRes, eRes] = await Promise.all([
+        supabase.from('candidates').select('status, program_name, created_at'),
+        supabase
+          .from('audit_events')
+          .select('id, entity_type, entity_id, event_type, actor_name, new_value, created_at')
+          .order('created_at', { ascending: false })
+          .limit(8),
+      ]);
+      if (cancelled) return;
+      if (cRes.data) setRows(cRes.data as CandidateRow[]);
+      if (eRes.data) setEvents(eRes.data as AuditRow[]);
     })();
     return () => {
       cancelled = true;
@@ -49,7 +74,6 @@ export function useReports(): DashboardMetrics {
       { status: 'Withdrawn', count: byStatus('withdrawn') },
     ];
 
-    // Group real candidates by created_at month for the last 6 months.
     const months: { key: string; label: string }[] = [];
     const now = new Date();
     for (let i = 5; i >= 0; i--) {
@@ -78,6 +102,15 @@ export function useReports(): DashboardMetrics {
       .map(([program, count]) => ({ program, count }))
       .sort((a, b) => b.count - a.count);
 
+    const recentActivity = events.map((e) => ({
+      id: e.id,
+      description: humanize(e),
+      actor: e.actor_name ?? 'System',
+      timestamp: e.created_at,
+      entity_type: e.entity_type,
+      entity_id: e.entity_id,
+    }));
+
     return {
       totalCandidates,
       shortlisted,
@@ -90,8 +123,7 @@ export function useReports(): DashboardMetrics {
       monthlyPlacements,
       candidatesByStatus,
       topPrograms,
-      // Activity feed will read from audit_events in the next slice.
-      recentActivity: mockActivityItems.slice(0, 8),
+      recentActivity,
     };
-  }, [rows]);
+  }, [rows, events]);
 }
