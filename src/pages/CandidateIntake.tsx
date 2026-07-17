@@ -445,20 +445,32 @@ export default function CandidateIntake() {
     }
   }
 
-  function approve() {
+  async function approve() {
     if (!declarations.reviewed || !declarations.matches || !declarations.complete) {
       toast.error('Confirm all three declarations to approve.');
       return;
     }
     if (activeCandidateId) {
-      setApprovedIds((prev) => new Set(prev).add(activeCandidateId));
-      setSnapshots((prev) => ({ ...prev, [activeCandidateId]: snapshotCurrent() }));
-      const c = batch?.candidates.find((x) => x.id === activeCandidateId);
+      const candId = activeCandidateId;
+      setApprovedIds((prev) => new Set(prev).add(candId));
+      setSnapshots((prev) => ({ ...prev, [candId]: snapshotCurrent() }));
+      const c = batch?.candidates.find((x) => x.id === candId);
       setLastApprovedName(c ? `${c.firstName} ${c.lastName}` : 'Candidate');
+      // Persist to DB — non-blocking for UX, but surface errors
+      approveCandidate(candId, {
+        values,
+        verifiedSections: Array.from(verified),
+        declarations,
+      }).catch((err) => {
+        toast.error('Could not save approval', {
+          description: err instanceof Error ? err.message : String(err),
+        });
+      });
     }
     // Never auto-navigate — the recruiter chooses the next action.
     setShowApprovalOverlay(true);
   }
+
 
   function exit() {
     // Drafts autosave — no confirm dialog per Mission Control UX spec
