@@ -14,6 +14,120 @@ export type Database = {
   }
   public: {
     Tables: {
+      agencies: {
+        Row: {
+          active: boolean
+          contact_email: string | null
+          contact_phone: string | null
+          country: string
+          created_at: string
+          id: string
+          metadata: Json
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          contact_email?: string | null
+          contact_phone?: string | null
+          country?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          contact_email?: string | null
+          contact_phone?: string | null
+          country?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      app_users: {
+        Row: {
+          active: boolean
+          auth_user_id: string | null
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          metadata: Json
+          role_key: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          auth_user_id?: string | null
+          created_at?: string
+          email: string
+          full_name?: string
+          id?: string
+          metadata?: Json
+          role_key?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          auth_user_id?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          metadata?: Json
+          role_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      assessments: {
+        Row: {
+          assessed_at: string | null
+          assessor_name: string | null
+          candidate_id: string
+          created_at: string
+          id: string
+          kind: string
+          notes: string | null
+          overall_score: number | null
+          recommendation: string | null
+          scores: Json
+          updated_at: string
+        }
+        Insert: {
+          assessed_at?: string | null
+          assessor_name?: string | null
+          candidate_id: string
+          created_at?: string
+          id?: string
+          kind: string
+          notes?: string | null
+          overall_score?: number | null
+          recommendation?: string | null
+          scores?: Json
+          updated_at?: string
+        }
+        Update: {
+          assessed_at?: string | null
+          assessor_name?: string | null
+          candidate_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          notes?: string | null
+          overall_score?: number | null
+          recommendation?: string | null
+          scores?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_events: {
         Row: {
           actor_id: string | null
@@ -121,6 +235,45 @@ export type Database = {
           },
         ]
       }
+      candidate_scores: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          criteria_name: string
+          gate_status: string
+          id: string
+          normalized_score: number | null
+          raw_score: number | null
+          scoring_model_id: string | null
+          updated_at: string
+          weighted_score: number | null
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          criteria_name: string
+          gate_status?: string
+          id?: string
+          normalized_score?: number | null
+          raw_score?: number | null
+          scoring_model_id?: string | null
+          updated_at?: string
+          weighted_score?: number | null
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          criteria_name?: string
+          gate_status?: string
+          id?: string
+          normalized_score?: number | null
+          raw_score?: number | null
+          scoring_model_id?: string | null
+          updated_at?: string
+          weighted_score?: number | null
+        }
+        Relationships: []
+      }
       candidates: {
         Row: {
           assigned_recruiter_id: string | null
@@ -219,6 +372,84 @@ export type Database = {
           },
         ]
       }
+      contracts: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          document_path: string | null
+          employer_id: string | null
+          employer_name: string | null
+          id: string
+          metadata: Json
+          signed_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          document_path?: string | null
+          employer_id?: string | null
+          employer_name?: string | null
+          id?: string
+          metadata?: Json
+          signed_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          document_path?: string | null
+          employer_id?: string | null
+          employer_name?: string | null
+          id?: string
+          metadata?: Json
+          signed_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      employers: {
+        Row: {
+          active: boolean
+          contact_email: string | null
+          contact_phone: string | null
+          country: string
+          created_at: string
+          id: string
+          industry: string | null
+          metadata: Json
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          contact_email?: string | null
+          contact_phone?: string | null
+          country?: string
+          created_at?: string
+          id?: string
+          industry?: string | null
+          metadata?: Json
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          contact_email?: string | null
+          contact_phone?: string | null
+          country?: string
+          created_at?: string
+          id?: string
+          industry?: string | null
+          metadata?: Json
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       intake_batches: {
         Row: {
           created_at: string
@@ -254,6 +485,183 @@ export type Database = {
           status?: string
           total_candidates?: number
           total_files?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      interviews: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          decision: string | null
+          employer_id: string | null
+          employer_name: string | null
+          id: string
+          notes: string | null
+          panel_members: Json
+          rating: number | null
+          round: string
+          scheduled_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          decision?: string | null
+          employer_id?: string | null
+          employer_name?: string | null
+          id?: string
+          notes?: string | null
+          panel_members?: Json
+          rating?: number | null
+          round?: string
+          scheduled_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          decision?: string | null
+          employer_id?: string | null
+          employer_name?: string | null
+          id?: string
+          notes?: string | null
+          panel_members?: Json
+          rating?: number | null
+          round?: string
+          scheduled_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      permissions: {
+        Row: {
+          action: string
+          created_at: string
+          description: string
+          id: string
+          key: string
+          module: string
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          description?: string
+          id?: string
+          key: string
+          module: string
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          description?: string
+          id?: string
+          key?: string
+          module?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          active: boolean
+          category: string
+          created_at: string
+          description: string
+          id: string
+          key: string
+          metadata: Json
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          description?: string
+          id?: string
+          key: string
+          metadata?: Json
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          description?: string
+          id?: string
+          key?: string
+          metadata?: Json
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      role_permissions: {
+        Row: {
+          created_at: string
+          id: string
+          permission_id: string
+          role_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          permission_id: string
+          role_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          permission_id?: string
+          role_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_permission_id_fkey"
+            columns: ["permission_id"]
+            isOneToOne: false
+            referencedRelation: "permissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "role_permissions_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roles: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          is_system: boolean
+          key: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_system?: boolean
+          key: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_system?: boolean
+          key?: string
+          name?: string
           updated_at?: string
         }
         Relationships: []
