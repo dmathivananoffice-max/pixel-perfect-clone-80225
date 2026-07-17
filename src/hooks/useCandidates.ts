@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { mockAuditEvents, mockCandidateScores } from '@/lib/mockData';
 import type {
   Candidate,
   CandidateDocument,
@@ -61,17 +60,72 @@ function rowToCandidate(r: CandidateRow): Candidate {
   };
 }
 
+interface AuditRow {
+  id: string;
+  entity_type: string;
+  entity_id: string;
+  event_type: string;
+  actor_id: string | null;
+  actor_name: string | null;
+  old_value: unknown;
+  new_value: unknown;
+  created_at: string;
+}
+
+interface ScoreRow {
+  id: string;
+  candidate_id: string;
+  scoring_model_id: string | null;
+  criteria_name: string;
+  raw_score: number | null;
+  normalized_score: number | null;
+  weighted_score: number | null;
+  gate_status: string;
+}
+
+function rowToAudit(r: AuditRow): AuditEvent {
+  return {
+    id: r.id,
+    entity_type: r.entity_type as AuditEvent['entity_type'],
+    entity_id: r.entity_id,
+    event_type: r.event_type as AuditEvent['event_type'],
+    actor_id: r.actor_id ?? '',
+    actor_name: r.actor_name ?? '',
+    old_value: (r.old_value ?? undefined) as AuditEvent['old_value'],
+    new_value: (r.new_value ?? undefined) as AuditEvent['new_value'],
+    created_at: r.created_at,
+  };
+}
+
+function rowToScore(r: ScoreRow): CandidateScore {
+  return {
+    id: r.id,
+    candidate_id: r.candidate_id,
+    scoring_model_id: r.scoring_model_id ?? '',
+    criteria_name: r.criteria_name,
+    raw_score: r.raw_score ?? 0,
+    normalized_score: r.normalized_score ?? 0,
+    weighted_score: r.weighted_score ?? 0,
+    gate_status: r.gate_status as CandidateScore['gate_status'],
+  };
+}
+
 export function useCandidates() {
   const [filters, setFilters] = useState<FilterParams>({});
   const [rows, setRows] = useState<Candidate[]>([]);
   const [documents, setDocuments] = useState<CandidateDocument[]>([]);
+  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
+  const [scores, setScores] = useState<CandidateScore[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [cRes, dRes] = await Promise.all([
+      const [cRes, dRes, aRes, sRes] = await Promise.all([
         supabase.from('candidates').select('*').order('created_at', { ascending: false }),
         supabase.from('candidate_documents').select('*'),
+        supabase.from('audit_events').select('*').order('created_at', { ascending: false }),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase.from as any)('candidate_scores').select('*'),
       ]);
       if (cancelled) return;
       if (cRes.data) setRows((cRes.data as CandidateRow[]).map(rowToCandidate));
@@ -93,6 +147,8 @@ export function useCandidates() {
           })),
         );
       }
+      if (aRes.data) setAuditEvents((aRes.data as AuditRow[]).map(rowToAudit));
+      if (sRes.data) setScores((sRes.data as ScoreRow[]).map(rowToScore));
     })();
     return () => {
       cancelled = true;
@@ -136,12 +192,10 @@ export function useCandidates() {
     getCandidate: (id: string): Candidate | undefined => rows.find((c) => c.candidate_id === id),
     getCandidateDocuments: (id: string): CandidateDocument[] =>
       documents.filter((d) => d.candidate_id === id),
-    // Audit + scoring tables not populated for real candidates yet — fall back to mocks
-    // so existing detail views don't break. Wired to DB in the next slice.
     getCandidateAuditEvents: (id: string): AuditEvent[] =>
-      mockAuditEvents.filter((a) => a.entity_id === id),
+      auditEvents.filter((a) => a.entity_id === id),
     getCandidateScores: (id: string): CandidateScore[] =>
-      mockCandidateScores.filter((s) => s.candidate_id === id),
+      scores.filter((s) => s.candidate_id === id),
     totalCount: candidates.length,
   };
 }
