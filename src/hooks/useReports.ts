@@ -104,11 +104,12 @@ export function useReports(): DashboardMetrics {
 
     const recentActivity = events.map((e) => ({
       id: e.id,
+      type: e.event_type,
       description: humanize(e),
       actor: e.actor_name ?? 'System',
       timestamp: e.created_at,
-      entity_type: e.entity_type,
-      entity_id: e.entity_id,
+      entityType: e.entity_type,
+      entityId: e.entity_id,
     }));
 
     return {
