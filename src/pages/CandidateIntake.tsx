@@ -566,7 +566,15 @@ export default function CandidateIntake() {
           mode={mode ?? 'single'}
           productLabel={INTAKE_PRODUCTS.find((p) => p.id === product)?.label ?? 'Product'}
           onBack={goBack}
-          onContinue={(files) => beginProcessing(files.length)}
+          onContinue={(files) => beginProcessing(files)}
+        />
+      )}
+
+      {stage === 'processing' && (
+        <ProcessingStep
+          fileCount={uploadedCount}
+          run={runIntakePersistence}
+          onDone={finishProcessing}
         />
       )}
 
