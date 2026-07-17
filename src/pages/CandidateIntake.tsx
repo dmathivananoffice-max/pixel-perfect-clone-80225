@@ -482,7 +482,13 @@ export default function CandidateIntake() {
         verifiedSections: Array.from(verified),
         declarations,
       }).catch((err) => {
-        toast.error('Could not save approval', {
+        const title =
+          err instanceof IntakeError && err.kind === 'permission'
+            ? 'Not authorized to approve — contact your admin'
+            : err instanceof IntakeError && err.kind === 'network'
+              ? 'Network issue saving approval'
+              : 'Could not save approval';
+        toast.error(title, {
           description: err instanceof Error ? err.message : String(err),
         });
       });
