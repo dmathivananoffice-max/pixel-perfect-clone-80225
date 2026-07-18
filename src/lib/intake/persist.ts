@@ -151,7 +151,13 @@ export async function persistIntakeBatch(params: {
   const { mode, productId, localBatch, files, actorName, onProgress, onFileError } = params;
 
   // 1. Validate every candidate before any DB writes.
+  //    Shell placeholders (email `pending+…@intake.local`) are intentionally
+  //    blank — identity is filled in post-OCR by the backfill step below.
+  //    Only validate candidates a human actually typed.
+  const isShellPlaceholder = (c: BatchCandidate) =>
+    /^pending\+[^@]+@intake\.local$/i.test(c.email?.trim() ?? '');
   for (const c of localBatch.candidates) {
+    if (isShellPlaceholder(c)) continue;
     const problems = validateCandidate(c);
     if (problems.length > 0) {
       throw new IntakeError(
@@ -161,10 +167,13 @@ export async function persistIntakeBatch(params: {
     }
   }
 
-  // 2. Duplicate email check.
-  const emails = localBatch.candidates.map((c) => c.email);
+  // 2. Duplicate email check — skip shell placeholders (their emails are
+  //    per-batch unique tokens, never real addresses).
+  const emails = localBatch.candidates.filter((c) => !isShellPlaceholder(c)).map((c) => c.email);
   const dupes = await findDuplicateEmails(emails);
-  const conflicts = localBatch.candidates.filter((c) => dupes.has(c.email.trim().toLowerCase()));
+  const conflicts = localBatch.candidates.filter(
+    (c) => !isShellPlaceholder(c) && dupes.has(c.email.trim().toLowerCase()),
+  );
   if (conflicts.length > 0) {
     const list = conflicts.map((c) => c.email).join(', ');
     throw new IntakeError(
