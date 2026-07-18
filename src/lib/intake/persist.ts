@@ -208,8 +208,8 @@ export async function persistIntakeBatch(params: {
     status: 'waiting',
     gate_status: 'not_placement_ready',
     source_type: 'internal',
-    is_mock: true,
-    verification_state: { status: c.status, extractionConfidence: c.extractionConfidence },
+    is_mock: false,
+    verification_state: { status: c.status, extractionConfidence: c.extractionConfidence, ocr_state: 'pending' },
     extracted_fields: {},
   }));
   const { data: candRows, error: candErr } = await supabase
