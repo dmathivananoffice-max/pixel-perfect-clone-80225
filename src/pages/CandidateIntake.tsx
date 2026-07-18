@@ -412,8 +412,8 @@ export default function CandidateIntake() {
             ? { label: 'Retry', onClick: () => { void runIntakePersistence(); } }
             : undefined,
       });
-      // Fallback so the recruiter can still exercise the UI
-      setBatch(localBatch);
+      // No mock fallback — leave batch unset so the UI shows the real error state.
+      setBatch(null);
     }
   }
 
