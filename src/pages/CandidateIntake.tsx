@@ -1023,14 +1023,25 @@ function SectionForm({
   setUploads: (u: Record<string, boolean>) => void;
   firstName: string;
 }) {
-  // Contextual, section-specific banners
-  const duplicate = useMemo(() => {
-    if (section.id !== 'contact') return null;
+  const [duplicate, setDuplicate] = useState<{ first_name: string; last_name: string; email: string; country: string } | null>(null);
+  useEffect(() => {
+    if (section.id !== 'contact') { setDuplicate(null); return; }
     const email = (values['email'] ?? '').trim().toLowerCase();
-    if (!email) return null;
-    return mockCandidates.find((c) => c.email.toLowerCase() === email) ?? null;
+    if (!email) { setDuplicate(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('candidates')
+        .select('first_name, last_name, email, country')
+        .eq('email', email)
+        .limit(1)
+        .maybeSingle();
+      if (!cancelled) setDuplicate(data ?? null);
+    })();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [section.id, values['email']]);
+
 
   const langWarn = useMemo(() => {
     if (section.id !== 'language') return null;
