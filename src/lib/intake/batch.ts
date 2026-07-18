@@ -65,21 +65,6 @@ const DOC_SET: Omit<BatchDocument, 'present' | 'confidence' | 'issue'>[] = [
   { key: 'driving',  label: 'Driving licence',       german: 'fuehrerschein' },
 ];
 
-const NAMES: [string, string, string][] = [
-  ['Rahul',   'Sharma',    'India'],
-  ['Maria',   'Fernandes', 'Philippines'],
-  ['Ahmed',   'Khan',      'Pakistan'],
-  ['Sunita',  'Devi',      'India'],
-  ['Robert',  'Okoye',     'Nigeria'],
-  ['Priya',   'Menon',     'India'],
-  ['Carlos',  'Reyes',     'Mexico'],
-  ['Linh',    'Nguyen',    'Vietnam'],
-  ['Fatima',  'El Idrissi','Morocco'],
-  ['Deeban',  'Rajendran', 'India'],
-  ['Anh',     'Tran',      'Vietnam'],
-  ['Grace',   'Adeyemi',   'Nigeria'],
-];
-
 function seededDocs(seed: number): { docs: BatchDocument[]; missing: number; low: number } {
   let missing = 0, low = 0;
   const docs: BatchDocument[] = DOC_SET.map((d, i) => {
@@ -99,50 +84,35 @@ function seededDocs(seed: number): { docs: BatchDocument[]; missing: number; low
   return { docs, missing, low };
 }
 
-/** Generate a realistic mock batch for the dashboard. */
-export function makeMockBatch(mode: IntakeMode, product: string, productLabel: string, count?: number): IntakeBatch {
-  const size = count ?? (mode === 'single' ? 1 : 42);
+/**
+ * Build the initial batch shell for a real intake run.
+ * Every candidate is a blank placeholder — no names, no country, no email.
+ * The persistence layer wires these to real DB rows, and the Document
+ * Intelligence pipeline (Qwen OCR + AI extraction) fills in the identity
+ * fields from the uploaded documents.
+ */
+export function makeIntakeBatchShell(
+  mode: IntakeMode,
+  product: string,
+  productLabel: string,
+  count?: number,
+  batchToken?: string,
+): IntakeBatch {
+  const size = Math.max(1, count ?? (mode === 'single' ? 1 : 1));
+  const token = batchToken ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
   const candidates: BatchCandidate[] = [];
-  const takenNames = new Set<string>();
 
   for (let i = 0; i < size; i++) {
-    const [fn, ln, country] = NAMES[i % NAMES.length];
-    const suffix = i >= NAMES.length ? ` ${Math.floor(i / NAMES.length) + 1}` : '';
-    const firstName = fn + suffix;
-    const key = `${firstName} ${ln}`.toLowerCase();
-    takenNames.add(key);
-
-    const { docs, missing, low } = seededDocs(i + 1);
-    const extractionConfidence = 0.82 + ((i * 17) % 18) / 100;
-
-    let status: BatchStatus = 'ready';
-    let duplicateOf: string | undefined;
-    let similarity: number | undefined;
-    let focus: FieldFocus | undefined;
-
-    // Salt with duplicates + manual review deterministically for bulk
-    if (mode === 'bulk') {
-      if (i === 2)  { status = 'duplicate';      duplicateOf = 'cand-0'; similarity = 0.99; }
-      else if (i === 7)  { status = 'duplicate'; duplicateOf = 'cand-1'; similarity = 0.94; }
-      else if (i === 3)  { status = 'manual_review'; focus = { section: 'passport', fieldKey: 'passport_no', reason: 'Passport number unreadable' }; }
-      else if (missing > 0) { status = 'missing_docs'; }
-      else if (low >= 2)    { status = 'low_confidence'; focus = { section: 'contact', fieldKey: 'address', reason: 'Address low confidence' }; }
-    } else if (missing > 0) {
-      status = 'missing_docs';
-    }
-
+    const { docs } = seededDocs(i + 1);
     candidates.push({
       id: `cand-${i}`,
-      firstName,
-      lastName: ln,
-      country,
-      email: `${fn.toLowerCase()}.${ln.toLowerCase().replace(/\s+/g,'')}@intake.local`,
-      status,
-      extractionConfidence,
-      documents: docs,
-      duplicateOf,
-      similarity,
-      focus,
+      firstName: 'Pending',
+      lastName: `Candidate ${i + 1}`,
+      country: '',
+      email: `pending+${token}-${i + 1}@intake.local`,
+      status: 'ready',
+      extractionConfidence: 0,
+      documents: docs.map((d) => ({ ...d, present: false, confidence: undefined, issue: null })),
     });
   }
 
@@ -156,6 +126,9 @@ export function makeMockBatch(mode: IntakeMode, product: string, productLabel: s
     candidates,
   };
 }
+
+/** @deprecated Kept as an alias for backwards compatibility — produces a real intake shell, not mock data. */
+export const makeMockBatch = makeIntakeBatchShell;
 
 function nextBatchName(): string {
   const d = new Date();
