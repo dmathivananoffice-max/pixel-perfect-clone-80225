@@ -19,6 +19,7 @@ export function CommandPalette({ open, onOpenChange, onAddCandidate }: Props) {
   const navigate = useNavigate();
   const setProduct = useProductStore((s) => s.setProduct);
   const [q, setQ] = useState('');
+  const { candidates } = useAllCandidates();
 
   useEffect(() => { if (!open) setQ(''); }, [open]);
 
