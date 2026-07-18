@@ -383,7 +383,7 @@ export default function CandidateIntake() {
     }));
     const groups = m === 'single' ? [intakeFiles] : groupFilesByFolder(intakeFiles);
     const candidateCount = m === 'single' ? 1 : Math.max(1, groups.length);
-    const localBatch = makeMockBatch(m, p, productDef.label, candidateCount);
+    const localBatch = makeIntakeBatchShell(m, p, productDef.label, candidateCount);
     try {
       const { batch: persisted } = await persistIntakeBatch({
         mode: m,
