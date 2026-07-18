@@ -653,6 +653,36 @@ export default function CandidateIntake() {
         />
       )}
 
+      {stage === 'dashboard' && !batch && (
+        <div className="flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-xl px-6 py-16 text-center">
+            <div className="mx-auto mb-6 flex size-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
+              <AlertTriangle className="size-6" />
+            </div>
+            <h2 className="font-display text-2xl font-semibold tracking-tight">
+              Processing failed
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              We couldn't create your intake batch. The uploaded files were not
+              saved and no candidate records were created. Check the error
+              toast for the exact reason, then retry from the upload step.
+            </p>
+            <div className="mt-6 flex items-center justify-center gap-2">
+              <Button variant="outline" onClick={() => setStage('upload')}>
+                <ArrowLeft className="mr-1.5 size-4" /> Back to upload
+              </Button>
+              <Button
+                onClick={() => {
+                  setStage('processing');
+                }}
+              >
+                Retry processing <ArrowRight className="ml-1.5 size-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {(stage === 'section' || stage === 'review') && (() => {
         const showQueue = !!batch && batch.mode === 'bulk';
