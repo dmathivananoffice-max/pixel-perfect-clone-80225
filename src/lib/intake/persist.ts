@@ -208,8 +208,8 @@ export async function persistIntakeBatch(params: {
     status: 'waiting',
     gate_status: 'not_placement_ready',
     source_type: 'internal',
-    is_mock: true,
-    verification_state: { status: c.status, extractionConfidence: c.extractionConfidence },
+    is_mock: false,
+    verification_state: { status: c.status, extractionConfidence: c.extractionConfidence, ocr_state: 'pending' },
     extracted_fields: {},
   }));
   const { data: candRows, error: candErr } = await supabase
@@ -335,11 +335,93 @@ export async function persistIntakeBatch(params: {
 
   // 5b. Kick off Document Intelligence pipeline per candidate (isolated, sequential).
   //     Failures here don't roll back the intake — the fingerprint panel will show the state.
+  const identityByCand = new Map<string, { firstName?: string; lastName?: string; email?: string; country?: string; confidence: number }>();
   for (const candDbId of idMap.values()) {
     try {
       await runDocumentIntelligencePipeline({ candidateId: candDbId });
     } catch (e) {
       console.warn('[intake] pipeline failed for', candDbId, e);
+    }
+
+    // 5c. Backfill candidate identity from real OCR/AI extractions — replaces
+    //     the "Pending Candidate N" placeholder with what Qwen actually read.
+    const { data: exs } = await supabase
+      .from('document_extractions')
+      .select('field_name, ai_value, confidence, section')
+      .eq('candidate_id', candDbId);
+    if (exs && exs.length > 0) {
+      const pick = (names: string[]): { value: string; confidence: number } | null => {
+        const cand = exs
+          .filter((e) => names.includes((e.field_name ?? '').toLowerCase()) && e.ai_value)
+          .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))[0];
+        return cand ? { value: String(cand.ai_value), confidence: Number(cand.confidence ?? 0) } : null;
+      };
+      const firstName = pick(['first_name', 'given_name', 'given_names']);
+      const lastName = pick(['last_name', 'surname', 'family_name']);
+      const fullName = !firstName || !lastName ? pick(['full_name', 'name']) : null;
+      const email = pick(['email', 'email_address']);
+      const country = pick(['nationality', 'country', 'country_of_birth']);
+
+      let fn = firstName?.value;
+      let ln = lastName?.value;
+      if ((!fn || !ln) && fullName?.value) {
+        const parts = fullName.value.trim().split(/\s+/);
+        fn = fn ?? parts[0];
+        ln = ln ?? (parts.slice(1).join(' ') || parts[0]);
+      }
+
+      const patch: Record<string, unknown> = {};
+      if (fn) patch.first_name = fn;
+      if (ln) patch.last_name = ln;
+      if (email?.value && EMAIL_RE.test(email.value.trim())) patch.email = email.value.trim().toLowerCase();
+      if (country?.value) patch.country = country.value;
+
+      const extractedFields: Record<string, Record<string, string>> = {};
+      for (const e of exs) {
+        const sec = String(e.section ?? 'general');
+        const key = String(e.field_name ?? '');
+        if (!key) continue;
+        extractedFields[sec] = extractedFields[sec] ?? {};
+        extractedFields[sec][key] = String(e.ai_value ?? '');
+      }
+      patch.extracted_fields = extractedFields;
+
+      const meanConf =
+        exs.reduce((a, e) => a + Number(e.confidence ?? 0), 0) / Math.max(1, exs.length);
+      patch.verification_state = {
+        status: 'ready',
+        extractionConfidence: meanConf,
+        ocr_state: 'complete',
+      };
+
+      identityByCand.set(candDbId, {
+        firstName: fn,
+        lastName: ln,
+        email: patch.email as string | undefined,
+        country: country?.value,
+        confidence: meanConf,
+      });
+
+      if (Object.keys(patch).length > 0) {
+        const { error: idErr } = await supabase
+          .from('candidates')
+          .update(patch as never)
+          .eq('candidate_id', candDbId);
+        if (idErr) console.warn('[intake] identity backfill failed for', candDbId, idErr.message);
+      }
+    } else {
+      // No extractions came back — mark candidate accordingly so the UI can show
+      // "OCR produced no fields" instead of a fake identity.
+      await supabase
+        .from('candidates')
+        .update({
+          verification_state: {
+            status: 'manual_review',
+            extractionConfidence: 0,
+            ocr_state: 'empty',
+          },
+        })
+        .eq('candidate_id', candDbId);
     }
   }
 
@@ -349,14 +431,24 @@ export async function persistIntakeBatch(params: {
   const persistedBatch: IntakeBatch = {
     ...localBatch,
     id: batchDbId,
-    candidates: localBatch.candidates.map((c) => ({
-      ...c,
-      id: idMap.get(c.id) ?? c.id,
-    })) as BatchCandidate[],
+    candidates: localBatch.candidates.map((c) => {
+      const dbId = idMap.get(c.id) ?? c.id;
+      const ident = identityByCand.get(dbId);
+      return {
+        ...c,
+        id: dbId,
+        firstName: ident?.firstName ?? c.firstName,
+        lastName: ident?.lastName ?? c.lastName,
+        email: ident?.email ?? c.email,
+        country: ident?.country ?? c.country,
+        extractionConfidence: ident?.confidence ?? c.extractionConfidence,
+      };
+    }) as BatchCandidate[],
   };
 
   return { batchDbId, batch: persistedBatch };
 }
+
 
 /**
  * Persist a candidate approval — updates status + verification_state + audit log.

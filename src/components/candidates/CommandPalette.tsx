@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator,
 } from '@/components/ui/command';
-import { mockCandidates } from '@/lib/mockData';
+import { useAllCandidates } from '@/hooks/useAllCandidates';
 import { PRODUCTS } from '@/config/products';
 import { useProductStore } from '@/store/productStore';
 import { getCountry } from '@/lib/countries';
@@ -19,6 +19,7 @@ export function CommandPalette({ open, onOpenChange, onAddCandidate }: Props) {
   const navigate = useNavigate();
   const setProduct = useProductStore((s) => s.setProduct);
   const [q, setQ] = useState('');
+  const { candidates } = useAllCandidates();
 
   useEffect(() => { if (!open) setQ(''); }, [open]);
 
@@ -60,7 +61,10 @@ export function CommandPalette({ open, onOpenChange, onAddCandidate }: Props) {
         <CommandSeparator />
 
         <CommandGroup heading="Candidates">
-          {mockCandidates.slice(0, 40).map((c) => {
+          {candidates.length === 0 && (
+            <CommandItem disabled>No candidates uploaded yet.</CommandItem>
+          )}
+          {candidates.slice(0, 40).map((c) => {
             const flag = getCountry(c.country).flag;
             return (
               <CommandItem

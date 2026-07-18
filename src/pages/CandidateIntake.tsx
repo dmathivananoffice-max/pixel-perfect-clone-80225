@@ -17,7 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { allCountries } from '@/lib/countries';
-import { mockCandidates } from '@/lib/mockData';
+import { supabase } from '@/integrations/supabase/client';
 
 import imgNurses from '@/assets/product-nurses.jpg';
 import imgAusbildung from '@/assets/product-ausbildung.jpg';
@@ -31,7 +31,7 @@ import { ProcessingStep } from '@/components/intake/ProcessingStep';
 import { ReviewDashboard } from '@/components/intake/ReviewDashboard';
 import { VerificationQueue, type QueueProgress } from '@/components/intake/VerificationQueue';
 import { DocumentFingerprintPanel } from '@/components/intake/DocumentFingerprintPanel';
-import { makeMockBatch, type IntakeBatch, type IntakeMode, type FieldFocus, type BatchStatus } from '@/lib/intake/batch';
+import { makeIntakeBatchShell, type IntakeBatch, type IntakeMode, type FieldFocus, type BatchStatus } from '@/lib/intake/batch';
 import { persistIntakeBatch, approveCandidate, groupFilesByFolder, saveCandidateDraft, IntakeError, isTransient, type IntakeFile } from '@/lib/intake/persist';
 import type { UploadedFile } from '@/components/intake/UploadStep';
 import { useAuth } from '@/hooks/useAuth';
@@ -383,7 +383,7 @@ export default function CandidateIntake() {
     }));
     const groups = m === 'single' ? [intakeFiles] : groupFilesByFolder(intakeFiles);
     const candidateCount = m === 'single' ? 1 : Math.max(1, groups.length);
-    const localBatch = makeMockBatch(m, p, productDef.label, candidateCount);
+    const localBatch = makeIntakeBatchShell(m, p, productDef.label, candidateCount);
     try {
       const { batch: persisted } = await persistIntakeBatch({
         mode: m,
@@ -412,8 +412,8 @@ export default function CandidateIntake() {
             ? { label: 'Retry', onClick: () => { void runIntakePersistence(); } }
             : undefined,
       });
-      // Fallback so the recruiter can still exercise the UI
-      setBatch(localBatch);
+      // No mock fallback — leave batch unset so the UI shows the real error state.
+      setBatch(null);
     }
   }
 
@@ -1023,14 +1023,25 @@ function SectionForm({
   setUploads: (u: Record<string, boolean>) => void;
   firstName: string;
 }) {
-  // Contextual, section-specific banners
-  const duplicate = useMemo(() => {
-    if (section.id !== 'contact') return null;
+  const [duplicate, setDuplicate] = useState<{ first_name: string; last_name: string; email: string; country: string } | null>(null);
+  useEffect(() => {
+    if (section.id !== 'contact') { setDuplicate(null); return; }
     const email = (values['email'] ?? '').trim().toLowerCase();
-    if (!email) return null;
-    return mockCandidates.find((c) => c.email.toLowerCase() === email) ?? null;
+    if (!email) { setDuplicate(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('candidates')
+        .select('first_name, last_name, email, country')
+        .eq('email', email)
+        .limit(1)
+        .maybeSingle();
+      if (!cancelled) setDuplicate(data ?? null);
+    })();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [section.id, values['email']]);
+
 
   const langWarn = useMemo(() => {
     if (section.id !== 'language') return null;
