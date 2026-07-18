@@ -17,7 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { allCountries } from '@/lib/countries';
-import { mockCandidates } from '@/lib/mockData';
+import { supabase } from '@/integrations/supabase/client';
 
 import imgNurses from '@/assets/product-nurses.jpg';
 import imgAusbildung from '@/assets/product-ausbildung.jpg';
