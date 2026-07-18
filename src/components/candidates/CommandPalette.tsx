@@ -61,7 +61,10 @@ export function CommandPalette({ open, onOpenChange, onAddCandidate }: Props) {
         <CommandSeparator />
 
         <CommandGroup heading="Candidates">
-          {mockCandidates.slice(0, 40).map((c) => {
+          {candidates.length === 0 && (
+            <CommandItem disabled>No candidates uploaded yet.</CommandItem>
+          )}
+          {candidates.slice(0, 40).map((c) => {
             const flag = getCountry(c.country).flag;
             return (
               <CommandItem
