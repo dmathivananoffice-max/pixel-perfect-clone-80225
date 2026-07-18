@@ -367,7 +367,7 @@ export async function persistIntakeBatch(params: {
       if ((!fn || !ln) && fullName?.value) {
         const parts = fullName.value.trim().split(/\s+/);
         fn = fn ?? parts[0];
-        ln = ln ?? parts.slice(1).join(' ') || parts[0];
+        ln = ln ?? (parts.slice(1).join(' ') || parts[0]);
       }
 
       const patch: Record<string, unknown> = {};
