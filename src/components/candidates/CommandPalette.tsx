@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator,
 } from '@/components/ui/command';
-import { mockCandidates } from '@/lib/mockData';
+import { useAllCandidates } from '@/hooks/useAllCandidates';
 import { PRODUCTS } from '@/config/products';
 import { useProductStore } from '@/store/productStore';
 import { getCountry } from '@/lib/countries';
