@@ -405,7 +405,7 @@ export async function persistIntakeBatch(params: {
       if (Object.keys(patch).length > 0) {
         const { error: idErr } = await supabase
           .from('candidates')
-          .update(patch)
+          .update(patch as never)
           .eq('candidate_id', candDbId);
         if (idErr) console.warn('[intake] identity backfill failed for', candDbId, idErr.message);
       }
