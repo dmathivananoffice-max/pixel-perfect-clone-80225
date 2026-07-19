@@ -150,38 +150,14 @@ export async function persistIntakeBatch(params: {
 }): Promise<PersistedBatch> {
   const { mode, productId, localBatch, files, actorName, onProgress, onFileError } = params;
 
-  // 1. Validate every candidate before any DB writes.
-  //    Shell placeholders (email `pending+…@intake.local`) are intentionally
-  //    blank — identity is filled in post-OCR by the backfill step below.
-  //    Only validate candidates a human actually typed.
-  const isShellPlaceholder = (c: BatchCandidate) =>
-    /^pending\+[^@]+@intake\.local$/i.test(c.email?.trim() ?? '');
-  for (const c of localBatch.candidates) {
-    if (isShellPlaceholder(c)) continue;
-    const problems = validateCandidate(c);
-    if (problems.length > 0) {
-      throw new IntakeError(
-        'validation',
-        `${c.firstName || 'Candidate'} ${c.lastName || ''}: ${problems.join('; ')}`,
-      );
-    }
-  }
-
-  // 2. Duplicate email check — skip shell placeholders (their emails are
-  //    per-batch unique tokens, never real addresses).
-  const emails = localBatch.candidates.filter((c) => !isShellPlaceholder(c)).map((c) => c.email);
-  const dupes = await findDuplicateEmails(emails);
-  const conflicts = localBatch.candidates.filter(
-    (c) => !isShellPlaceholder(c) && dupes.has(c.email.trim().toLowerCase()),
-  );
-  if (conflicts.length > 0) {
-    const list = conflicts.map((c) => c.email).join(', ');
-    throw new IntakeError(
-      'validation',
-      `A candidate with this email already exists in the database: ${list}. Please review or merge the existing record.`,
-      'email',
-    );
-  }
+  // Document-first workflow: we do NOT validate candidate identity (name,
+  // email, country) before persisting. Those fields don't exist at upload
+  // time — they are extracted from the documents by Qwen OCR + AI extraction
+  // in the pipeline below. Field-level validation happens only at the
+  // Approve step, after a human has verified extracted values.
+  //
+  // Duplicate detection is deferred to the post-OCR backfill below, because
+  // the real email only becomes known after extraction.
 
   // 3. Create intake_batches row
   const { data: batchRow, error: batchErr } = await supabase
