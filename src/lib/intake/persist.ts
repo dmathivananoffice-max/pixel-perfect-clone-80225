@@ -493,6 +493,7 @@ export async function persistIntakeBatch(params: {
         email: ident?.email ?? c.email,
         country: ident?.country ?? c.country,
         extractionConfidence: ident?.confidence ?? c.extractionConfidence,
+        status: ident?.status ?? c.status,
       };
     }) as BatchCandidate[],
   };
