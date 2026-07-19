@@ -150,38 +150,14 @@ export async function persistIntakeBatch(params: {
 }): Promise<PersistedBatch> {
   const { mode, productId, localBatch, files, actorName, onProgress, onFileError } = params;
 
-  // 1. Validate every candidate before any DB writes.
-  //    Shell placeholders (email `pending+…@intake.local`) are intentionally
-  //    blank — identity is filled in post-OCR by the backfill step below.
-  //    Only validate candidates a human actually typed.
-  const isShellPlaceholder = (c: BatchCandidate) =>
-    /^pending\+[^@]+@intake\.local$/i.test(c.email?.trim() ?? '');
-  for (const c of localBatch.candidates) {
-    if (isShellPlaceholder(c)) continue;
-    const problems = validateCandidate(c);
-    if (problems.length > 0) {
-      throw new IntakeError(
-        'validation',
-        `${c.firstName || 'Candidate'} ${c.lastName || ''}: ${problems.join('; ')}`,
-      );
-    }
-  }
-
-  // 2. Duplicate email check — skip shell placeholders (their emails are
-  //    per-batch unique tokens, never real addresses).
-  const emails = localBatch.candidates.filter((c) => !isShellPlaceholder(c)).map((c) => c.email);
-  const dupes = await findDuplicateEmails(emails);
-  const conflicts = localBatch.candidates.filter(
-    (c) => !isShellPlaceholder(c) && dupes.has(c.email.trim().toLowerCase()),
-  );
-  if (conflicts.length > 0) {
-    const list = conflicts.map((c) => c.email).join(', ');
-    throw new IntakeError(
-      'validation',
-      `A candidate with this email already exists in the database: ${list}. Please review or merge the existing record.`,
-      'email',
-    );
-  }
+  // Document-first workflow: we do NOT validate candidate identity (name,
+  // email, country) before persisting. Those fields don't exist at upload
+  // time — they are extracted from the documents by Qwen OCR + AI extraction
+  // in the pipeline below. Field-level validation happens only at the
+  // Approve step, after a human has verified extracted values.
+  //
+  // Duplicate detection is deferred to the post-OCR backfill below, because
+  // the real email only becomes known after extraction.
 
   // 3. Create intake_batches row
   const { data: batchRow, error: batchErr } = await supabase
@@ -343,96 +319,162 @@ export async function persistIntakeBatch(params: {
   }
 
   // 5b. Kick off Document Intelligence pipeline per candidate (isolated, sequential).
-  //     Failures here don't roll back the intake — the fingerprint panel will show the state.
-  const identityByCand = new Map<string, { firstName?: string; lastName?: string; email?: string; country?: string; confidence: number }>();
+  //     Failures here don't roll back the intake — the candidate stays in the
+  //     batch with a status that reflects what actually happened.
+  const identityByCand = new Map<string, {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    country?: string;
+    confidence: number;
+    status: BatchCandidate['status'];
+    docsUploaded: number;
+  }>();
+
+  // Count uploaded docs per candidate (from what we just inserted).
+  const docCountByCand = new Map<string, number>();
   for (const candDbId of idMap.values()) {
+    const { count } = await supabase
+      .from('candidate_documents')
+      .select('id', { count: 'exact', head: true })
+      .eq('candidate_id', candDbId);
+    docCountByCand.set(candDbId, count ?? 0);
+  }
+
+  for (const candDbId of idMap.values()) {
+    const docsUploaded = docCountByCand.get(candDbId) ?? 0;
+
+    // No documents uploaded for this candidate → skip OCR, mark missing_docs.
+    if (docsUploaded === 0) {
+      await supabase
+        .from('candidates')
+        .update({
+          verification_state: { status: 'missing_docs', extractionConfidence: 0, ocr_state: 'no_documents' },
+        })
+        .eq('candidate_id', candDbId);
+      identityByCand.set(candDbId, { confidence: 0, status: 'missing_docs', docsUploaded: 0 });
+      continue;
+    }
+
+    let pipelineErr: string | null = null;
     try {
       await runDocumentIntelligencePipeline({ candidateId: candDbId });
     } catch (e) {
-      console.warn('[intake] pipeline failed for', candDbId, e);
+      pipelineErr = e instanceof Error ? e.message : String(e);
+      console.warn('[intake] pipeline failed for', candDbId, pipelineErr);
     }
 
-    // 5c. Backfill candidate identity from real OCR/AI extractions — replaces
-    //     the "Pending Candidate N" placeholder with what Qwen actually read.
+    // 5c. Backfill candidate identity from real OCR/AI extractions.
     const { data: exs } = await supabase
       .from('document_extractions')
       .select('field_name, ai_value, confidence, section')
       .eq('candidate_id', candDbId);
-    if (exs && exs.length > 0) {
-      const pick = (names: string[]): { value: string; confidence: number } | null => {
-        const cand = exs
-          .filter((e) => names.includes((e.field_name ?? '').toLowerCase()) && e.ai_value)
-          .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))[0];
-        return cand ? { value: String(cand.ai_value), confidence: Number(cand.confidence ?? 0) } : null;
-      };
-      const firstName = pick(['first_name', 'given_name', 'given_names']);
-      const lastName = pick(['last_name', 'surname', 'family_name']);
-      const fullName = !firstName || !lastName ? pick(['full_name', 'name']) : null;
-      const email = pick(['email', 'email_address']);
-      const country = pick(['nationality', 'country', 'country_of_birth']);
 
-      let fn = firstName?.value;
-      let ln = lastName?.value;
-      if ((!fn || !ln) && fullName?.value) {
-        const parts = fullName.value.trim().split(/\s+/);
-        fn = fn ?? parts[0];
-        ln = ln ?? (parts.slice(1).join(' ') || parts[0]);
-      }
-
-      const patch: Record<string, unknown> = {};
-      if (fn) patch.first_name = fn;
-      if (ln) patch.last_name = ln;
-      if (email?.value && EMAIL_RE.test(email.value.trim())) patch.email = email.value.trim().toLowerCase();
-      if (country?.value) patch.country = country.value;
-
-      const extractedFields: Record<string, Record<string, string>> = {};
-      for (const e of exs) {
-        const sec = String(e.section ?? 'general');
-        const key = String(e.field_name ?? '');
-        if (!key) continue;
-        extractedFields[sec] = extractedFields[sec] ?? {};
-        extractedFields[sec][key] = String(e.ai_value ?? '');
-      }
-      patch.extracted_fields = extractedFields;
-
-      const meanConf =
-        exs.reduce((a, e) => a + Number(e.confidence ?? 0), 0) / Math.max(1, exs.length);
-      patch.verification_state = {
-        status: 'ready',
-        extractionConfidence: meanConf,
-        ocr_state: 'complete',
-      };
-
-      identityByCand.set(candDbId, {
-        firstName: fn,
-        lastName: ln,
-        email: patch.email as string | undefined,
-        country: country?.value,
-        confidence: meanConf,
-      });
-
-      if (Object.keys(patch).length > 0) {
-        const { error: idErr } = await supabase
-          .from('candidates')
-          .update(patch as never)
-          .eq('candidate_id', candDbId);
-        if (idErr) console.warn('[intake] identity backfill failed for', candDbId, idErr.message);
-      }
-    } else {
-      // No extractions came back — mark candidate accordingly so the UI can show
-      // "OCR produced no fields" instead of a fake identity.
+    if (!exs || exs.length === 0) {
+      // OCR ran but produced nothing (or the pipeline threw).
       await supabase
         .from('candidates')
         .update({
           verification_state: {
             status: 'manual_review',
             extractionConfidence: 0,
-            ocr_state: 'empty',
+            ocr_state: pipelineErr ? 'failed' : 'empty',
+            ocr_error: pipelineErr,
           },
         })
         .eq('candidate_id', candDbId);
+      identityByCand.set(candDbId, { confidence: 0, status: 'manual_review', docsUploaded });
+      continue;
+    }
+
+    const pick = (names: string[]): { value: string; confidence: number } | null => {
+      const cand = exs
+        .filter((e) => names.includes((e.field_name ?? '').toLowerCase()) && e.ai_value)
+        .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))[0];
+      return cand ? { value: String(cand.ai_value), confidence: Number(cand.confidence ?? 0) } : null;
+    };
+    const firstName = pick(['first_name', 'given_name', 'given_names']);
+    const lastName = pick(['last_name', 'surname', 'family_name']);
+    const fullName = !firstName || !lastName ? pick(['full_name', 'name']) : null;
+    const email = pick(['email', 'email_address']);
+    const country = pick(['nationality', 'country', 'country_of_birth']);
+
+    let fn = firstName?.value;
+    let ln = lastName?.value;
+    if ((!fn || !ln) && fullName?.value) {
+      const parts = fullName.value.trim().split(/\s+/);
+      fn = fn ?? parts[0];
+      ln = ln ?? (parts.slice(1).join(' ') || parts[0]);
+    }
+
+    const patch: Record<string, unknown> = {};
+    if (fn) patch.first_name = fn;
+    if (ln) patch.last_name = ln;
+    let normalizedEmail: string | undefined;
+    if (email?.value && EMAIL_RE.test(email.value.trim())) {
+      normalizedEmail = email.value.trim().toLowerCase();
+      patch.email = normalizedEmail;
+    }
+    if (country?.value) patch.country = country.value;
+
+    const extractedFields: Record<string, Record<string, string>> = {};
+    for (const e of exs) {
+      const sec = String(e.section ?? 'general');
+      const key = String(e.field_name ?? '');
+      if (!key) continue;
+      extractedFields[sec] = extractedFields[sec] ?? {};
+      extractedFields[sec][key] = String(e.ai_value ?? '');
+    }
+    patch.extracted_fields = extractedFields;
+
+    const meanConf =
+      exs.reduce((a, e) => a + Number(e.confidence ?? 0), 0) / Math.max(1, exs.length);
+
+    // Post-OCR duplicate detection.
+    let isDuplicate = false;
+    if (normalizedEmail) {
+      const { data: dupes } = await supabase
+        .from('candidates')
+        .select('candidate_id')
+        .eq('email', normalizedEmail)
+        .neq('candidate_id', candDbId)
+        .limit(1);
+      isDuplicate = !!(dupes && dupes.length > 0);
+    }
+
+    // Derive status from OCR reality.
+    let status: BatchCandidate['status'];
+    if (isDuplicate) status = 'duplicate';
+    else if (!fn || !ln || !country?.value) status = 'manual_review';
+    else if (meanConf < 0.7) status = 'low_confidence';
+    else status = 'ready';
+
+    patch.verification_state = {
+      status,
+      extractionConfidence: meanConf,
+      ocr_state: 'complete',
+      isDuplicate,
+    };
+
+    identityByCand.set(candDbId, {
+      firstName: fn,
+      lastName: ln,
+      email: normalizedEmail,
+      country: country?.value,
+      confidence: meanConf,
+      status,
+      docsUploaded,
+    });
+
+    if (Object.keys(patch).length > 0) {
+      const { error: idErr } = await supabase
+        .from('candidates')
+        .update(patch as never)
+        .eq('candidate_id', candDbId);
+      if (idErr) console.warn('[intake] identity backfill failed for', candDbId, idErr.message);
     }
   }
+
 
   // 6. Flip batch status
   await supabase.from('intake_batches').update({ status: 'ready' }).eq('id', batchDbId);
@@ -451,6 +493,7 @@ export async function persistIntakeBatch(params: {
         email: ident?.email ?? c.email,
         country: ident?.country ?? c.country,
         extractionConfidence: ident?.confidence ?? c.extractionConfidence,
+        status: ident?.status ?? c.status,
       };
     }) as BatchCandidate[],
   };
