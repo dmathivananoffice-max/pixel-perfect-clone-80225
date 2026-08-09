@@ -1,0 +1,94 @@
+{
+  "version": "nursing-ausbildung.branch.v1",
+  "branch": "nursing-ausbildung",
+  "title": "Nursing Ausbildung",
+  "family_label": "Nursing Ausbildung",
+  "questions": [
+    {
+      "id": "qualification",
+      "prompt": "What is your highest completed school qualification?",
+      "affects": ["pathway", "band", "gaps", "risk_notes"],
+      "options": [
+        { "value": "class_10", "label": "Class 10" },
+        { "value": "class_12", "label": "Class 12 / higher secondary" },
+        { "value": "diploma", "label": "Diploma after Class 12" },
+        { "value": "degree_other", "label": "Bachelor (non-nursing)" }
+      ]
+    },
+    {
+      "id": "age_band",
+      "prompt": "Which age band are you in?",
+      "affects": ["band", "gaps", "risk_notes", "pathway"],
+      "options": [
+        { "value": "17_21", "label": "17–21" },
+        { "value": "22_25", "label": "22–25" },
+        { "value": "26_29", "label": "26–29" },
+        { "value": "30_plus", "label": "30 or above" }
+      ]
+    },
+    {
+      "id": "german_level",
+      "prompt": "What is your current German level?",
+      "affects": ["band", "gaps", "risk_notes", "timeline_range", "next_step"],
+      "options": [
+        { "value": "A0", "label": "A0 — no German yet" },
+        { "value": "A1", "label": "A1" },
+        { "value": "A2", "label": "A2" },
+        { "value": "B1", "label": "B1" },
+        { "value": "B2", "label": "B2 or higher" }
+      ]
+    },
+    {
+      "id": "financial_readiness",
+      "prompt": "How ready is funding for language school and living costs?",
+      "affects": ["band", "gaps", "risk_notes", "next_step"],
+      "options": [
+        { "value": "funded", "label": "Fully planned / funded" },
+        { "value": "partial", "label": "Partially ready" },
+        { "value": "not_ready", "label": "Not ready yet" }
+      ]
+    },
+    {
+      "id": "timeline_preference",
+      "prompt": "When do you want to start Ausbildung if eligible?",
+      "affects": ["band", "gaps", "timeline_range", "risk_notes"],
+      "options": [
+        { "value": "within_12_months", "label": "Within 12 months" },
+        { "value": "12_24_months", "label": "12–24 months" },
+        { "value": "unsure", "label": "Not sure yet" }
+      ]
+    },
+    {
+      "id": "city_state",
+      "prompt": "Where are you based in India?",
+      "affects": ["gaps", "risk_notes", "next_step"],
+      "options": [
+        { "value": "kerala", "label": "Kerala" },
+        { "value": "tamil_nadu", "label": "Tamil Nadu" },
+        { "value": "karnataka", "label": "Karnataka" },
+        { "value": "telangana_ap", "label": "Telangana / Andhra Pradesh" },
+        { "value": "other", "label": "Other state / city" }
+      ]
+    },
+    {
+      "id": "parent_support",
+      "prompt": "Is your family supportive of you training in Germany?",
+      "affects": ["band", "gaps", "risk_notes", "next_step"],
+      "options": [
+        { "value": "yes", "label": "Yes — parents/spouse support this" },
+        { "value": "discussing", "label": "Still discussing" },
+        { "value": "no", "label": "Not supportive yet" }
+      ]
+    },
+    {
+      "id": "science_background",
+      "prompt": "Did you study science subjects (Biology / Chemistry) in Class 12?",
+      "affects": ["band", "gaps", "risk_notes"],
+      "options": [
+        { "value": "yes", "label": "Yes" },
+        { "value": "partial", "label": "Some science subjects" },
+        { "value": "no", "label": "No" }
+      ]
+    }
+  ]
+}
