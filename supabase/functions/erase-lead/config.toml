@@ -1,0 +1,3 @@
+[erase-lead]
+# Erasure should be called with a privileged key; JWT verified at gateway or by caller.
+verify_jwt = true
