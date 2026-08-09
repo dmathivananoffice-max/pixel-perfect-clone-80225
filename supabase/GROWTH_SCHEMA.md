@@ -46,3 +46,9 @@ Phase 1 database foundation for the Workforce Europe Growth OS
 
 Checks: clean apply on a fresh database, all `growth.*` tables present,
 `UPDATE` on `growth.audit` as `growth_app` fails.
+
+## M1 additions
+
+- `diagnostic_session`: `started_at`, `updated_at`, `last_question_id`, `last_question_index`
+- `growth.mark_abandoned_diagnostic_sessions(interval)` → writes `DIAG_ABANDONED` funnel events
+- Config keys: `diagnostic_rules:<branch>`, `diagnostic_branches:<branch>`
