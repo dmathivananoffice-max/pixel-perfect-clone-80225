@@ -9,9 +9,33 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ObjectionsRouteImport } from './routes/objections'
+import { Route as ExitSurveyRouteImport } from './routes/exit-survey'
+import { Route as DiagnosticRouteImport } from './routes/diagnostic'
+import { Route as ComplianceRouteImport } from './routes/compliance'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
 
+const ObjectionsRoute = ObjectionsRouteImport.update({
+  id: '/objections',
+  path: '/objections',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExitSurveyRoute = ExitSurveyRouteImport.update({
+  id: '/exit-survey',
+  path: '/exit-survey',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DiagnosticRoute = DiagnosticRouteImport.update({
+  id: '/diagnostic',
+  path: '/diagnostic',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComplianceRoute = ComplianceRouteImport.update({
+  id: '/compliance',
+  path: '/compliance',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SplatRoute = SplatRouteImport.update({
   id: '/$',
   path: '/$',
@@ -26,31 +50,94 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/compliance': typeof ComplianceRoute
+  '/diagnostic': typeof DiagnosticRoute
+  '/exit-survey': typeof ExitSurveyRoute
+  '/objections': typeof ObjectionsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/compliance': typeof ComplianceRoute
+  '/diagnostic': typeof DiagnosticRoute
+  '/exit-survey': typeof ExitSurveyRoute
+  '/objections': typeof ObjectionsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/compliance': typeof ComplianceRoute
+  '/diagnostic': typeof DiagnosticRoute
+  '/exit-survey': typeof ExitSurveyRoute
+  '/objections': typeof ObjectionsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/$'
+  fullPaths:
+    | '/'
+    | '/$'
+    | '/compliance'
+    | '/diagnostic'
+    | '/exit-survey'
+    | '/objections'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/$'
-  id: '__root__' | '/' | '/$'
+  to:
+    | '/'
+    | '/$'
+    | '/compliance'
+    | '/diagnostic'
+    | '/exit-survey'
+    | '/objections'
+  id:
+    | '__root__'
+    | '/'
+    | '/$'
+    | '/compliance'
+    | '/diagnostic'
+    | '/exit-survey'
+    | '/objections'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
+  ComplianceRoute: typeof ComplianceRoute
+  DiagnosticRoute: typeof DiagnosticRoute
+  ExitSurveyRoute: typeof ExitSurveyRoute
+  ObjectionsRoute: typeof ObjectionsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/objections': {
+      id: '/objections'
+      path: '/objections'
+      fullPath: '/objections'
+      preLoaderRoute: typeof ObjectionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/exit-survey': {
+      id: '/exit-survey'
+      path: '/exit-survey'
+      fullPath: '/exit-survey'
+      preLoaderRoute: typeof ExitSurveyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/diagnostic': {
+      id: '/diagnostic'
+      path: '/diagnostic'
+      fullPath: '/diagnostic'
+      preLoaderRoute: typeof DiagnosticRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compliance': {
+      id: '/compliance'
+      path: '/compliance'
+      fullPath: '/compliance'
+      preLoaderRoute: typeof ComplianceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$': {
       id: '/$'
       path: '/$'
@@ -71,6 +158,10 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
+  ComplianceRoute: ComplianceRoute,
+  DiagnosticRoute: DiagnosticRoute,
+  ExitSurveyRoute: ExitSurveyRoute,
+  ObjectionsRoute: ObjectionsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

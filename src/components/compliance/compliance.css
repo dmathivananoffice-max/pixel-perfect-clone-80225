@@ -1,0 +1,79 @@
+/* Compliance queue — plain CSS internal tool */
+.comp {
+  --bg: #f6f3ec;
+  --ink: #1d2430;
+  --muted: #5e6673;
+  --line: #d9d2c5;
+  --card: #fffdf8;
+  --ok: #0f6b4c;
+  --bad: #9b1c1c;
+  --accent: #1f4e79;
+  min-height: 100dvh;
+  background:
+    linear-gradient(180deg, #e7eef5 0%, transparent 40%),
+    var(--bg);
+  color: var(--ink);
+  font-family: "Source Serif 4", "Iowan Old Style", Georgia, serif;
+  padding: 1.25rem;
+}
+.comp__shell { max-width: 64rem; margin: 0 auto; }
+.comp__brand {
+  font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--muted); margin: 0 0 0.4rem;
+}
+.comp__title { margin: 0 0 0.35rem; font-size: 1.7rem; }
+.comp__sub { color: var(--muted); margin: 0 0 1.25rem; }
+.comp__layout {
+  display: grid; gap: 1rem;
+  grid-template-columns: minmax(16rem, 22rem) 1fr;
+}
+@media (max-width: 800px) {
+  .comp__layout { grid-template-columns: 1fr; }
+}
+.comp__panel {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 0.85rem; padding: 0.85rem;
+}
+.comp__list { display: grid; gap: 0.5rem; }
+.comp__item {
+  text-align: left; width: 100%; border: 1px solid var(--line);
+  background: #fff; border-radius: 0.65rem; padding: 0.7rem 0.8rem;
+  cursor: pointer; font: inherit;
+}
+.comp__item[data-active="true"] { border-color: var(--accent); background: #eef4fa; }
+.comp__item strong { display: block; margin-bottom: 0.2rem; }
+.comp__meta { color: var(--muted); font-size: 0.85rem; }
+.comp__claim {
+  display: grid; gap: 0.45rem; margin: 0.75rem 0 1rem;
+}
+.comp__claim-row {
+  display: grid; grid-template-columns: 7rem 1fr; gap: 0.5rem; align-items: start;
+  font-size: 0.95rem;
+}
+.comp__tag {
+  display: inline-block; border-radius: 999px; padding: 0.15rem 0.5rem;
+  font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase;
+}
+.comp__tag--absent { background: #e8f6ee; color: var(--ok); }
+.comp__tag--present { background: #f7e6d4; color: #8a4b12; }
+.comp__diff {
+  white-space: pre-wrap; background: #f3f1ea; border-radius: 0.5rem;
+  padding: 0.75rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem; margin: 0.5rem 0 1rem;
+}
+.comp__actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.comp__btn {
+  appearance: none; border: 0; border-radius: 0.65rem; min-height: 2.6rem;
+  padding: 0.55rem 0.9rem; font: inherit; cursor: pointer;
+}
+.comp__btn--ok { background: var(--ok); color: #fff; }
+.comp__btn--bad { background: var(--bad); color: #fff; }
+.comp__btn--ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+.comp__field { display: grid; gap: 0.3rem; margin-bottom: 0.75rem; }
+.comp__field textarea, .comp__field select {
+  border: 1px solid var(--line); border-radius: 0.55rem; padding: 0.55rem;
+  font: inherit; min-height: 2.5rem; background: #fff;
+}
+.comp__field textarea { min-height: 5rem; }
+.comp__error { color: var(--bad); margin: 0.5rem 0; }
+.comp__empty { color: var(--muted); padding: 1rem 0.25rem; }
