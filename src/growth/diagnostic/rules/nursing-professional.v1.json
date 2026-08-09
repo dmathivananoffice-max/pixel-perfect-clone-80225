@@ -1,0 +1,111 @@
+{
+  "version": "nursing-professional.rules.v1",
+  "branch": "nursing-professional",
+  "pathway": "Nursing Professional",
+  "band_priority": ["NOT_YET", "PREPARABLE", "READY"],
+  "timeline_by_band": {
+    "READY": { "min_months": 6, "max_months": 12 },
+    "PREPARABLE": { "min_months": 12, "max_months": 24 },
+    "NOT_YET": { "min_months": 18, "max_months": 36 }
+  },
+  "next_step_by_band": {
+    "READY": "Book a counselling call to map recognition documents and employer shortlist.",
+    "PREPARABLE": "Start the preparation plan (language + documents), then book counselling when checkpoints clear.",
+    "NOT_YET": "Follow the preparation path below; we will nurture you on a prep track until gaps close."
+  },
+  "preparation_path_by_band": {
+    "READY": ["Confirm degree attestation checklist", "Hold B1/B2 study plan for interview readiness"],
+    "PREPARABLE": ["Raise German to B1", "Close funding gap", "Gather nursing registration proofs"],
+    "NOT_YET": [
+      "Complete a recognised nursing qualification (or bridge programme)",
+      "Reach at least A2 German before counselling for placement",
+      "Build a realistic funding plan for language + recognition costs"
+    ]
+  },
+  "nurture_track_by_band": {
+    "READY": null,
+    "PREPARABLE": "prep-professional-bridge",
+    "NOT_YET": "prep-professional-foundation"
+  },
+  "rules": [
+    {
+      "id": "qual_ani_gnm_preparable",
+      "when": { "answer_key": "qualification", "in": ["gnm", "ani"] },
+      "effects": {
+        "band_max": "PREPARABLE",
+        "gaps": ["Qualification may need bridge/recognition assessment"],
+        "risk_notes": ["Diploma routes often need extra recognition steps in Germany."]
+      }
+    },
+    {
+      "id": "qual_none_not_yet",
+      "when": { "answer_key": "qualification", "in": ["other_health", "none"] },
+      "effects": {
+        "band_max": "NOT_YET",
+        "gaps": ["No recognised nursing qualification on record"],
+        "risk_notes": ["Professional nursing placement requires a nursing diploma or degree."]
+      }
+    },
+    {
+      "id": "exp_low_preparable",
+      "when": { "answer_key": "experience_years", "in": ["0_1"] },
+      "effects": {
+        "band_max": "PREPARABLE",
+        "gaps": ["Limited clinical experience (< 1 year)"],
+        "risk_notes": ["Employers prefer demonstrated ward experience."]
+      }
+    },
+    {
+      "id": "german_a0_a1_not_yet",
+      "when": { "answer_key": "german_level", "in": ["A0", "A1"] },
+      "effects": {
+        "band_max": "NOT_YET",
+        "gaps": ["German below A2"],
+        "risk_notes": ["Job interviews and recognition processes need stronger German."]
+      }
+    },
+    {
+      "id": "german_a2_preparable",
+      "when": { "answer_key": "german_level", "equals": "A2" },
+      "effects": {
+        "band_max": "PREPARABLE",
+        "gaps": ["German at A2 — B1 target for most employers"],
+        "risk_notes": ["Plan 4–8 months of structured German study."]
+      }
+    },
+    {
+      "id": "finance_not_ready_not_yet",
+      "when": { "answer_key": "financial_readiness", "equals": "not_ready" },
+      "effects": {
+        "band_max": "NOT_YET",
+        "gaps": ["Funding plan not yet in place"],
+        "risk_notes": ["Language training and recognition fees require a clear budget."]
+      }
+    },
+    {
+      "id": "finance_partial_preparable",
+      "when": { "answer_key": "financial_readiness", "equals": "partial" },
+      "effects": {
+        "band_max": "PREPARABLE",
+        "gaps": ["Partial funding — full cost plan still needed"],
+        "risk_notes": ["Confirm savings/loan/sponsor coverage before filing."]
+      }
+    },
+    {
+      "id": "timeline_unsure_preparable",
+      "when": { "answer_key": "timeline_preference", "equals": "unsure" },
+      "effects": {
+        "band_max": "PREPARABLE",
+        "gaps": ["No clear move timeline"],
+        "risk_notes": ["Intake seats follow dated cohorts; unclear timing slows placement."]
+      }
+    },
+    {
+      "id": "city_other_note",
+      "when": { "answer_key": "city_state", "equals": "other" },
+      "effects": {
+        "risk_notes": ["Document logistics may take longer outside major source states."]
+      }
+    }
+  ]
+}
