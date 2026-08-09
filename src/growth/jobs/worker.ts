@@ -5,6 +5,7 @@
 import { loadBands, loadWeights } from "../scoring/loadConfig";
 import { ScoringService } from "../scoring/service";
 import type { ScoreRecord, ScoringStore } from "../scoring/service";
+import type { ComputedScore, OverrideReasonCode } from "../scoring/types";
 import bandsJson from "../scoring/config/scoring-bands.v1.json";
 import weightsJson from "../scoring/config/scoring-weights.v1.json";
 import {

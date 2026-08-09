@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DiagnosticRouteImport } from './routes/diagnostic'
+import { Route as ComplianceRouteImport } from './routes/compliance'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
 
 const DiagnosticRoute = DiagnosticRouteImport.update({
   id: '/diagnostic',
   path: '/diagnostic',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComplianceRoute = ComplianceRouteImport.update({
+  id: '/compliance',
+  path: '/compliance',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SplatRoute = SplatRouteImport.update({
@@ -32,30 +38,34 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/compliance': typeof ComplianceRoute
   '/diagnostic': typeof DiagnosticRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/compliance': typeof ComplianceRoute
   '/diagnostic': typeof DiagnosticRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/compliance': typeof ComplianceRoute
   '/diagnostic': typeof DiagnosticRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/$' | '/diagnostic'
+  fullPaths: '/' | '/$' | '/compliance' | '/diagnostic'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/$' | '/diagnostic'
-  id: '__root__' | '/' | '/$' | '/diagnostic'
+  to: '/' | '/$' | '/compliance' | '/diagnostic'
+  id: '__root__' | '/' | '/$' | '/compliance' | '/diagnostic'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
+  ComplianceRoute: typeof ComplianceRoute
   DiagnosticRoute: typeof DiagnosticRoute
 }
 
@@ -66,6 +76,13 @@ declare module '@tanstack/react-router' {
       path: '/diagnostic'
       fullPath: '/diagnostic'
       preLoaderRoute: typeof DiagnosticRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compliance': {
+      id: '/compliance'
+      path: '/compliance'
+      fullPath: '/compliance'
+      preLoaderRoute: typeof ComplianceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$': {
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
+  ComplianceRoute: ComplianceRoute,
   DiagnosticRoute: DiagnosticRoute,
 }
 export const routeTree = rootRouteImport

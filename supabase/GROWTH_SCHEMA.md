@@ -57,3 +57,17 @@ Checks: clean apply on a fresh database, all `growth.*` tables present,
 
 - `growth.job_outbox` — pending pg-boss jobs (`growth.score.recompute`, counsellor/DQ side-effects)
 - Config keys: `scoring_weights`, `scoring_bands` (**STARTING VALUES** for tuning)
+
+## M11 additions (compliance + asset library)
+
+Migration: `migrations/20260809150000_growth_m11_asset_compliance.sql`.
+
+- Asset status lifecycle: `DRAFT` → `IN_REVIEW` → `APPROVED` → `RETIRED` (+ `REJECTED`);
+  `PENDING_COMPLIANCE` renamed to `IN_REVIEW`
+- `asset` columns: `body`, `claim_checklist`, review/submit identity + timestamps,
+  `parent_asset_id`, `version_hash`, FAQ fields `question_patterns[]` / `answer_text`
+- `growth.asset_active_sequence_refs(uuid)` — blocks retire when an active sequence
+  references the asset (FR-P-04)
+- Send-path hard gate (G-2): only `APPROVED` assets resolve; see
+  `src/growth/assets/resolve.ts` and edge action `resolve`
+- Internal UI: `/compliance` queue for IN_REVIEW assets
