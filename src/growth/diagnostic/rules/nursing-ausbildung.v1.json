@@ -1,0 +1,156 @@
+{
+  "version": "nursing-ausbildung.rules.v1",
+  "branch": "nursing-ausbildung",
+  "pathway": "Nursing Ausbildung",
+  "band_priority": ["NOT_YET", "PREPARABLE", "READY"],
+  "timeline_by_band": {
+    "READY": { "min_months": 9, "max_months": 15 },
+    "PREPARABLE": { "min_months": 12, "max_months": 24 },
+    "NOT_YET": { "min_months": 18, "max_months": 36 }
+  },
+  "next_step_by_band": {
+    "READY": "Book counselling to align school applications and visa document checklist.",
+    "PREPARABLE": "Complete German and school-document checkpoints, then book counselling.",
+    "NOT_YET": "Work the preparation path; you will join the Ausbildung prep nurture track."
+  },
+  "preparation_path_by_band": {
+    "READY": ["Confirm Class 12 marksheets", "Lock B1 German study schedule for interviews"],
+    "PREPARABLE": ["Raise German to B1", "Clarify age/school eligibility", "Build funding for language year"],
+    "NOT_YET": [
+      "Complete Class 12 (or equivalent) with required subjects",
+      "Reach at least A2 German before school applications",
+      "Create a funding plan covering language school + blocked account",
+      "If age is above typical Ausbildung range, review alternate pathways with an advisor later"
+    ]
+  },
+  "nurture_track_by_band": {
+    "READY": null,
+    "PREPARABLE": "prep-ausbildung-bridge",
+    "NOT_YET": "prep-ausbildung-foundation"
+  },
+  "rules": [
+    {
+      "id": "qual_class10_not_yet",
+      "when": { "answer_key": "qualification", "equals": "class_10" },
+      "effects": {
+        "band_max": "NOT_YET",
+        "gaps": ["Class 12 (or equivalent) not completed"],
+        "risk_notes": ["Ausbildung school entry typically requires secondary school completion."]
+      }
+    },
+    {
+      "id": "qual_class12_ok_note",
+      "when": { "answer_key": "qualification", "in": ["class_12", "diploma"] },
+      "effects": {
+        "risk_notes": ["School certificates must be attested for the visa file."]
+      }
+    },
+    {
+      "id": "german_a0_a1_not_yet",
+      "when": { "answer_key": "german_level", "in": ["A0", "A1"] },
+      "effects": {
+        "band_max": "NOT_YET",
+        "gaps": ["German below A2"],
+        "risk_notes": ["Schools and interviews expect progressing German (A2→B1)."]
+      }
+    },
+    {
+      "id": "german_a2_preparable",
+      "when": { "answer_key": "german_level", "equals": "A2" },
+      "effects": {
+        "band_max": "PREPARABLE",
+        "gaps": ["German at A2 — B1 still required for most schools"],
+        "risk_notes": ["Budget 4–8 months for B1 before departure."]
+      }
+    },
+    {
+      "id": "finance_not_ready_not_yet",
+      "when": { "answer_key": "financial_readiness", "equals": "not_ready" },
+      "effects": {
+        "band_max": "NOT_YET",
+        "gaps": ["Funding plan not yet in place"],
+        "risk_notes": ["Blocked account and language costs are mandatory planning items."]
+      }
+    },
+    {
+      "id": "finance_partial_preparable",
+      "when": { "answer_key": "financial_readiness", "equals": "partial" },
+      "effects": {
+        "band_max": "PREPARABLE",
+        "gaps": ["Partial funding — blocked-account plan incomplete"],
+        "risk_notes": ["Confirm who funds language school vs living costs."]
+      }
+    },
+    {
+      "id": "timeline_unsure_preparable",
+      "when": { "answer_key": "timeline_preference", "equals": "unsure" },
+      "effects": {
+        "band_max": "PREPARABLE",
+        "gaps": ["No clear start timeline"],
+        "risk_notes": ["School intakes are dated; late clarity misses seats."]
+      }
+    },
+    {
+      "id": "age_30_plus_not_yet",
+      "when": { "answer_key": "age_band", "equals": "30_plus" },
+      "effects": {
+        "band_max": "NOT_YET",
+        "gaps": ["Age band above typical Ausbildung intake"],
+        "risk_notes": ["Many Ausbildung programmes prioritise younger cohorts; review alternatives honestly."]
+      }
+    },
+    {
+      "id": "age_26_29_preparable",
+      "when": { "answer_key": "age_band", "equals": "26_29" },
+      "effects": {
+        "band_max": "PREPARABLE",
+        "gaps": ["Age band needs school-by-school eligibility check"],
+        "risk_notes": ["Some schools cap age; counselling will filter realistic options."]
+      }
+    },
+    {
+      "id": "city_other_note",
+      "when": { "answer_key": "city_state", "equals": "other" },
+      "effects": {
+        "gaps": ["Document logistics outside major source states"],
+        "risk_notes": ["Document logistics may take longer outside major source states."]
+      }
+    },
+    {
+      "id": "parent_no_not_yet",
+      "when": { "answer_key": "parent_support", "equals": "no" },
+      "effects": {
+        "band_max": "NOT_YET",
+        "gaps": ["Family support not yet in place"],
+        "risk_notes": ["Ausbildung decisions usually need family alignment on funding and travel."]
+      }
+    },
+    {
+      "id": "parent_discussing_preparable",
+      "when": { "answer_key": "parent_support", "equals": "discussing" },
+      "effects": {
+        "band_max": "PREPARABLE",
+        "gaps": ["Family decision still open"],
+        "risk_notes": ["Share a clear cost and timeline plan with your decision unit."]
+      }
+    },
+    {
+      "id": "science_no_not_yet",
+      "when": { "answer_key": "science_background", "equals": "no" },
+      "effects": {
+        "band_max": "NOT_YET",
+        "gaps": ["No Class 12 science background"],
+        "risk_notes": ["Many Pflege schools expect science subjects; options narrow without them."]
+      }
+    },
+    {
+      "id": "science_partial_preparable",
+      "when": { "answer_key": "science_background", "equals": "partial" },
+      "effects": {
+        "band_max": "PREPARABLE",
+        "gaps": ["Partial science background — school filters apply"],
+        "risk_notes": ["Counselling will check which schools accept your subject mix."]
+      }
+    }
+  ]
+}

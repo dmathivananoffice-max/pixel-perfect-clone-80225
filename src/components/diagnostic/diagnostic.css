@@ -1,0 +1,91 @@
+/* Diagnostic — plain CSS (FR-D-10) */
+.diag {
+  --diag-bg: #f3efe6;
+  --diag-ink: #1c2a24;
+  --diag-muted: #5c6b63;
+  --diag-accent: #0f6b4c;
+  --diag-accent-ink: #f7fff9;
+  --diag-card: #fffdf8;
+  --diag-line: #d7d0c2;
+  --diag-warn: #8a4b12;
+  --diag-prep: #1f4e79;
+  --diag-ready: #0f6b4c;
+  min-height: 100dvh;
+  background:
+    radial-gradient(1200px 500px at 10% -10%, #dcecdf 0%, transparent 55%),
+    radial-gradient(900px 420px at 100% 0%, #efe2c8 0%, transparent 50%),
+    var(--diag-bg);
+  color: var(--diag-ink);
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  padding: 1rem 1rem 2.5rem;
+}
+.diag *, .diag *::before, .diag *::after { box-sizing: border-box; }
+.diag__shell { max-width: 28rem; margin: 0 auto; }
+.diag__brand {
+  font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--diag-muted); margin: 0 0 0.75rem;
+}
+.diag__progress { font-size: 0.95rem; color: var(--diag-muted); margin: 0 0 1rem; }
+.diag__bar {
+  height: 0.35rem; background: var(--diag-line); border-radius: 999px;
+  overflow: hidden; margin-bottom: 1.25rem;
+}
+.diag__bar > span {
+  display: block; height: 100%; background: var(--diag-accent);
+  transition: width 180ms ease-out;
+}
+.diag__title {
+  font-size: clamp(1.45rem, 5vw, 1.8rem); line-height: 1.25;
+  margin: 0 0 1.25rem; font-weight: 650;
+}
+.diag__options { display: grid; gap: 0.65rem; }
+.diag__option {
+  appearance: none; border: 1px solid var(--diag-line); background: var(--diag-card);
+  color: var(--diag-ink); border-radius: 0.85rem; min-height: 3.25rem;
+  padding: 0.9rem 1rem; font: inherit; font-size: 1.05rem; text-align: left;
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+.diag__option:active { transform: scale(0.985); }
+.diag__option:hover, .diag__option:focus-visible {
+  border-color: var(--diag-accent); outline: none; background: #f4faf6;
+}
+.diag__nav { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+.diag__btn {
+  appearance: none; border: 0; border-radius: 0.75rem; min-height: 2.85rem;
+  padding: 0.7rem 1rem; font: inherit; font-size: 1rem; cursor: pointer;
+}
+.diag__btn--ghost {
+  background: transparent; color: var(--diag-muted); border: 1px solid var(--diag-line);
+}
+.diag__btn--primary { background: var(--diag-accent); color: var(--diag-accent-ink); flex: 1; }
+.diag__btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.diag__band {
+  display: inline-block; font-size: 0.78rem; letter-spacing: 0.06em;
+  text-transform: uppercase; padding: 0.35rem 0.6rem; border-radius: 999px;
+  margin-bottom: 0.75rem;
+}
+.diag__band--READY { background: #d8f3e5; color: var(--diag-ready); }
+.diag__band--PREPARABLE { background: #dceaf7; color: var(--diag-prep); }
+.diag__band--NOT_YET { background: #f7e6d4; color: var(--diag-warn); }
+.diag__card {
+  background: var(--diag-card); border: 1px solid var(--diag-line);
+  border-radius: 1rem; padding: 1rem 1.1rem; margin: 0.75rem 0;
+}
+.diag__card h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+.diag__card ul { margin: 0; padding-left: 1.1rem; }
+.diag__card li + li { margin-top: 0.35rem; }
+.diag__muted { color: var(--diag-muted); font-size: 0.95rem; line-height: 1.45; }
+.diag__field { display: grid; gap: 0.35rem; margin-bottom: 0.85rem; }
+.diag__field label { font-size: 0.9rem; color: var(--diag-muted); }
+.diag__field input {
+  min-height: 2.85rem; border-radius: 0.75rem; border: 1px solid var(--diag-line);
+  padding: 0.65rem 0.8rem; font: inherit; font-size: 1.05rem; background: #fff;
+  color: var(--diag-ink);
+}
+.diag__error { color: #9b1c1c; font-size: 0.9rem; margin: 0.25rem 0 0.75rem; }
+.diag__fade-in { animation: diagIn 220ms ease-out; }
+@keyframes diagIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
