@@ -58,6 +58,23 @@ Checks: clean apply on a fresh database, all `growth.*` tables present,
 - `growth.job_outbox` — pending pg-boss jobs (`growth.score.recompute`, counsellor/DQ side-effects)
 - Config keys: `scoring_weights`, `scoring_bands` (**STARTING VALUES** for tuning)
 
+## M4 additions (WhatsApp qualification agent)
+
+Migration: `migrations/20260809160000_growth_m4_whatsapp.sql`.
+
+- `conversation` columns: `wa_phone`, token totals, `low_confidence_streak`,
+  `agent_state`, `qualification_state`, opt-in / first-outbound flags,
+  `diagnostic_summary`
+- `llm_usage`: optional `conversation_id`, `lead_id`, `purpose`
+- `wa_template` — template registry for outside-24h sends (FR-W-06)
+- `counselling_slot` — stub booking slots
+- `filter_log` — FR-W-10 blocked outbound drafts
+- `counsellor_queue` — FR-W-05 escalations
+- Config seeds: `whatsapp_token_budget`, `whatsapp_faq_retrieval`,
+  `objection_taxonomy_v1`
+- Edge: `whatsapp-webhook` (Meta Cloud API verify + inbound loop)
+- Core: `src/growth/whatsapp/*` (filter, retrieval, budget, conversation)
+
 ## M11 additions (compliance + asset library)
 
 Migration: `migrations/20260809150000_growth_m11_asset_compliance.sql`.
