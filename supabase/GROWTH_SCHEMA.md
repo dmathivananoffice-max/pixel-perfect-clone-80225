@@ -52,3 +52,8 @@ Checks: clean apply on a fresh database, all `growth.*` tables present,
 - `diagnostic_session`: `started_at`, `updated_at`, `last_question_id`, `last_question_index`
 - `growth.mark_abandoned_diagnostic_sessions(interval)` → writes `DIAG_ABANDONED` funnel events
 - Config keys: `diagnostic_rules:<branch>`, `diagnostic_branches:<branch>`
+
+## M3 additions
+
+- `growth.job_outbox` — pending pg-boss jobs (`growth.score.recompute`, counsellor/DQ side-effects)
+- Config keys: `scoring_weights`, `scoring_bands` (**STARTING VALUES** for tuning)

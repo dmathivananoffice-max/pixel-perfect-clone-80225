@@ -1,6 +1,7 @@
 import { evaluateDiagnostic } from "../_shared/diagnostic/engine.ts";
-import type { DiagnosticRulesConfig } from "../_shared/diagnostic/engine.ts";
+import { loadRules, writeDiagEvent } from "../_shared/diagnostic/sessionDb.ts";
 import { jsonResponse, optionsResponse, readJson } from "../_shared/http.ts";
+import { enqueueOutbox } from "../_shared/jobOutbox.ts";
 import { createServiceClient } from "../_shared/supabase_client.ts";
 
 type Body = {
@@ -13,43 +14,6 @@ type Body = {
   result?: Record<string, unknown> | null;
   lead_id?: string | null;
 };
-
-async function loadRules(
-  client: ReturnType<typeof createServiceClient>,
-  branch: string,
-): Promise<DiagnosticRulesConfig | null> {
-  const { data, error } = await client
-    .schema("growth")
-    .from("config")
-    .select("value")
-    .eq("key", `diagnostic_rules:${branch}`)
-    .eq("active", true)
-    .order("version", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error || !data) return null;
-  return data.value as DiagnosticRulesConfig;
-}
-
-async function writeEvent(
-  client: ReturnType<typeof createServiceClient>,
-  input: {
-    session_id: string;
-    lead_id?: string | null;
-    type: string;
-    meta?: Record<string, unknown>;
-  },
-) {
-  const { error } = await client.schema("growth").from("funnel_event").insert({
-    session_id: input.session_id,
-    lead_id: input.lead_id ?? null,
-    type: input.type,
-    stage: "diagnostic",
-    meta: input.meta ?? {},
-    at: new Date().toISOString(),
-  });
-  if (error) throw error;
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return optionsResponse();
@@ -77,14 +41,14 @@ Deno.serve(async (req) => {
     const answers = body.answers ?? {};
     const now = new Date().toISOString();
 
-    if (body.action === "start") {
+    if (body.action === "start" || body.action === "answer") {
       const { error } = await client.schema("growth").from("diagnostic_session").upsert(
         {
           id: body.session_id,
           branch: body.branch ?? "unknown",
           answers,
           rules_version: "pending",
-          started_at: now,
+          ...(body.action === "start" ? { started_at: now } : {}),
           updated_at: now,
           last_question_index: body.question_index ?? 0,
           last_question_id: body.question_id ?? null,
@@ -92,35 +56,15 @@ Deno.serve(async (req) => {
         { onConflict: "id" },
       );
       if (error) throw error;
-      await writeEvent(client, {
+      await writeDiagEvent(client, {
         session_id: body.session_id,
-        type: "DIAG_START",
-        meta: { branch: body.branch ?? null },
-      });
-      return jsonResponse({ ok: true });
-    }
-
-    if (body.action === "answer") {
-      const { error } = await client.schema("growth").from("diagnostic_session").upsert(
-        {
-          id: body.session_id,
-          branch: body.branch ?? "unknown",
-          answers,
-          rules_version: "pending",
-          updated_at: now,
-          last_question_index: body.question_index ?? 0,
-          last_question_id: body.question_id ?? null,
-        },
-        { onConflict: "id" },
-      );
-      if (error) throw error;
-      await writeEvent(client, {
-        session_id: body.session_id,
-        type: "DIAG_QUESTION_ANSWERED",
-        meta: {
-          question_index: body.question_index ?? 0,
-          question_id: body.question_id ?? null,
-        },
+        type: body.action === "start" ? "DIAG_START" : "DIAG_QUESTION_ANSWERED",
+        meta: body.action === "start"
+          ? { branch: body.branch ?? null }
+          : {
+            question_index: body.question_index ?? 0,
+            question_id: body.question_id ?? null,
+          },
       });
       return jsonResponse({ ok: true });
     }
@@ -131,11 +75,7 @@ Deno.serve(async (req) => {
       }
       const rules = await loadRules(client, body.branch);
       const result = rules
-        ? evaluateDiagnostic({
-          branch: body.branch,
-          answers,
-          rules,
-        })
+        ? evaluateDiagnostic({ branch: body.branch, answers, rules })
         : body.result;
 
       const { error } = await client.schema("growth").from("diagnostic_session").upsert(
@@ -155,7 +95,7 @@ Deno.serve(async (req) => {
         { onConflict: "id" },
       );
       if (error) throw error;
-      await writeEvent(client, {
+      await writeDiagEvent(client, {
         session_id: body.session_id,
         type: "DIAG_COMPLETE",
         meta: {
@@ -164,6 +104,17 @@ Deno.serve(async (req) => {
             (result as { rules_version?: string } | null)?.rules_version ?? null,
         },
       });
+      await enqueueOutbox(
+        client,
+        "growth.score.recompute",
+        {
+          trigger: "diagnostic_completion",
+          session_id: body.session_id,
+          branch: body.branch,
+          answers,
+        },
+        `recompute:${body.session_id}:diagnostic_completion`,
+      );
       return jsonResponse({ ok: true, result });
     }
 
@@ -171,17 +122,28 @@ Deno.serve(async (req) => {
       const { error } = await client
         .schema("growth")
         .from("diagnostic_session")
-        .update({
-          lead_id: body.lead_id ?? null,
-          updated_at: now,
-        })
+        .update({ lead_id: body.lead_id ?? null, updated_at: now })
         .eq("id", body.session_id);
       if (error) throw error;
-      await writeEvent(client, {
+      await writeDiagEvent(client, {
         session_id: body.session_id,
         lead_id: body.lead_id,
         type: "DIAG_CONTACT_CAPTURED",
       });
+      if (body.lead_id) {
+        await enqueueOutbox(
+          client,
+          "growth.score.recompute",
+          {
+            trigger: "contact_capture",
+            lead_id: body.lead_id,
+            session_id: body.session_id,
+            branch: body.branch,
+            answers,
+          },
+          `recompute:${body.lead_id}:contact_capture`,
+        );
+      }
       return jsonResponse({ ok: true });
     }
 
