@@ -9,7 +9,12 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test": "bun test",
+    "test:growth:m2": "bun test tests/growth/m2-lead.test.ts",
+    "test:growth:m1": "bun test tests/growth/m1-*.test.ts",
+    "test:growth:m3": "bun test tests/growth/m3-scoring-*.test.ts",
+    "jobs:worker": "bun src/growth/jobs/worker.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -54,6 +59,7 @@
     "input-otp": "^1.4.2",
     "lucide-react": "^0.575.0",
     "pdfjs-dist": "^6.1.200",
+    "pg-boss": "^12.27.0",
     "react": "^19.2.0",
     "react-day-picker": "^9.14.0",
     "react-dom": "^19.2.0",
