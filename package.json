@@ -17,9 +17,11 @@
     "test:growth:m11": "bun test tests/growth/m11-asset-resolve.test.ts",
     "test:growth:m4": "bun test tests/growth/m4-whatsapp-*.test.ts",
     "test:growth:m7": "bun test tests/growth/m7-objection-library.test.ts",
+    "test:growth:m9": "bun test tests/growth/m9-capacity-governor.test.ts",
     "verify:growth:m11": "bun scripts/verify_m11_approve_resolve.ts",
     "verify:growth:m4": "bun scripts/verify_m4_whatsapp_bait.ts",
     "verify:growth:m7": "bun scripts/verify_m7_counsellor_log.ts",
+    "verify:growth:m9": "bun scripts/verify_m9_waitlist_cta.ts",
     "seed:faq": "bun scripts/seed_faq_corpus.ts",
     "jobs:worker": "bun src/growth/jobs/worker.ts"
   },

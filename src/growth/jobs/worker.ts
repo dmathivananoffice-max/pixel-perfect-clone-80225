@@ -8,9 +8,12 @@ import type { ScoreRecord, ScoringStore } from "../scoring/service";
 import type { ComputedScore, OverrideReasonCode } from "../scoring/types";
 import bandsJson from "../scoring/config/scoring-bands.v1.json";
 import weightsJson from "../scoring/config/scoring-weights.v1.json";
+import { CapacityService } from "../capacity/service";
+import { createMemoryCapacityStore } from "../capacity/memoryStore";
 import {
   createPgBoss,
   pgBossQueue,
+  registerCapacityWorkers,
   registerScoringWorkers,
 } from "./pgBossQueue";
 
@@ -98,7 +101,18 @@ async function main() {
     },
   });
 
-  console.log("Growth scoring worker started");
+  // M9: wire Supabase CapacityStore in deploy; memory placeholder for local worker boot.
+  const capacity = new CapacityService(createMemoryCapacityStore());
+  await registerCapacityWorkers(boss, async (payload) => {
+    const states = await capacity.runHourlyGovernor();
+    console.log(
+      "capacity_governor",
+      payload.trigger,
+      states.map((s) => `${s.pathway}:${s.fill_ratio}:wl=${s.waitlist_mode}`),
+    );
+  });
+
+  console.log("Growth worker started (scoring + capacity governor)");
 }
 
 

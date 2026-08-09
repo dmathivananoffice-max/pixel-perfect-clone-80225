@@ -4,8 +4,15 @@ import {
   SCORE_JOBS,
   type RecomputeJobPayload,
 } from "../scoring/jobs";
+import {
+  CAPACITY_JOBS,
+  type CapacityGovernorJobPayload,
+} from "../capacity/jobs";
 
 export type RecomputeHandler = (payload: RecomputeJobPayload) => Promise<void>;
+export type CapacityGovernorHandler = (
+  payload: CapacityGovernorJobPayload,
+) => Promise<void>;
 
 export async function createPgBoss(connectionString: string): Promise<PgBoss> {
   const boss = new PgBoss({
@@ -58,6 +65,25 @@ export async function registerScoringWorkers(
   await boss.work(SCORE_JOBS.DQ_MESSAGE, async ([job]) => {
     await handlers.onDqMessage?.(job.data);
   });
+}
+
+/** Register M9 capacity governor — hourly schedule. */
+export async function registerCapacityWorkers(
+  boss: PgBoss,
+  onHourly: CapacityGovernorHandler,
+): Promise<void> {
+  await boss.createQueue(CAPACITY_JOBS.HOURLY);
+  await boss.work<CapacityGovernorJobPayload>(
+    CAPACITY_JOBS.HOURLY,
+    async ([job]) => {
+      await onHourly(job.data);
+    },
+  );
+  // cron: top of every hour
+  await boss.schedule(CAPACITY_JOBS.HOURLY, "0 * * * *", {
+    trigger: "schedule",
+    requested_at: new Date().toISOString(),
+  } satisfies CapacityGovernorJobPayload);
 }
 
 /** Helper for trigger sites (diag complete, contact, message, booking). */

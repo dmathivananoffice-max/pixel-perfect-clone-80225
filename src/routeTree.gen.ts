@@ -13,6 +13,7 @@ import { Route as ObjectionsRouteImport } from './routes/objections'
 import { Route as ExitSurveyRouteImport } from './routes/exit-survey'
 import { Route as DiagnosticRouteImport } from './routes/diagnostic'
 import { Route as ComplianceRouteImport } from './routes/compliance'
+import { Route as CapacityRouteImport } from './routes/capacity'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -36,6 +37,11 @@ const ComplianceRoute = ComplianceRouteImport.update({
   path: '/compliance',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CapacityRoute = CapacityRouteImport.update({
+  id: '/capacity',
+  path: '/capacity',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SplatRoute = SplatRouteImport.update({
   id: '/$',
   path: '/$',
@@ -50,6 +56,7 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/capacity': typeof CapacityRoute
   '/compliance': typeof ComplianceRoute
   '/diagnostic': typeof DiagnosticRoute
   '/exit-survey': typeof ExitSurveyRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/capacity': typeof CapacityRoute
   '/compliance': typeof ComplianceRoute
   '/diagnostic': typeof DiagnosticRoute
   '/exit-survey': typeof ExitSurveyRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/capacity': typeof CapacityRoute
   '/compliance': typeof ComplianceRoute
   '/diagnostic': typeof DiagnosticRoute
   '/exit-survey': typeof ExitSurveyRoute
@@ -77,6 +86,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$'
+    | '/capacity'
     | '/compliance'
     | '/diagnostic'
     | '/exit-survey'
@@ -85,6 +95,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/$'
+    | '/capacity'
     | '/compliance'
     | '/diagnostic'
     | '/exit-survey'
@@ -93,6 +104,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/$'
+    | '/capacity'
     | '/compliance'
     | '/diagnostic'
     | '/exit-survey'
@@ -102,6 +114,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
+  CapacityRoute: typeof CapacityRoute
   ComplianceRoute: typeof ComplianceRoute
   DiagnosticRoute: typeof DiagnosticRoute
   ExitSurveyRoute: typeof ExitSurveyRoute
@@ -138,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ComplianceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/capacity': {
+      id: '/capacity'
+      path: '/capacity'
+      fullPath: '/capacity'
+      preLoaderRoute: typeof CapacityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$': {
       id: '/$'
       path: '/$'
@@ -158,6 +178,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
+  CapacityRoute: CapacityRoute,
   ComplianceRoute: ComplianceRoute,
   DiagnosticRoute: DiagnosticRoute,
   ExitSurveyRoute: ExitSurveyRoute,

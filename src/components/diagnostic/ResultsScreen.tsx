@@ -1,4 +1,8 @@
+import { useEffect, useState } from "react";
+import { getPathwayCta } from "@/growth/capacity/api";
+import type { WaitlistCta } from "@/growth/capacity/types";
 import type { DiagnosticResult } from "@/growth/diagnostic/types";
+import { demoResolveCta } from "@/components/capacity/localDemo";
 
 type Props = {
   result: DiagnosticResult;
@@ -11,7 +15,39 @@ const BAND_LABEL: Record<DiagnosticResult["band"], string> = {
   NOT_YET: "Not yet",
 };
 
+function pathwayKey(result: DiagnosticResult): string {
+  const p = result.pathway.toLowerCase();
+  if (p.includes("ausbildung")) return "nursing-ausbildung";
+  return "nursing-professional";
+}
+
 export function ResultsScreen({ result, onContinue }: Props) {
+  const [cta, setCta] = useState<WaitlistCta | null>(null);
+
+  useEffect(() => {
+    const key = pathwayKey(result);
+    void (async () => {
+      try {
+        try {
+          setCta((await getPathwayCta(key)).cta);
+        } catch {
+          setCta(await demoResolveCta(key));
+        }
+      } catch {
+        setCta({
+          mode: "open",
+          label: "Continue",
+          copy: result.next_step,
+          intake_id: null,
+          pathway_throttled: false,
+          dashboard_flagged: false,
+        });
+      }
+    })();
+  }, [result]);
+
+  const waitlist = cta?.mode === "waitlist";
+
   return (
     <div className="diag__shell diag__fade-in">
       <p className="diag__brand">Workforce Europe</p>
@@ -67,18 +103,28 @@ export function ResultsScreen({ result, onContinue }: Props) {
         </section>
       ) : null}
 
-      <section className="diag__card">
+      <section className="diag__card" data-testid="results-cta-card">
         <h3>Next step</h3>
-        <p className="diag__muted">{result.next_step}</p>
+        <p className="diag__muted" data-testid="results-cta-copy">
+          {waitlist ? cta?.copy : cta?.copy ?? result.next_step}
+        </p>
+        {waitlist ? (
+          <p className="diag__muted" style={{ marginTop: "0.5rem" }}>
+            Intake reference: {cta?.intake_id ?? "calendar"} · pathway throttled
+            for nurture/ads (Phase 2 readers).
+          </p>
+        ) : null}
       </section>
 
       <div className="diag__nav">
         <button
           type="button"
           className="diag__btn diag__btn--primary"
+          data-testid="results-cta-btn"
+          data-mode={cta?.mode ?? "open"}
           onClick={onContinue}
         >
-          Continue
+          {cta?.label ?? "Continue"}
         </button>
       </div>
     </div>

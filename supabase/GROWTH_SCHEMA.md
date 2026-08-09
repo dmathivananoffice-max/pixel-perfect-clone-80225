@@ -58,6 +58,21 @@ Checks: clean apply on a fresh database, all `growth.*` tables present,
 - `growth.job_outbox` — pending pg-boss jobs (`growth.score.recompute`, counsellor/DQ side-effects)
 - Config keys: `scoring_weights`, `scoring_bands` (**STARTING VALUES** for tuning)
 
+## M9 additions (capacity governor)
+
+Migration: `migrations/20260809180000_growth_m9_capacity_governor.sql`.
+
+- `intake` columns: `label`, `status`, `updated_by`, `updated_at`
+- `pathway_capacity_state` — fill ratio, waitlist_mode, `pathway_throttled`,
+  dashboard flag, waitlist copy (read by Diagnostic CTA; Phase 2 nurture/ads)
+- `urgency_copy_template` — FR-N-05 scarcity schema (requires intake_id or
+  calendar_event_id)
+- Config: `capacity_governor` (default fill_threshold 0.85)
+- Helpers: `growth.nearest_intake`, `growth.next_intake_after`
+- UI: `/capacity` manual admin (platform sync = Phase 2 integration point)
+- Job: `growth.capacity.governor.hourly` (pg-boss cron)
+- Edge: `capacity-governor`
+
 ## M7 additions (objection intelligence)
 
 Migration: `migrations/20260809170000_growth_m7_objection_library.sql`.
