@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "bun test",
-    "test:growth:m2": "bun test tests/growth/m2-lead.test.ts"
+    "test:growth:m2": "bun test tests/growth/m2-lead.test.ts",
+    "test:growth:m1": "bun test tests/growth/m1-*.test.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

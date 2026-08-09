@@ -112,7 +112,44 @@
       "id": "city_other_note",
       "when": { "answer_key": "city_state", "equals": "other" },
       "effects": {
+        "gaps": ["Document logistics outside major source states"],
         "risk_notes": ["Document logistics may take longer outside major source states."]
+      }
+    },
+    {
+      "id": "parent_no_not_yet",
+      "when": { "answer_key": "parent_support", "equals": "no" },
+      "effects": {
+        "band_max": "NOT_YET",
+        "gaps": ["Family support not yet in place"],
+        "risk_notes": ["Ausbildung decisions usually need family alignment on funding and travel."]
+      }
+    },
+    {
+      "id": "parent_discussing_preparable",
+      "when": { "answer_key": "parent_support", "equals": "discussing" },
+      "effects": {
+        "band_max": "PREPARABLE",
+        "gaps": ["Family decision still open"],
+        "risk_notes": ["Share a clear cost and timeline plan with your decision unit."]
+      }
+    },
+    {
+      "id": "science_no_not_yet",
+      "when": { "answer_key": "science_background", "equals": "no" },
+      "effects": {
+        "band_max": "NOT_YET",
+        "gaps": ["No Class 12 science background"],
+        "risk_notes": ["Many Pflege schools expect science subjects; options narrow without them."]
+      }
+    },
+    {
+      "id": "science_partial_preparable",
+      "when": { "answer_key": "science_background", "equals": "partial" },
+      "effects": {
+        "band_max": "PREPARABLE",
+        "gaps": ["Partial science background — school filters apply"],
+        "risk_notes": ["Counselling will check which schools accept your subject mix."]
       }
     }
   ]

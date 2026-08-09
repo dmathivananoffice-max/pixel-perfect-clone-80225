@@ -104,7 +104,26 @@
       "id": "city_other_note",
       "when": { "answer_key": "city_state", "equals": "other" },
       "effects": {
+        "gaps": ["Document logistics outside major source states"],
         "risk_notes": ["Document logistics may take longer outside major source states."]
+      }
+    },
+    {
+      "id": "registration_none_not_yet",
+      "when": { "answer_key": "registration_status", "equals": "none" },
+      "effects": {
+        "band_max": "NOT_YET",
+        "gaps": ["No nursing council registration"],
+        "risk_notes": ["Active registration is required before recognition filing."]
+      }
+    },
+    {
+      "id": "registration_expired_preparable",
+      "when": { "answer_key": "registration_status", "equals": "expired" },
+      "effects": {
+        "band_max": "PREPARABLE",
+        "gaps": ["Nursing council registration needs renewal"],
+        "risk_notes": ["Renew registration before document attestation."]
       }
     }
   ]
