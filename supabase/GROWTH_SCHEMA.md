@@ -24,6 +24,10 @@ Phase 1 database foundation for the Workforce Europe Growth OS
 | `llm_usage` | Per-module LLM token and € cost meter (FR-A-07 / C-01). |
 | `config` | Versioned runtime config (scoring weights, bands, branches, taxonomy). |
 | `config_change` | Change history for `config` writes (who/when/old→new). |
+| `lead_touch` | Append-only touch history for lead merges (FR-L-02). |
+| `suppression` | Hashed phone/email suppression list after GDPR erasure (FR-L-04). |
+
+`lead` also has `erased_at` and `diagnostic_session_id` (M2).
 
 ## Roles (summary)
 
