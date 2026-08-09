@@ -58,6 +58,19 @@ Checks: clean apply on a fresh database, all `growth.*` tables present,
 - `growth.job_outbox` — pending pg-boss jobs (`growth.score.recompute`, counsellor/DQ side-effects)
 - Config keys: `scoring_weights`, `scoring_bands` (**STARTING VALUES** for tuning)
 
+## M7 additions (objection intelligence)
+
+Migration: `migrations/20260809170000_growth_m7_objection_library.sql`.
+
+- `objection` columns: `pathway`, `session_id`, `meta`
+- `objection_taxonomy_map` — FR-O-03 fear / evidence / asset refs / talk track
+  (writable by `marketing_operator` + admin)
+- `exit_survey_dispatch` — Diagnostic abandon → WhatsApp exit survey tracking
+- `growth.objection_trends(weeks, pathway)` — weekly counts by code × pathway
+- `growth.exit_survey_candidates(limit)` — abandoned sessions with contact
+- UI: `/objections` (log / trends / mapping), `/exit-survey` tap-select
+- Edge: `objection-library`
+
 ## M4 additions (WhatsApp qualification agent)
 
 Migration: `migrations/20260809160000_growth_m4_whatsapp.sql`.
