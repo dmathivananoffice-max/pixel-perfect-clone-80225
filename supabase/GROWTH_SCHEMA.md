@@ -67,11 +67,26 @@ Migration: `migrations/20260809190000_growth_m8_analytics_dashboard.sql`.
 - `llm_daily_rollup` — daily AI cost by module (FR-A-07)
 - `dashboard_alert` — home alert strip
 - `growth.refresh_funnel_daily_rollup(days)` — hourly pg-boss target
-- UI: `/dashboard` (Home / Funnel / Leads), glossary in
+- UI: `/dashboard` (Home / Funnel / Leads / Campaigns), glossary in
   `src/growth/analytics/config/glossary.v1.json`
 - Edge: `analytics-dashboard`
 - Late funnel stubs: COUNSELLING_ATTENDED / APPLICATION_SUBMITTED / PAID
   via counsellor manual actions
+
+## M13 additions (ad platform READ sync — Meta first)
+
+Migration: `migrations/20260809200000_growth_m13_ads_readonly.sql`.
+
+- `ad_account` / `ad_entity` / `campaign_metric` — SRD §17 time series (FR-AD-01)
+- Hourly pg-boss job `growth.ads.read_sync.hourly` — Meta GET sync; Google
+  adapter behind `TODO-GOOGLE-TOKEN` (inactive until developer token)
+- UTM template lint → `dashboard_alert` codes `UTM_MISSING` / `UTM_MALFORMED`
+  within one sync cycle (FR-AD-04)
+- Join `campaign_metric` ↔ `funnel_event` via UTM / click IDs → cost per
+  lead / MQL / SQL / attended / application (FR-AD-02)
+- UI: Home spend tile + Campaigns area (sort by €/MQL, no-MQL badge)
+- Edge: `ads-read-sync` (read queries only; rejects pause/create/update)
+- **Zero write scopes / zero mutation clients** (C-05). Phase 2 executor only.
 
 ## M9 additions (capacity governor)
 

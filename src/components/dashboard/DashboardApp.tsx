@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { areasForRole, canView } from "@/growth/analytics/roles";
 import type { DashboardRole, HomeMetrics } from "@/growth/analytics/types";
+import type { CampaignFunnelJoin } from "@/growth/ads/types";
+import { CampaignsPanel } from "./CampaignsPanel";
 import { DefinitionTip } from "./DefinitionTip";
 import { FunnelPanel } from "./FunnelPanel";
 import { HomePanel } from "./HomePanel";
 import { LeadsPanel } from "./LeadsPanel";
 import {
+  demoCampaigns,
   demoCoverage,
   demoFunnel,
   demoHome,
@@ -13,7 +16,7 @@ import {
 } from "./localDemo";
 import "./dashboard.css";
 
-type Tab = "home" | "funnel" | "leads";
+type Tab = "home" | "funnel" | "leads" | "campaigns";
 
 export function DashboardApp({ initialTab = "home" }: { initialTab?: Tab }) {
   const [role, setRole] = useState<DashboardRole>("marketing_operator");
@@ -22,6 +25,7 @@ export function DashboardApp({ initialTab = "home" }: { initialTab?: Tab }) {
   const [home, setHome] = useState<HomeMetrics | null>(null);
   const [funnel, setFunnel] = useState<Awaited<ReturnType<typeof demoFunnel>> | null>(null);
   const [leads, setLeads] = useState<Awaited<ReturnType<typeof demoLeads>> | null>(null);
+  const [campaigns, setCampaigns] = useState<CampaignFunnelJoin[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const coverage = demoCoverage();
 
@@ -29,6 +33,7 @@ export function DashboardApp({ initialTab = "home" }: { initialTab?: Tab }) {
     const allowed = areasForRole(role);
     if (tab === "home" && !allowed.includes("home")) setTab("leads");
     if (tab === "funnel" && !allowed.includes("funnel")) setTab("leads");
+    if (tab === "campaigns" && !allowed.includes("campaigns")) setTab("leads");
   }, [role, tab]);
 
   useEffect(() => {
@@ -43,6 +48,8 @@ export function DashboardApp({ initialTab = "home" }: { initialTab?: Tab }) {
           setFunnel(await demoFunnel());
         } else if (tab === "leads") {
           setLeads(await demoLeads());
+        } else if (tab === "campaigns" && canView(role, "campaigns")) {
+          setCampaigns(await demoCampaigns());
         }
       } catch (e) {
         setErr(e instanceof Error ? e.message : "load failed");
@@ -56,9 +63,9 @@ export function DashboardApp({ initialTab = "home" }: { initialTab?: Tab }) {
         <p className="dash__brand">Workforce Europe · Operator dashboard</p>
         <h1 className="dash__title">Growth overview</h1>
         <p className="dash__sub">
-          Plain-language numbers from your owned funnel. Tap any metric for a
-          definition. Event coverage: {coverage.live.length} live writers,{" "}
-          {coverage.stubs.length} counsellor stubs.
+          Plain-language numbers from your owned funnel and read-only ad sync.
+          Tap any metric for a definition. Event coverage: {coverage.live.length}{" "}
+          live writers, {coverage.stubs.length} counsellor stubs.
         </p>
 
         <nav className="dash__nav">
@@ -67,11 +74,18 @@ export function DashboardApp({ initialTab = "home" }: { initialTab?: Tab }) {
               ["home", "Home"],
               ["funnel", "Funnel"],
               ["leads", "Leads"],
+              ["campaigns", "Campaigns"],
             ] as const
           ).map(([id, label]) => {
-            const allowed =
-              id === "leads" ||
-              canView(role, id === "home" ? "home" : "funnel");
+            const area =
+              id === "home"
+                ? "home"
+                : id === "funnel"
+                  ? "funnel"
+                  : id === "campaigns"
+                    ? "campaigns"
+                    : "leads";
+            const allowed = id === "leads" || canView(role, area);
             if (!allowed) return null;
             return (
               <button
@@ -109,6 +123,9 @@ export function DashboardApp({ initialTab = "home" }: { initialTab?: Tab }) {
         ) : null}
         {tab === "leads" && leads ? (
           <LeadsPanel data={leads} onDefine={setTip} />
+        ) : null}
+        {tab === "campaigns" && campaigns ? (
+          <CampaignsPanel rows={campaigns} onDefine={setTip} />
         ) : null}
       </div>
       {tip ? <DefinitionTip glossaryKey={tip} onClose={() => setTip(null)} /> : null}

@@ -45,14 +45,8 @@ export function createMemoryAnalyticsStore(): EventWriter & {
     tokens_out: number;
     cost_eur: number;
   }[] = [];
-  const alerts = [
-    {
-      severity: "info",
-      title: "Ad spend tile pending",
-      body: "Spend connects in the next ads sync prompt.",
-      href: "/dashboard?tab=home",
-    },
-  ];
+  const alerts: { severity: string; title: string; body: string; href?: string; code?: string }[] =
+    [];
   let rollups: DailyRollupRow[] = [];
   let dropoffs: DropoffRow[] = [];
   let llmRollups: LlmRollupRow[] = [];

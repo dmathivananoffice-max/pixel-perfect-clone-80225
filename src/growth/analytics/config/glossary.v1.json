@@ -15,7 +15,31 @@
     },
     "spend": {
       "label": "Ad spend",
-      "plain": "Money spent on Meta/Google ads. Wired in the next ads sync — placeholder for now."
+      "plain": "Money spent on Meta (and Google when its token arrives) ads today, from the read-only sync."
+    },
+    "cost_per_mql": {
+      "label": "Cost per MQL",
+      "plain": "Ad spend divided by HOT+WARM leads from that campaign. Lower is better."
+    },
+    "cost_per_lead": {
+      "label": "Cost per lead",
+      "plain": "Ad spend divided by people who shared a phone number from that campaign."
+    },
+    "no_mql_badge": {
+      "label": "No qualified leads yet",
+      "plain": "This campaign has spent above the threshold but produced zero HOT or WARM leads."
+    },
+    "utm_lint": {
+      "label": "Missing tracking tags",
+      "plain": "The live ad link is missing required UTM tags, so we cannot reliably join spend to leads."
+    },
+    "ctr": {
+      "label": "CTR",
+      "plain": "Click-through rate: clicks divided by impressions (how often people click the ad)."
+    },
+    "cpc": {
+      "label": "CPC",
+      "plain": "Cost per click: spend divided by clicks."
     },
     "diag_start": {
       "label": "Diagnostic starts",

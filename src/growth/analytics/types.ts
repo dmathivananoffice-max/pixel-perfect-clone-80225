@@ -78,9 +78,9 @@ export type HotQueueItem = {
 };
 
 export type HomeMetrics = {
-  today: { leads: number; mqls: number; bookings: number; spend_placeholder: number };
-  yesterday: { leads: number; mqls: number; bookings: number; spend_placeholder: number };
-  alerts: { severity: string; title: string; body: string; href?: string }[];
+  today: { leads: number; mqls: number; bookings: number; spend: number };
+  yesterday: { leads: number; mqls: number; bookings: number; spend: number };
+  alerts: { severity: string; title: string; body: string; href?: string; code?: string }[];
   llm_today_eur: number;
   llm_month_eur: number;
   envelope_eur: number;

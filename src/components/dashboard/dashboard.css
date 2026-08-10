@@ -76,6 +76,18 @@
 .dash__breached { color: var(--warn); font-weight: 700; }
 .dash__ok { color: var(--ok); font-weight: 600; }
 .dash__meta { font-size: 0.8rem; color: var(--muted); }
+.dash__badge {
+  display: inline-block; margin-top: 0.25rem; margin-right: 0.25rem;
+  border: 1px solid var(--line); background: #f1f5f9; color: var(--ink);
+  border-radius: 0.35rem; padding: 0.15rem 0.4rem; font-size: 0.72rem;
+  cursor: pointer;
+}
+.dash__badge--warn { border-color: #fdba74; background: #fff7ed; color: var(--warn); }
+.dash__th-btn {
+  border: 0; background: transparent; padding: 0; font: inherit;
+  color: var(--accent); cursor: pointer; text-decoration: underline;
+  text-underline-offset: 2px;
+}
 @media (max-width: 640px) {
   .dash__title { font-size: 1.25rem; }
   .dash__role { width: 100%; margin-left: 0; }

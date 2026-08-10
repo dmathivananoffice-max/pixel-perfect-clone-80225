@@ -19,11 +19,13 @@
     "test:growth:m7": "bun test tests/growth/m7-objection-library.test.ts",
     "test:growth:m9": "bun test tests/growth/m9-capacity-governor.test.ts",
     "test:growth:m8": "bun test tests/growth/m8-analytics-dashboard.test.ts",
+    "test:growth:m13": "bun test tests/growth/m13-ads-readonly.test.ts",
     "verify:growth:m11": "bun scripts/verify_m11_approve_resolve.ts",
     "verify:growth:m4": "bun scripts/verify_m4_whatsapp_bait.ts",
     "verify:growth:m7": "bun scripts/verify_m7_counsellor_log.ts",
     "verify:growth:m9": "bun scripts/verify_m9_waitlist_cta.ts",
     "verify:growth:m8": "bun scripts/verify_m8_dashboard_funnel.ts",
+    "verify:growth:m13": "bun scripts/verify_m13_ads_readonly.ts",
     "seed:faq": "bun scripts/seed_faq_corpus.ts",
     "jobs:worker": "bun src/growth/jobs/worker.ts"
   },

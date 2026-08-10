@@ -81,7 +81,11 @@ export class AnalyticsService {
     };
   }
 
-  home(role: DashboardRole): HomeMetrics | { error: string } {
+  home(
+    role: DashboardRole,
+    spend?: { today: number; yesterday: number },
+    extraAlerts?: HomeMetrics["alerts"],
+  ): HomeMetrics | { error: string } {
     if (!canView(role, "home") && !canView(role, "system_costs")) {
       return { error: "Your role cannot view Home. Open Leads instead." };
     }
@@ -108,20 +112,24 @@ export class AnalyticsService {
       .filter((r) => r.day.startsWith(monthPrefix))
       .reduce((n, r) => n + r.cost_eur, 0);
 
+    const alerts = canView(role, "alerts")
+      ? [...this.store.alerts, ...(extraAlerts ?? [])]
+      : [];
+
     return {
       today: {
         leads: count(today, ["LEAD_CREATED", "LEAD_RETURNED"]),
         mqls: count(today, mqlTypes) || mqlFromScores(today),
         bookings: count(today, ["BOOKING_CREATED"]),
-        spend_placeholder: 0,
+        spend: spend?.today ?? 0,
       },
       yesterday: {
         leads: count(y, ["LEAD_CREATED", "LEAD_RETURNED"]),
         mqls: count(y, mqlTypes) || mqlFromScores(y),
         bookings: count(y, ["BOOKING_CREATED"]),
-        spend_placeholder: 0,
+        spend: spend?.yesterday ?? 0,
       },
-      alerts: canView(role, "alerts") ? this.store.alerts : [],
+      alerts,
       llm_today_eur: llmToday,
       llm_month_eur: llmMonth,
       envelope_eur: 300,

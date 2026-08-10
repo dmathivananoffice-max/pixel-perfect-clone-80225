@@ -12,6 +12,10 @@ import {
   ANALYTICS_JOBS,
   type AnalyticsRollupJobPayload,
 } from "../analytics/jobs";
+import {
+  ADS_JOBS,
+  type AdsReadSyncJobPayload,
+} from "../ads/jobs";
 
 export type RecomputeHandler = (payload: RecomputeJobPayload) => Promise<void>;
 export type CapacityGovernorHandler = (
@@ -19,6 +23,9 @@ export type CapacityGovernorHandler = (
 ) => Promise<void>;
 export type AnalyticsRollupHandler = (
   payload: AnalyticsRollupJobPayload,
+) => Promise<void>;
+export type AdsReadSyncHandler = (
+  payload: AdsReadSyncJobPayload,
 ) => Promise<void>;
 
 export async function createPgBoss(connectionString: string): Promise<PgBoss> {
@@ -110,6 +117,21 @@ export async function registerAnalyticsWorkers(
     days: 14,
     requested_at: new Date().toISOString(),
   } satisfies AnalyticsRollupJobPayload);
+}
+
+/** Register M13 ads READ sync — hourly. No write/mutation workers. */
+export async function registerAdsReadWorkers(
+  boss: PgBoss,
+  onHourly: AdsReadSyncHandler,
+): Promise<void> {
+  await boss.createQueue(ADS_JOBS.HOURLY_SYNC);
+  await boss.work<AdsReadSyncJobPayload>(ADS_JOBS.HOURLY_SYNC, async ([job]) => {
+    await onHourly(job.data);
+  });
+  await boss.schedule(ADS_JOBS.HOURLY_SYNC, "10 * * * *", {
+    trigger: "schedule",
+    requested_at: new Date().toISOString(),
+  } satisfies AdsReadSyncJobPayload);
 }
 
 /** Helper for trigger sites (diag complete, contact, message, booking). */

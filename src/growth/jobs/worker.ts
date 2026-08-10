@@ -10,11 +10,16 @@ import bandsJson from "../scoring/config/scoring-bands.v1.json";
 import weightsJson from "../scoring/config/scoring-weights.v1.json";
 import { AnalyticsService } from "../analytics/service";
 import { createMemoryAnalyticsStore } from "../analytics/memoryStore";
+import { AdsReadService } from "../ads/service";
+import { createMemoryAdsStore } from "../ads/memoryStore";
+import { createMetaReadAdapter } from "../ads/metaAdapter";
+import { createGoogleReadAdapter } from "../ads/googleAdapter";
 import { CapacityService } from "../capacity/service";
 import { createMemoryCapacityStore } from "../capacity/memoryStore";
 import {
   createPgBoss,
   pgBossQueue,
+  registerAdsReadWorkers,
   registerAnalyticsWorkers,
   registerCapacityWorkers,
   registerScoringWorkers,
@@ -121,7 +126,20 @@ async function main() {
     console.log("analytics_rollup", payload.trigger, stats);
   });
 
-  console.log("Growth worker started (scoring + capacity + analytics)");
+  // M13 READ only — Meta fixture/live GET; Google inactive until TODO-GOOGLE-TOKEN.
+  const ads = new AdsReadService(
+    createMemoryAdsStore(),
+    [createMetaReadAdapter(), createGoogleReadAdapter()],
+    { meta: process.env.META_AD_ACCOUNT_ID ?? "act_1001" },
+  );
+  await registerAdsReadWorkers(boss, async (payload) => {
+    const results = await ads.runHourlySync();
+    console.log("ads_read_sync", payload.trigger, results);
+  });
+
+  console.log(
+    "Growth worker started (scoring + capacity + analytics + ads-read)",
+  );
 }
 
 

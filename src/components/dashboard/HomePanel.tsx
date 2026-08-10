@@ -21,8 +21,8 @@ export function HomePanel({
         />
         <MetricTile
           glossaryKey="spend"
-          value={`€${data.today.spend_placeholder}`}
-          sub="Placeholder"
+          value={`€${data.today.spend.toFixed(0)}`}
+          sub="Meta read sync"
           onDefine={onDefine}
         />
       </div>
@@ -42,6 +42,11 @@ export function HomePanel({
         <MetricTile
           glossaryKey="bookings"
           value={data.yesterday.bookings}
+          onDefine={onDefine}
+        />
+        <MetricTile
+          glossaryKey="spend"
+          value={`€${data.yesterday.spend.toFixed(0)}`}
           onDefine={onDefine}
         />
       </div>

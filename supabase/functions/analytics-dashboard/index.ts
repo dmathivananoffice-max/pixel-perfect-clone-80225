@@ -95,13 +95,13 @@ Deno.serve(async (req) => {
             leads: sum(today, ["LEAD_CREATED", "LEAD_RETURNED"]),
             mqls: sum(today, ["BAND_ASSIGNED", "BAND_CHANGED"]),
             bookings: sum(today, ["BOOKING_CREATED"]),
-            spend_placeholder: 0,
+            spend: 0,
           },
           yesterday: {
             leads: sum(y, ["LEAD_CREATED", "LEAD_RETURNED"]),
             mqls: sum(y, ["BAND_ASSIGNED", "BAND_CHANGED"]),
             bookings: sum(y, ["BOOKING_CREATED"]),
-            spend_placeholder: 0,
+            spend: 0,
           },
           alerts: alerts ?? [],
           llm_today_eur: (llm ?? [])
