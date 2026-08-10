@@ -1,0 +1,113 @@
+{
+  "version": "glossary.v1",
+  "definitions": {
+    "leads": {
+      "label": "Leads",
+      "plain": "People who shared a phone number so we can follow up. Not yet scored."
+    },
+    "mqls": {
+      "label": "MQLs",
+      "plain": "Marketing-qualified leads: scored HOT or WARM — worth a counsellor's time soon."
+    },
+    "bookings": {
+      "label": "Bookings",
+      "plain": "Counselling calls that were scheduled on the calendar."
+    },
+    "spend": {
+      "label": "Ad spend",
+      "plain": "Money spent on Meta (and Google when its token arrives) ads today, from the read-only sync."
+    },
+    "cost_per_mql": {
+      "label": "Cost per MQL",
+      "plain": "Ad spend divided by HOT+WARM leads from that campaign. Lower is better."
+    },
+    "cost_per_lead": {
+      "label": "Cost per lead",
+      "plain": "Ad spend divided by people who shared a phone number from that campaign."
+    },
+    "no_mql_badge": {
+      "label": "No qualified leads yet",
+      "plain": "This campaign has spent above the threshold but produced zero HOT or WARM leads."
+    },
+    "utm_lint": {
+      "label": "Missing tracking tags",
+      "plain": "The live ad link is missing required UTM tags, so we cannot reliably join spend to leads."
+    },
+    "ctr": {
+      "label": "CTR",
+      "plain": "Click-through rate: clicks divided by impressions (how often people click the ad)."
+    },
+    "cpc": {
+      "label": "CPC",
+      "plain": "Cost per click: spend divided by clicks."
+    },
+    "diag_start": {
+      "label": "Diagnostic starts",
+      "plain": "How many people began the Pathway Diagnostic questionnaire."
+    },
+    "diag_complete": {
+      "label": "Diagnostic completes",
+      "plain": "How many people finished every question and saw a result."
+    },
+    "diag_dropoff": {
+      "label": "Question drop-off",
+      "plain": "Where people stop answering. A tall early bar means the question may be confusing."
+    },
+    "conversion": {
+      "label": "Conversion %",
+      "plain": "Share of people who moved from the previous step to this one."
+    },
+    "band_hot": {
+      "label": "HOT",
+      "plain": "Highest-priority leads. A counsellor should contact them within 4 business hours."
+    },
+    "band_warm": {
+      "label": "WARM",
+      "plain": "Good-fit leads who are not as urgent as HOT — still worth a personal follow-up."
+    },
+    "band_nurture": {
+      "label": "NURTURE",
+      "plain": "Not ready yet. They get helpful follow-up messages, not an immediate sales push."
+    },
+    "band_dq": {
+      "label": "DISQUALIFIED",
+      "plain": "Not a fit right now. We stop selling and may send a short honest explanation."
+    },
+    "hot_sla": {
+      "label": "HOT SLA timer",
+      "plain": "Countdown of the 4 business-hour window to first counsellor contact for HOT leads."
+    },
+    "dq_reasons": {
+      "label": "DQ reasons",
+      "plain": "Why leads were marked not-a-fit — so we can fix ads or the Diagnostic."
+    },
+    "llm_cost": {
+      "label": "AI usage cost",
+      "plain": "What we spent on language-model calls today/this month, toward the €300 infra envelope."
+    },
+    "envelope": {
+      "label": "€300 envelope",
+      "plain": "Monthly infrastructure budget for hosting and AI — not including ad spend."
+    },
+    "attended": {
+      "label": "Attended",
+      "plain": "Counselling call that actually happened (logged by a counsellor)."
+    },
+    "application": {
+      "label": "Application",
+      "plain": "Candidate started a formal application — logged by a counsellor for now."
+    },
+    "paid": {
+      "label": "Paid",
+      "plain": "Candidate paid — logged by a counsellor until platform billing sync exists."
+    },
+    "pathway": {
+      "label": "Pathway",
+      "plain": "Which career track the person is exploring (for example nursing professional or Ausbildung)."
+    },
+    "source": {
+      "label": "Source",
+      "plain": "Where the person came from (UTM source like meta, google, or direct)."
+    }
+  }
+}

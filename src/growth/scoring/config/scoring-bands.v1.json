@@ -1,0 +1,26 @@
+{
+  "version": "scoring-bands.v1",
+  "note": "STARTING VALUES for tuning — edit via growth.config key scoring_bands; HOT counsellor SLA = 4 business hours (FR-S-02).",
+  "thresholds": {
+    "HOT": 80,
+    "WARM": 60,
+    "NURTURE": 35
+  },
+  "hard_dq": [
+    {
+      "id": "prof_no_qualification",
+      "branch": "nursing-professional",
+      "when": { "qualification": ["none", "other_health"] }
+    },
+    {
+      "id": "ausbildung_class10_and_age30",
+      "branch": "nursing-ausbildung",
+      "when": { "qualification": "class_10", "age_band": "30_plus" }
+    },
+    {
+      "id": "ausbildung_no_science_no_german",
+      "branch": "nursing-ausbildung",
+      "when": { "science_background": "no", "german_level": ["A0", "A1"] }
+    }
+  ]
+}

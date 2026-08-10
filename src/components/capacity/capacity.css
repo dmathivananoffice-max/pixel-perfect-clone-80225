@@ -1,0 +1,58 @@
+.cap {
+  --bg: #f3f1eb;
+  --ink: #1a2228;
+  --muted: #5c676f;
+  --line: #d5cfc3;
+  --panel: #fffcf7;
+  --accent: #0f4c5c;
+  --warn: #9a3412;
+  --ok: #166534;
+  min-height: 100dvh;
+  background:
+    linear-gradient(160deg, #dfe9ed 0%, transparent 42%),
+    var(--bg);
+  color: var(--ink);
+  font-family: "Source Sans 3", "Avenir Next", "Segoe UI", sans-serif;
+  padding: 1.1rem;
+}
+.cap__shell { max-width: 58rem; margin: 0 auto; }
+.cap__brand {
+  font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted); margin: 0 0 0.35rem;
+}
+.cap__title { margin: 0 0 0.3rem; font-size: 1.6rem; font-weight: 650; }
+.cap__sub { color: var(--muted); margin: 0 0 1rem; }
+.cap__grid {
+  display: grid; gap: 1rem;
+  grid-template-columns: minmax(16rem, 1fr) minmax(18rem, 1.1fr);
+}
+@media (max-width: 860px) { .cap__grid { grid-template-columns: 1fr; } }
+.cap__panel {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 0.8rem; padding: 0.9rem;
+}
+.cap__table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.cap__table th, .cap__table td {
+  border-bottom: 1px solid var(--line); text-align: left; padding: 0.45rem 0.3rem;
+}
+.cap__flag {
+  display: inline-block; padding: 0.15rem 0.45rem; border-radius: 999px;
+  font-size: 0.72rem; font-weight: 700;
+}
+.cap__flag--ok { background: #dcfce7; color: var(--ok); }
+.cap__flag--warn { background: #ffedd5; color: var(--warn); }
+.cap__row { display: grid; gap: 0.5rem; }
+.cap__row label { font-size: 0.8rem; color: var(--muted); display: grid; gap: 0.25rem; }
+.cap__row input, .cap__row select {
+  border: 1px solid var(--line); border-radius: 0.5rem; padding: 0.5rem 0.6rem;
+  font: inherit; background: #fff;
+}
+.cap__actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+.cap__btn {
+  border: none; border-radius: 0.55rem; padding: 0.6rem 0.95rem;
+  background: var(--accent); color: #fff; font-weight: 600; cursor: pointer;
+}
+.cap__btn--ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+.cap__ok { color: var(--ok); font-weight: 600; }
+.cap__err { color: #9b1c1c; }
+.cap__meta { font-size: 0.8rem; color: var(--muted); }

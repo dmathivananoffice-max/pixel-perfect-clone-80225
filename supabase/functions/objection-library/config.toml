@@ -1,0 +1,2 @@
+[functions.objection-library]
+verify_jwt = false

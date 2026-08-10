@@ -1,0 +1,79 @@
+{
+  "account_external_id": "act_1001",
+  "account_name": "WFE Meta — Nursing IN",
+  "currency": "EUR",
+  "entities": [
+    {
+      "level": "campaign",
+      "external_id": "camp_nursing_in",
+      "name": "Nursing IN — Awareness",
+      "parent_external_id": null,
+      "status": "ACTIVE",
+      "utm_template": "utm_source=meta&utm_medium=paid_social&utm_campaign=camp_nursing_in&utm_content={{ad.id}}",
+      "landing_url": "https://workforce.europe/diag?utm_source=meta&utm_medium=paid_social&utm_campaign=camp_nursing_in"
+    },
+    {
+      "level": "adset",
+      "external_id": "adset_nursing_in_1",
+      "name": "IN metros 25-40",
+      "parent_external_id": "camp_nursing_in",
+      "status": "ACTIVE",
+      "utm_template": "utm_source=meta&utm_medium=paid_social&utm_campaign=camp_nursing_in&utm_content={{ad.id}}",
+      "landing_url": null
+    },
+    {
+      "level": "ad",
+      "external_id": "ad_good_utm",
+      "name": "Ad — complete UTM",
+      "parent_external_id": "adset_nursing_in_1",
+      "status": "ACTIVE",
+      "utm_template": "utm_source=meta&utm_medium=paid_social&utm_campaign=camp_nursing_in&utm_content=ad_good_utm",
+      "landing_url": "https://workforce.europe/diag?utm_source=meta&utm_medium=paid_social&utm_campaign=camp_nursing_in&utm_content=ad_good_utm"
+    },
+    {
+      "level": "ad",
+      "external_id": "ad_broken_utm",
+      "name": "Ad — broken UTM (lint target)",
+      "parent_external_id": "adset_nursing_in_1",
+      "status": "ACTIVE",
+      "utm_template": null,
+      "landing_url": "https://workforce.europe/diag"
+    },
+    {
+      "level": "campaign",
+      "external_id": "camp_zero_mql",
+      "name": "Ausbildung — Broad (no MQLs yet)",
+      "parent_external_id": null,
+      "status": "ACTIVE",
+      "utm_template": "utm_source=meta&utm_medium=paid_social&utm_campaign=camp_zero_mql&utm_content={{ad.id}}",
+      "landing_url": "https://workforce.europe/diag?utm_source=meta&utm_medium=paid_social&utm_campaign=camp_zero_mql"
+    },
+    {
+      "level": "ad",
+      "external_id": "ad_zero_mql",
+      "name": "Ad — spend no MQL",
+      "parent_external_id": "camp_zero_mql",
+      "status": "ACTIVE",
+      "utm_template": "utm_source=meta&utm_medium=paid_social&utm_campaign=camp_zero_mql&utm_content=ad_zero_mql",
+      "landing_url": "https://workforce.europe/diag?utm_source=meta&utm_medium=paid_social&utm_campaign=camp_zero_mql&utm_content=ad_zero_mql"
+    }
+  ],
+  "metrics": [
+    {
+      "entity_external_id": "camp_nursing_in",
+      "level": "campaign",
+      "spend_eur": 120.5,
+      "impressions": 18000,
+      "clicks": 420,
+      "platform_conversions": 8
+    },
+    {
+      "entity_external_id": "camp_zero_mql",
+      "level": "campaign",
+      "spend_eur": 75,
+      "impressions": 9000,
+      "clicks": 110,
+      "platform_conversions": 1
+    }
+  ]
+}

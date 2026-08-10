@@ -1,1 +1,6 @@
 project_id = "olxghlkfqtnxlbeprjpo"
+
+# Expose growth schema to the Data API / Studio table browser (Phase 1 Growth OS).
+[api]
+schemas = ["public", "growth", "graphql_public"]
+extra_search_path = ["public", "growth", "extensions"]

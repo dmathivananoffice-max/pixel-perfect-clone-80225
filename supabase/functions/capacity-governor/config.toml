@@ -1,0 +1,2 @@
+[functions.capacity-governor]
+verify_jwt = false
