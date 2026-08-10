@@ -1,0 +1,11 @@
+{
+  "version": "scoring-weights.v1",
+  "note": "STARTING VALUES for tuning — edit via growth.config key scoring_weights; do not treat as final.",
+  "weights": {
+    "fit": 0.25,
+    "intent": 0.2,
+    "capability": 0.25,
+    "timing": 0.15,
+    "engagement": 0.15
+  }
+}
