@@ -8,11 +8,14 @@ import type { ScoreRecord, ScoringStore } from "../scoring/service";
 import type { ComputedScore, OverrideReasonCode } from "../scoring/types";
 import bandsJson from "../scoring/config/scoring-bands.v1.json";
 import weightsJson from "../scoring/config/scoring-weights.v1.json";
+import { AnalyticsService } from "../analytics/service";
+import { createMemoryAnalyticsStore } from "../analytics/memoryStore";
 import { CapacityService } from "../capacity/service";
 import { createMemoryCapacityStore } from "../capacity/memoryStore";
 import {
   createPgBoss,
   pgBossQueue,
+  registerAnalyticsWorkers,
   registerCapacityWorkers,
   registerScoringWorkers,
 } from "./pgBossQueue";
@@ -112,7 +115,13 @@ async function main() {
     );
   });
 
-  console.log("Growth worker started (scoring + capacity governor)");
+  const analytics = new AnalyticsService(createMemoryAnalyticsStore());
+  await registerAnalyticsWorkers(boss, async (payload) => {
+    const stats = analytics.runHourlyRollup(payload.days ?? 14);
+    console.log("analytics_rollup", payload.trigger, stats);
+  });
+
+  console.log("Growth worker started (scoring + capacity + analytics)");
 }
 
 

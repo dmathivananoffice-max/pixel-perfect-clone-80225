@@ -8,10 +8,17 @@ import {
   CAPACITY_JOBS,
   type CapacityGovernorJobPayload,
 } from "../capacity/jobs";
+import {
+  ANALYTICS_JOBS,
+  type AnalyticsRollupJobPayload,
+} from "../analytics/jobs";
 
 export type RecomputeHandler = (payload: RecomputeJobPayload) => Promise<void>;
 export type CapacityGovernorHandler = (
   payload: CapacityGovernorJobPayload,
+) => Promise<void>;
+export type AnalyticsRollupHandler = (
+  payload: AnalyticsRollupJobPayload,
 ) => Promise<void>;
 
 export async function createPgBoss(connectionString: string): Promise<PgBoss> {
@@ -84,6 +91,25 @@ export async function registerCapacityWorkers(
     trigger: "schedule",
     requested_at: new Date().toISOString(),
   } satisfies CapacityGovernorJobPayload);
+}
+
+/** Register M8 analytics hourly rollup (FR-DB-05). */
+export async function registerAnalyticsWorkers(
+  boss: PgBoss,
+  onHourly: AnalyticsRollupHandler,
+): Promise<void> {
+  await boss.createQueue(ANALYTICS_JOBS.HOURLY_ROLLUP);
+  await boss.work<AnalyticsRollupJobPayload>(
+    ANALYTICS_JOBS.HOURLY_ROLLUP,
+    async ([job]) => {
+      await onHourly(job.data);
+    },
+  );
+  await boss.schedule(ANALYTICS_JOBS.HOURLY_ROLLUP, "5 * * * *", {
+    trigger: "schedule",
+    days: 14,
+    requested_at: new Date().toISOString(),
+  } satisfies AnalyticsRollupJobPayload);
 }
 
 /** Helper for trigger sites (diag complete, contact, message, booking). */

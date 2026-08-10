@@ -58,6 +58,21 @@ Checks: clean apply on a fresh database, all `growth.*` tables present,
 - `growth.job_outbox` — pending pg-boss jobs (`growth.score.recompute`, counsellor/DQ side-effects)
 - Config keys: `scoring_weights`, `scoring_bands` (**STARTING VALUES** for tuning)
 
+## M8 / M15 additions (analytics + dashboard shell)
+
+Migration: `migrations/20260809190000_growth_m8_analytics_dashboard.sql`.
+
+- `funnel_daily_rollup` — daily stage × pathway × source counts (FR-DB-05)
+- `diag_dropoff_rollup` — per-question Diagnostic answers
+- `llm_daily_rollup` — daily AI cost by module (FR-A-07)
+- `dashboard_alert` — home alert strip
+- `growth.refresh_funnel_daily_rollup(days)` — hourly pg-boss target
+- UI: `/dashboard` (Home / Funnel / Leads), glossary in
+  `src/growth/analytics/config/glossary.v1.json`
+- Edge: `analytics-dashboard`
+- Late funnel stubs: COUNSELLING_ATTENDED / APPLICATION_SUBMITTED / PAID
+  via counsellor manual actions
+
 ## M9 additions (capacity governor)
 
 Migration: `migrations/20260809180000_growth_m9_capacity_governor.sql`.
