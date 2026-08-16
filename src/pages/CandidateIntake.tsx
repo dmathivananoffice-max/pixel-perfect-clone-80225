@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -502,6 +502,9 @@ export default function CandidateIntake() {
   const [processingStatus, setProcessingStatus] = useState<string | null>(null);
   const [pendingFiles, setPendingFiles] = useState<UploadedFile[]>([]);
   const [batch, setBatch] = useState<IntakeBatch | null>(null);
+  const persistInFlightRef = useRef(false);
+  const pendingFilesRef = useRef(pendingFiles);
+  pendingFilesRef.current = pendingFiles;
   const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
   const [activeCandidateId, setActiveCandidateId] = useState<string | null>(null);
   const [pendingFocus, setPendingFocus] = useState<FieldFocus | null>(null);
@@ -845,91 +848,108 @@ export default function CandidateIntake() {
   }
 
   // Real intake persistence: batch → candidates → storage uploads → docs
-  async function runIntakePersistence(): Promise<void> {
-    // ── Session gate ────────────────────────────────────────
-    // Production incident 2026-07-20: an idle tab (access tokens
-    // live 1h) makes supabase-js hang FOREVER inside the silent
-    // token-refresh path on the first DB write — no error, no
-    // rows, an endless "Building candidate drafts" spinner.
-    // Bound the session check and fail loudly with a re-login
-    // path instead of parking the user.
-    let hasSession = false;
-    try {
-      const { data } = await withTimeout(supabase.auth.getSession(), 8_000, "Session check");
-      hasSession = !!data.session;
-    } catch {
-      hasSession = false;
-    }
-    if (!hasSession) {
-      try {
-        await withTimeout(supabase.auth.signOut({ scope: "local" }), 5_000, "Sign out");
-      } catch {
-        /* best effort — the storage key is removed below regardless */
-      }
-      try {
-        for (const k of Object.keys(localStorage)) {
-          if (/^sb-.*-auth-token$/.test(k)) localStorage.removeItem(k);
-        }
-      } catch {
-        /* storage unavailable */
-      }
-      toast.error("Your session has expired — please sign in again.");
-      navigate("/login", { replace: true });
+  const runIntakePersistence = useCallback(async (): Promise<void> => {
+    if (persistInFlightRef.current) {
+      console.warn("[intake] persistence already in flight — ignoring duplicate start");
       return;
     }
-
-    const p = product ?? "nurses";
-    const productDef = INTAKE_PRODUCTS.find((x) => x.id === p)!;
-    const m = mode ?? "single";
-    const intakeFiles: IntakeFile[] = pendingFiles.map((f) => ({
-      id: f.id,
-      file: f.file,
-      path: f.path,
-      kind: f.kind,
-    }));
-    const groups = m === "single" ? [intakeFiles] : groupFilesByFolder(intakeFiles);
-    const candidateCount = m === "single" ? 1 : Math.max(1, groups.length);
-    const localBatch = makeIntakeBatchShell(m, p, productDef.label, candidateCount);
+    persistInFlightRef.current = true;
     try {
-      const { batch: persisted } = await persistIntakeBatch({
-        mode: m,
-        productId: p,
-        localBatch,
-        files: intakeFiles,
-        onStatus: (text) => setProcessingStatus(text),
-        onFileError: (name, err) => toast.error(`Upload failed: ${name}`, { description: err }),
-      });
-      setBatch(persisted);
-      toast.success("Batch ready", {
-        description: `${persisted.candidates.length} candidate${persisted.candidates.length === 1 ? "" : "s"} · ${intakeFiles.length} document${intakeFiles.length === 1 ? "" : "s"} saved.`,
-      });
-    } catch (err) {
-      const title =
-        err instanceof IntakeError && err.kind === "validation"
-          ? "Please fix these issues before submitting"
-          : err instanceof IntakeError && err.kind === "permission"
-            ? "Not authorized — contact your admin"
-            : err instanceof IntakeError && err.kind === "network"
-              ? "Network issue — you can retry"
-              : "Intake failed";
-      toast.error(title, {
-        description: err instanceof Error ? err.message : String(err),
-        action:
-          err instanceof IntakeError && isTransient(err.kind)
-            ? {
-                label: "Retry",
-                onClick: () => {
-                  void runIntakePersistence();
-                },
-              }
-            : undefined,
-      });
-      // No mock fallback — leave batch unset so the UI shows the real error state.
-      setBatch(null);
+      // ── Session gate ────────────────────────────────────────
+      // Production incident 2026-07-20: an idle tab (access tokens
+      // live 1h) makes supabase-js hang FOREVER inside the silent
+      // token-refresh path on the first DB write — no error, no
+      // rows, an endless "Building candidate drafts" spinner.
+      // Bound the session check and fail loudly with a re-login
+      // path instead of parking the user.
+      let hasSession = false;
+      try {
+        const { data } = await withTimeout(supabase.auth.getSession(), 8_000, "Session check");
+        hasSession = !!data.session;
+      } catch {
+        hasSession = false;
+      }
+      if (!hasSession) {
+        try {
+          await withTimeout(supabase.auth.signOut({ scope: "local" }), 5_000, "Sign out");
+        } catch {
+          /* best effort — the storage key is removed below regardless */
+        }
+        try {
+          for (const k of Object.keys(localStorage)) {
+            if (/^sb-.*-auth-token$/.test(k)) localStorage.removeItem(k);
+          }
+        } catch {
+          /* storage unavailable */
+        }
+        toast.error("Your session has expired — please sign in again.");
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      const files = pendingFilesRef.current;
+      const p = product ?? "nurses";
+      const productDef = INTAKE_PRODUCTS.find((x) => x.id === p)!;
+      const m = mode ?? "single";
+      const intakeFiles: IntakeFile[] = files.map((f) => ({
+        id: f.id,
+        file: f.file,
+        path: f.path,
+        kind: f.kind,
+      }));
+      const groups = m === "single" ? [intakeFiles] : groupFilesByFolder(intakeFiles);
+      const candidateCount = m === "single" ? 1 : Math.max(1, groups.length);
+      const localBatch = makeIntakeBatchShell(m, p, productDef.label, candidateCount);
+      try {
+        const { batch: persisted } = await persistIntakeBatch({
+          mode: m,
+          productId: p,
+          localBatch,
+          files: intakeFiles,
+          onStatus: (text) => setProcessingStatus(text),
+          onFileError: (name, err) => toast.error(`Upload failed: ${name}`, { description: err }),
+        });
+        setBatch(persisted);
+        toast.success("Batch ready", {
+          description: `${persisted.candidates.length} candidate${persisted.candidates.length === 1 ? "" : "s"} · ${intakeFiles.length} document${intakeFiles.length === 1 ? "" : "s"} saved.`,
+        });
+      } catch (err) {
+        const title =
+          err instanceof IntakeError && err.kind === "validation"
+            ? "Please fix these issues before submitting"
+            : err instanceof IntakeError && err.kind === "permission"
+              ? "Not authorized — contact your admin"
+              : err instanceof IntakeError && err.kind === "network"
+                ? "Network issue — you can retry"
+                : "Intake failed";
+        toast.error(title, {
+          description: err instanceof Error ? err.message : String(err),
+          action:
+            err instanceof IntakeError && isTransient(err.kind)
+              ? {
+                  label: "Retry",
+                  onClick: () => {
+                    persistInFlightRef.current = false;
+                    void runIntakePersistence();
+                  },
+                }
+              : undefined,
+        });
+        // No mock fallback — leave batch unset so the UI shows the real error state.
+        setBatch(null);
+      }
+    } finally {
+      persistInFlightRef.current = false;
     }
-  }
+  }, [mode, product, navigate]);
 
   function finishProcessing() {
+    setStage("dashboard");
+  }
+
+  function handleProcessingError(message: string) {
+    toast.error("Processing interrupted", { description: message });
+    // Still advance when we have a batch; otherwise show the empty error panel.
     setStage("dashboard");
   }
 
@@ -1178,6 +1198,7 @@ export default function CandidateIntake() {
           run={runIntakePersistence}
           statusText={processingStatus ?? undefined}
           onDone={finishProcessing}
+          onError={handleProcessingError}
         />
       )}
 
