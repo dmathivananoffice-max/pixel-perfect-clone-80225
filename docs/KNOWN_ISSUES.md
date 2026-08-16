@@ -23,7 +23,8 @@ resolves, so the screen looks frozen. `onError` was also unwired.
 1. **Apply both new migrations** — `email_logs` table + mock-seed cleanup, and the
    `candidate-documents` storage bucket. Without them: Email Center history 404s and
    uploads fail with "Bucket not found".
-2. **Set `TOGETHER_API_KEY`** in Lovable Cloud env — OCR fails loudly without it.
+2. **Set `MISTRAL_API_KEY`** in Lovable Cloud env — default OCR/vision backend
+   (`mistral-medium-latest`). `TOGETHER_API_KEY` is only a fallback.
 3. **RLS dev posture** — anon key can read/write everything (SECURITY_REPORT §S1).
    Run the hardening script before any public URL.
 
@@ -43,7 +44,7 @@ resolves, so the screen looks frozen. `onError` was also unwired.
 ## Not executed in this environment (requires production access)
 
 - Magic-link round-trip (needs a real mailbox).
-- Live OCR run (needs `TOGETHER_API_KEY` + sample document).
+- Live OCR run (needs `MISTRAL_API_KEY` + sample document).
 - Real-world ZIP upload with nested folders.
 
 All three have explicit, loud failure paths — no silent fallbacks.

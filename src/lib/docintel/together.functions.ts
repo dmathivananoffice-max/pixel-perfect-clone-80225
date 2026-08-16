@@ -1,8 +1,11 @@
 // ─────────────────────────────────────────────────────────────
-// Together AI server function — the ONLY place TOGETHER_API_KEY
-// is touched. Every call goes through here so we can swap the
-// provider (Anthropic, OpenAI, Vertex, etc.) without changing
-// any calling code.
+// Vision OCR server function — the ONLY place vision API keys
+// (MISTRAL_API_KEY / TOGETHER_API_KEY / LOVABLE_API_KEY) are touched.
+// Every call goes through here so we can swap the provider without
+// changing any calling code.
+//
+// Default backend: Mistral AI (mistral-medium-latest).
+// Fallbacks: Together AI, then Lovable AI gateway.
 //
 // Isolation invariants enforced server-side:
 //   • The caller must be authenticated (requireSupabaseAuth).
@@ -11,7 +14,7 @@
 //     call the model at all — no cross-candidate leakage possible.
 //
 // Input protocol:
-//   The client rasterizes the file to per-page PNG data URLs and
+//   The client rasterizes the file to per-page JPEG data URLs and
 //   posts them here. We never accept a storage_path from the client
 //   and re-download it under service role, because that would
 //   bypass RLS.
@@ -59,6 +62,8 @@ export interface TogetherPageRaw {
 }
 
 export interface TogetherExtractResult {
+  /** Stable provider id for audit/UI (e.g. mistral-vision). */
+  provider: string;
   model: string;
   processedAt: string;
   documentId: string;
@@ -250,11 +255,11 @@ async function callTogether(
       return { content, usage: json.usage };
     }
     const text = await res.text().catch(() => "");
-    lastErr = `Together AI ${res.status}: ${text.slice(0, 500)}`;
+    lastErr = `Vision API ${res.status}: ${text.slice(0, 500)}`;
     if (res.status !== 429 && res.status < 500) break;
     await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt - 1)));
   }
-  throw new Error(lastErr || "Together AI call failed");
+  throw new Error(lastErr || "Vision API call failed");
 }
 
 // ── Multimodal preflight ──────────────────────────────────────
@@ -323,11 +328,11 @@ async function preflightVisionModel(
 }
 
 /**
- * Resolve the vision backend. Together AI is used when TOGETHER_API_KEY is
- * configured; otherwise we fall back to the built-in Lovable AI gateway,
- * which needs no user-supplied key.
+ * Resolve the vision backend.
+ * Priority: Mistral (default) → Together AI → Lovable AI gateway.
  */
 function resolveVisionConfig(): {
+  provider: string;
   apiKey: string | undefined;
   baseUrl: string;
   model: string;
@@ -338,6 +343,7 @@ function resolveVisionConfig(): {
   const mistralKey = process.env.MISTRAL_API_KEY;
   if (mistralKey) {
     return {
+      provider: "mistral-vision",
       apiKey: mistralKey,
       baseUrl: process.env.MISTRAL_API_BASE_URL ?? "https://api.mistral.ai/v1",
       model: process.env.MISTRAL_VISION_MODEL ?? "mistral-medium-latest",
@@ -348,6 +354,7 @@ function resolveVisionConfig(): {
   const togetherKey = process.env.TOGETHER_API_KEY;
   if (togetherKey) {
     return {
+      provider: "together-qwen2.5-vl",
       apiKey: togetherKey,
       baseUrl: process.env.TOGETHER_API_BASE_URL ?? "https://api.together.ai/v1",
       model: process.env.TOGETHER_VISION_MODEL ?? "Qwen/Qwen2.5-VL-72B-Instruct",
@@ -356,33 +363,34 @@ function resolveVisionConfig(): {
     };
   }
   return {
+    provider: "lovable-vision",
     apiKey: process.env.LOVABLE_API_KEY,
     baseUrl: "https://ai.gateway.lovable.dev/v1",
     model: process.env.LOVABLE_VISION_MODEL ?? "google/gemini-2.5-flash",
     needsPreflight: false,
     missingMessage:
-      "No OCR vision backend is configured (needs LOVABLE_API_KEY or TOGETHER_API_KEY).",
+      "No OCR vision backend is configured (needs MISTRAL_API_KEY, or TOGETHER_API_KEY / LOVABLE_API_KEY).",
   };
 }
 
 /** Public server fn so the UI can validate vision config on demand. */
 export const validateTogetherVisionModel = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async (): Promise<PreflightResult & { baseUrl: string }> => {
-    const { apiKey, baseUrl, model, missingMessage } = resolveVisionConfig();
+  .handler(async (): Promise<PreflightResult & { baseUrl: string; provider: string }> => {
+    const { apiKey, baseUrl, model, missingMessage, provider } = resolveVisionConfig();
     if (!apiKey) {
-      return { ok: false, model, reason: missingMessage, baseUrl };
+      return { ok: false, model, reason: missingMessage, baseUrl, provider };
     }
     preflightCache.delete(model); // bypass cache for on-demand validation
     const r = await preflightVisionModel(apiKey, baseUrl, model);
-    return { ...r, baseUrl };
+    return { ...r, baseUrl, provider };
   });
 
 export const extractDocumentWithTogether = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ExtractInput.parse(input))
   .handler(async ({ data, context }): Promise<TogetherExtractResult> => {
-    const { apiKey, baseUrl, model, needsPreflight, missingMessage } = resolveVisionConfig();
+    const { apiKey, baseUrl, model, needsPreflight, missingMessage, provider } = resolveVisionConfig();
     if (!apiKey) throw new Error(missingMessage);
 
     // ISOLATION GATE: verify the doc belongs to the caller-visible candidate BEFORE any model call.
@@ -487,6 +495,7 @@ export const extractDocumentWithTogether = createServerFn({ method: "POST" })
     pagesOut.sort((a, b) => a.pageNumber - b.pageNumber);
 
     return {
+      provider,
       model,
       processedAt: new Date().toISOString(),
       documentId: data.documentId,
