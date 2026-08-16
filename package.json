@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "test:intake-hang": "bun test tests/intake-draft-hang.test.ts tests/intake-processing-stuck-detector.test.ts",
+    "test:intake-hang": "bun test tests/intake-draft-hang.test.ts tests/intake-processing-stuck-detector.test.ts tests/intake-pipeline-speed.test.ts",
     "verify:intake-hang": "bun scripts/verify_intake_draft_hang.ts"
   },
   "dependencies": {

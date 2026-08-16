@@ -21,8 +21,8 @@ export interface RasterizedPage {
   heightPx: number;
 }
 
-/** Cap PDF page render width — big enough for legible OCR, small enough to keep tokens down. */
-const PDF_RENDER_MAX_WIDTH = 1280;
+/** Cap PDF page render width — big enough for legible OCR, small enough to keep tokens/upload down. */
+const PDF_RENDER_MAX_WIDTH = 1024;
 /** Never send more than this many pages per document to the model. */
 const MAX_PAGES_PER_DOC = 12;
 
@@ -63,7 +63,7 @@ async function pdfToPages(file: File): Promise<RasterizedPage[]> {
     await page.render({ canvasContext: ctx, viewport, canvas }).promise;
     // JPEG is dramatically smaller than PNG for scanned documents, reducing
     // request time and preventing large batches from exhausting tab memory.
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.88);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
     out.push({ pageNumber: p, dataUrl, widthPx: canvas.width, heightPx: canvas.height });
     // release
     page.cleanup();

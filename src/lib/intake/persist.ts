@@ -29,15 +29,29 @@ const HASH_TIMEOUT_MS = 60_000;
 const DOC_INSERT_TIMEOUT_MS = 30_000;
 const PIPELINE_TIMEOUT_MS = 10 * 60_000; // per candidate, OCR of all its docs
 const SESSION_REFRESH_MS = 8_000;
+/** Refresh only when the access token is this close to expiry (or missing). */
+const SESSION_REFRESH_SKEW_MS = 90_000;
+/** Parallel storage uploads — overlaps network without saturating the browser. */
+const UPLOAD_CONCURRENCY = 3;
 
 /**
  * After a long OCR run the access token is often near expiry. supabase-js
  * then parks forever inside silent refresh on the next DB write — that is
- * the production hang on "Finalising candidate draft…". Refresh first,
- * bound, and continue even if refresh fails (draft writes still timeout).
+ * the production hang on "Finalising candidate draft…". Refresh only when
+ * needed, bound the call, and continue even if refresh fails (draft writes
+ * still timeout).
  */
 async function ensureFreshSession(): Promise<void> {
   try {
+    const { data } = await withTimeout(
+      supabase.auth.getSession(),
+      SESSION_REFRESH_MS,
+      "Session read before draft save",
+    );
+    const expiresAtMs = (data.session?.expires_at ?? 0) * 1000;
+    if (expiresAtMs && expiresAtMs - Date.now() > SESSION_REFRESH_SKEW_MS) {
+      return;
+    }
     await withTimeout(
       supabase.auth.refreshSession(),
       SESSION_REFRESH_MS,
@@ -264,117 +278,139 @@ export async function persistIntakeBatch(params: {
     if (auditErr) console.warn("[intake] audit insert failed:", auditErr.message);
   }
 
-  // 5. Distribute files to candidates
+  // 5. Distribute files to candidates (parallel uploads within a small pool).
   const groups = mode === "single" ? [files] : groupFilesByFolder(files);
   const total = files.length;
   let done = 0;
 
+  type UploadJob = { f: IntakeFile; candDbId: string };
+  const uploadJobs: UploadJob[] = [];
   for (let gi = 0; gi < groups.length; gi++) {
     const candLocalId = localBatch.candidates[gi % localBatch.candidates.length]?.id;
     if (!candLocalId) continue;
     const candDbId = idMap.get(candLocalId);
     if (!candDbId) continue;
-
     for (const f of groups[gi]) {
-      // TODO(security): Add virus/malware scanning here (e.g. MetaDefender
-      // Cloud API or Cloudmersive) BEFORE this upload path is opened to
-      // external candidates or agencies. Currently only internal team
-      // members upload test documents — acceptable for internal testing
-      // only, not for any candidate-facing or agency-facing upload.
+      uploadJobs.push({ f, candDbId });
+    }
+  }
 
-      onStatus?.(`Uploading ${done + 1}/${total} — ${f.file.name}`);
-      // Pre-OCR gate: validate before touching storage.
-      const validationErr = validateFile(f.file);
-      if (validationErr) {
-        onFileError?.(f.file.name, validationErr.message);
-        done += 1;
-        onProgress?.(done, total);
-        continue;
-      }
+  const uploadOne = async ({ f, candDbId }: UploadJob) => {
+    // TODO(security): Add virus/malware scanning here (e.g. MetaDefender
+    // Cloud API or Cloudmersive) BEFORE this upload path is opened to
+    // external candidates or agencies. Currently only internal team
+    // members upload test documents — acceptable for internal testing
+    // only, not for any candidate-facing or agency-facing upload.
 
-      // Fingerprint — deterministic, tamper-evident, dedupe key.
-      let sha256: string;
-      try {
-        sha256 = await withTimeout(
-          computeSha256(f.file),
-          HASH_TIMEOUT_MS,
-          `Hashing ${f.file.name}`,
-        );
-      } catch (e) {
-        onFileError?.(f.file.name, `Hash failed: ${e instanceof Error ? e.message : "unknown"}`);
-        done += 1;
-        onProgress?.(done, total);
-        continue;
-      }
-
-      const stdName = standardizeFilename(f.file.name);
-      const objectPath = `${batchDbId}/${candDbId}/${Date.now()}-${stdName}`;
-      let upErr: { message: string } | null = null;
-      try {
-        const res = await withTimeout(
-          supabase.storage.from("candidate-documents").upload(objectPath, f.file, {
-            cacheControl: "3600",
-            upsert: false,
-            contentType: f.file.type || undefined,
-          }),
-          uploadTimeoutMs(f.file.size),
-          `Uploading ${f.file.name}`,
-        );
-        upErr = res.error;
-      } catch (e) {
-        upErr = { message: e instanceof Error ? e.message : String(e) };
-      }
-      if (upErr) {
-        onFileError?.(f.file.name, upErr.message);
-      } else {
-        const docType = guessDocType(f.file.name);
-        const docInsert: Record<string, unknown> = {
-          candidate_id: candDbId,
-          document_type: docType,
-          file_name: f.file.name,
-          standardized_filename: stdName,
-          storage_path: objectPath,
-          mime_type: f.file.type || null,
-          size_bytes: f.file.size,
-          sha256,
-          uploaded_by_name: actorName ?? "Recruiter",
-          ocr_complete: false,
-          ocr_status: "pending",
-          document_state: "draft",
-        };
-        const { error: docErr } = await withTimeout(
-          supabase.from("candidate_documents").insert(docInsert as never),
-          DOC_INSERT_TIMEOUT_MS,
-          `Registering ${f.file.name}`,
-        );
-        if (docErr) {
-          // Duplicate hash within the same candidate is not fatal — surface it clearly.
-          const dupe = /duplicate key/.test(docErr.message);
-          onFileError?.(
-            f.file.name,
-            dupe
-              ? "Duplicate file (same content already uploaded for this candidate)."
-              : docErr.message,
-          );
-        } else {
-          // Audit: document_uploaded (includes hash for traceability)
-          void supabase.from("audit_events").insert({
-            entity_type: "candidate",
-            entity_id: candDbId,
-            event_type: "document_uploaded",
-            actor_name: actorName ?? "Recruiter",
-            new_value: {
-              document_type: docType,
-              file_name: f.file.name,
-              sha256,
-              storage_path: objectPath,
-            },
-          });
-        }
-      }
+    // Pre-OCR gate: validate before touching storage.
+    const validationErr = validateFile(f.file);
+    if (validationErr) {
+      onFileError?.(f.file.name, validationErr.message);
       done += 1;
       onProgress?.(done, total);
+      onStatus?.(`Uploading ${done}/${total}`);
+      return;
     }
+
+    onStatus?.(`Uploading ${Math.min(done + 1, total)}/${total} — ${f.file.name}`);
+
+    // Fingerprint — deterministic, tamper-evident, dedupe key.
+    let sha256: string;
+    try {
+      sha256 = await withTimeout(
+        computeSha256(f.file),
+        HASH_TIMEOUT_MS,
+        `Hashing ${f.file.name}`,
+      );
+    } catch (e) {
+      onFileError?.(f.file.name, `Hash failed: ${e instanceof Error ? e.message : "unknown"}`);
+      done += 1;
+      onProgress?.(done, total);
+      return;
+    }
+
+    const stdName = standardizeFilename(f.file.name);
+    const objectPath = `${batchDbId}/${candDbId}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}-${stdName}`;
+    let upErr: { message: string } | null = null;
+    try {
+      const res = await withTimeout(
+        supabase.storage.from("candidate-documents").upload(objectPath, f.file, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: f.file.type || undefined,
+        }),
+        uploadTimeoutMs(f.file.size),
+        `Uploading ${f.file.name}`,
+      );
+      upErr = res.error;
+    } catch (e) {
+      upErr = { message: e instanceof Error ? e.message : String(e) };
+    }
+    if (upErr) {
+      onFileError?.(f.file.name, upErr.message);
+    } else {
+      const docType = guessDocType(f.file.name);
+      const docInsert: Record<string, unknown> = {
+        candidate_id: candDbId,
+        document_type: docType,
+        file_name: f.file.name,
+        standardized_filename: stdName,
+        storage_path: objectPath,
+        mime_type: f.file.type || null,
+        size_bytes: f.file.size,
+        sha256,
+        uploaded_by_name: actorName ?? "Recruiter",
+        ocr_complete: false,
+        ocr_status: "pending",
+        document_state: "draft",
+      };
+      const { error: docErr } = await withTimeout(
+        supabase.from("candidate_documents").insert(docInsert as never),
+        DOC_INSERT_TIMEOUT_MS,
+        `Registering ${f.file.name}`,
+      );
+      if (docErr) {
+        // Duplicate hash within the same candidate is not fatal — surface it clearly.
+        const dupe = /duplicate key/.test(docErr.message);
+        onFileError?.(
+          f.file.name,
+          dupe
+            ? "Duplicate file (same content already uploaded for this candidate)."
+            : docErr.message,
+        );
+      } else {
+        // Audit: document_uploaded (includes hash for traceability)
+        void supabase.from("audit_events").insert({
+          entity_type: "candidate",
+          entity_id: candDbId,
+          event_type: "document_uploaded",
+          actor_name: actorName ?? "Recruiter",
+          new_value: {
+            document_type: docType,
+            file_name: f.file.name,
+            sha256,
+            storage_path: objectPath,
+          },
+        });
+      }
+    }
+    done += 1;
+    onProgress?.(done, total);
+  };
+
+  {
+    const queue = [...uploadJobs];
+    const workers = Array.from(
+      { length: Math.min(UPLOAD_CONCURRENCY, queue.length) },
+      async () => {
+        while (queue.length > 0) {
+          const next = queue.shift();
+          if (!next) break;
+          await uploadOne(next);
+        }
+      },
+    );
+    await Promise.all(workers);
   }
 
   // 5b. Kick off Document Intelligence pipeline per candidate (isolated, sequential).
@@ -395,23 +431,25 @@ export async function persistIntakeBatch(params: {
 
   // Count uploaded docs per candidate (from what we just inserted).
   const docCountByCand = new Map<string, number>();
-  for (const candDbId of idMap.values()) {
-    let docCount = 0;
-    try {
-      const res = await withTimeout(
-        supabase
-          .from("candidate_documents")
-          .select("id", { count: "exact", head: true })
-          .eq("candidate_id", candDbId),
-        DRAFT_DB_TIMEOUT_MS,
-        "Counting uploaded documents",
-      );
-      docCount = res.count ?? 0;
-    } catch (e) {
-      console.warn("[intake] doc count failed for", candDbId, e);
-    }
-    docCountByCand.set(candDbId, docCount);
-  }
+  await Promise.all(
+    [...idMap.values()].map(async (candDbId) => {
+      let docCount = 0;
+      try {
+        const res = await withTimeout(
+          supabase
+            .from("candidate_documents")
+            .select("id", { count: "exact", head: true })
+            .eq("candidate_id", candDbId),
+          DRAFT_DB_TIMEOUT_MS,
+          "Counting uploaded documents",
+        );
+        docCount = res.count ?? 0;
+      } catch (e) {
+        console.warn("[intake] doc count failed for", candDbId, e);
+      }
+      docCountByCand.set(candDbId, docCount);
+    }),
+  );
 
   for (const candDbId of idMap.values()) {
     const docsUploaded = docCountByCand.get(candDbId) ?? 0;
@@ -451,6 +489,8 @@ export async function persistIntakeBatch(params: {
       const pipelineResult = await withTimeout(
         runDocumentIntelligencePipeline({
           candidateId: candDbId,
+          // Fresh intake: no prior human edits to merge — skip the extra DB round-trip.
+          skipHumanMerge: true,
           onStep: (step, detail) => {
             if (step === "ocr_start") onStatus?.(`Running OCR — ${detail}`);
             else if (step === "ocr_progress") onStatus?.(`Running OCR — ${detail} documents`);

@@ -211,8 +211,9 @@ async function callTogether(
     response_format: { type: "json_object" as const },
   };
 
-  // Exponential backoff on 429 / 5xx.
-  const maxAttempts = 4;
+  // Exponential backoff on 429 / 5xx. Two attempts keeps OCR responsive when
+  // the provider is healthy; further retries mostly add latency on hard failures.
+  const maxAttempts = 2;
   const requestTimeoutMs = 45_000;
   let lastErr = "";
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -471,10 +472,11 @@ export const extractDocumentWithTogether = createServerFn({ method: "POST" })
       }
     };
 
-    // Process two pages at a time. This removes the long serial wait for
-    // multi-page PDFs while keeping memory and provider load bounded.
+    // Process a few pages at a time. Overlaps network for multi-page PDFs
+    // while keeping memory and provider load bounded.
+    const PAGE_CONCURRENCY = 3;
     const queue = [...data.pages];
-    const workers = Array.from({ length: Math.min(2, queue.length) }, async () => {
+    const workers = Array.from({ length: Math.min(PAGE_CONCURRENCY, queue.length) }, async () => {
       while (queue.length > 0) {
         const page = queue.shift();
         if (!page) break;
