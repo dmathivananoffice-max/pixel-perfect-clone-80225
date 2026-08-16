@@ -1,29 +1,39 @@
-import { User, Users2, ArrowRight, Sparkles } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import type { IntakeMode } from '@/lib/intake/batch';
+import { User, Users2, ArrowRight, Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import type { IntakeMode } from "@/lib/intake/batch";
 
 export function IntakeTypeStep({
-  mode, setMode, onContinue,
+  mode,
+  setMode,
+  onContinue,
 }: {
   mode: IntakeMode | null;
   setMode: (m: IntakeMode) => void;
   onContinue: () => void;
 }) {
-  const options: { id: IntakeMode; icon: typeof User; title: string; sub: string; blurb: string }[] = [
+  const options: {
+    id: IntakeMode;
+    icon: typeof User;
+    title: string;
+    sub: string;
+    blurb: string;
+  }[] = [
     {
-      id: 'single',
+      id: "single",
       icon: User,
-      title: 'Single candidate',
-      sub: 'One person · guided workflow',
-      blurb: 'Upload one candidate\u2019s documents and walk through AI-assisted verification section by section.',
+      title: "Single candidate",
+      sub: "One person · guided workflow",
+      blurb:
+        "Upload one candidate\u2019s documents and walk through AI-assisted verification section by section.",
     },
     {
-      id: 'bulk',
+      id: "bulk",
       icon: Users2,
-      title: 'Multiple candidates',
-      sub: 'Batch upload · AI mission control',
-      blurb: 'Drop ZIPs, folders, or dozens of files. AI extracts every candidate; you verify from a single dashboard.',
+      title: "Multiple candidates",
+      sub: "Batch upload · AI mission control",
+      blurb:
+        "Drop ZIPs, folders, or dozens of files. AI extracts every candidate; you verify from a single dashboard.",
     },
   ];
 
@@ -51,20 +61,24 @@ export function IntakeTypeStep({
                 key={o.id}
                 onClick={() => setMode(o.id)}
                 className={cn(
-                  'group relative overflow-hidden rounded-2xl border bg-background p-6 text-left transition',
+                  "group relative overflow-hidden rounded-2xl border bg-background p-6 text-left transition",
                   selected
-                    ? 'border-primary shadow-lg ring-2 ring-primary/25 -translate-y-0.5'
-                    : 'border-border/60 hover:border-border hover:-translate-y-0.5 hover:shadow-md',
+                    ? "border-primary shadow-lg ring-2 ring-primary/25 -translate-y-0.5"
+                    : "border-border/60 hover:border-border hover:-translate-y-0.5 hover:shadow-md",
                 )}
               >
-                <div className={cn(
-                  'mb-4 inline-flex size-11 items-center justify-center rounded-xl transition',
-                  selected ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground',
-                )}>
+                <div
+                  className={cn(
+                    "mb-4 inline-flex size-11 items-center justify-center rounded-xl transition",
+                    selected ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
+                  )}
+                >
                   <Icon className="size-5" />
                 </div>
                 <h3 className="font-display text-xl font-semibold tracking-tight">{o.title}</h3>
-                <p className="mt-0.5 text-xs uppercase tracking-widest text-muted-foreground">{o.sub}</p>
+                <p className="mt-0.5 text-xs uppercase tracking-widest text-muted-foreground">
+                  {o.sub}
+                </p>
                 <p className="mt-3 text-sm text-muted-foreground">{o.blurb}</p>
                 {selected && (
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-primary/0 via-primary to-primary/0" />

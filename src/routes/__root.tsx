@@ -78,16 +78,36 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Workforce Europe Platform" },
-      { name: "description", content: "Recruitment intelligence, document intake, verification, and workforce operations for Europe." },
+      {
+        name: "description",
+        content:
+          "Recruitment intelligence, document intake, verification, and workforce operations for Europe.",
+      },
       { name: "author", content: "Workforce Europe" },
       { property: "og:title", content: "Workforce Europe Platform" },
-      { property: "og:description", content: "Recruitment intelligence, document intake, verification, and workforce operations for Europe." },
+      {
+        property: "og:description",
+        content:
+          "Recruitment intelligence, document intake, verification, and workforce operations for Europe.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Workforce Europe Platform" },
-      { name: "twitter:description", content: "Recruitment intelligence, document intake, verification, and workforce operations for Europe." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f2dc872a-9743-4a6d-bc18-3680ab82fec8/id-preview-70445f96--09311e5a-0061-45be-b6eb-d94d1a0dda7c.lovable.app-1783777859140.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f2dc872a-9743-4a6d-bc18-3680ab82fec8/id-preview-70445f96--09311e5a-0061-45be-b6eb-d94d1a0dda7c.lovable.app-1783777859140.png" },
+      {
+        name: "twitter:description",
+        content:
+          "Recruitment intelligence, document intake, verification, and workforce operations for Europe.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f2dc872a-9743-4a6d-bc18-3680ab82fec8/id-preview-70445f96--09311e5a-0061-45be-b6eb-d94d1a0dda7c.lovable.app-1783777859140.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f2dc872a-9743-4a6d-bc18-3680ab82fec8/id-preview-70445f96--09311e5a-0061-45be-b6eb-d94d1a0dda7c.lovable.app-1783777859140.png",
+      },
     ],
     links: [
       {
@@ -96,7 +116,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700&family=Inter:wght@400;500;600&display=swap",
+      },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
   }),

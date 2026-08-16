@@ -25,6 +25,10 @@ export interface DashboardMetrics {
   candidatesByStatus: { status: string; count: number }[];
   topPrograms: { program: string; count: number }[];
   recentActivity: ActivityItem[];
+  /** True while the underlying queries are in flight. */
+  loading?: boolean;
+  /** Set when a query failed — consumers must render an error state. */
+  error?: string | null;
 }
 
 export interface ActivityItem {
@@ -50,5 +54,5 @@ export interface FilterParams {
   page?: number;
   pageSize?: number;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: "asc" | "desc";
 }
