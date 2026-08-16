@@ -1,13 +1,19 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator,
-} from '@/components/ui/command';
-import { useAllCandidates } from '@/hooks/useAllCandidates';
-import { PRODUCTS } from '@/config/products';
-import { useProductStore } from '@/store/productStore';
-import { getCountry } from '@/lib/countries';
-import { Home, Users, ClipboardCheck, Briefcase, BarChart3, UserPlus } from 'lucide-react';
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from "@/components/ui/command";
+import { useAllCandidates } from "@/hooks/useAllCandidates";
+import { PRODUCTS } from "@/config/products";
+import { useProductStore } from "@/store/productStore";
+import { getCountry } from "@/lib/countries";
+import { Home, Users, ClipboardCheck, Briefcase, BarChart3, UserPlus } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -18,16 +24,25 @@ interface Props {
 export function CommandPalette({ open, onOpenChange, onAddCandidate }: Props) {
   const navigate = useNavigate();
   const setProduct = useProductStore((s) => s.setProduct);
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState("");
   const { candidates } = useAllCandidates();
 
-  useEffect(() => { if (!open) setQ(''); }, [open]);
+  useEffect(() => {
+    if (!open) setQ("");
+  }, [open]);
 
-  const run = (fn: () => void) => { onOpenChange(false); setTimeout(fn, 0); };
+  const run = (fn: () => void) => {
+    onOpenChange(false);
+    setTimeout(fn, 0);
+  };
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
-      <CommandInput placeholder="Search candidates, jump to page, run action…" value={q} onValueChange={setQ} />
+      <CommandInput
+        placeholder="Search candidates, jump to page, run action…"
+        value={q}
+        onValueChange={setQ}
+      />
       <CommandList>
         <CommandEmpty>No results.</CommandEmpty>
 
@@ -41,11 +56,21 @@ export function CommandPalette({ open, onOpenChange, onAddCandidate }: Props) {
         <CommandSeparator />
 
         <CommandGroup heading="Navigate">
-          <CommandItem onSelect={() => run(() => navigate('/dashboard'))}><Home className="size-4"/> Dashboard</CommandItem>
-          <CommandItem onSelect={() => run(() => navigate('/candidates'))}><Users className="size-4"/> Candidates</CommandItem>
-          <CommandItem onSelect={() => run(() => navigate('/sti'))}><ClipboardCheck className="size-4"/> Assessments</CommandItem>
-          <CommandItem onSelect={() => run(() => navigate('/recruiter'))}><Briefcase className="size-4"/> Recruiter hub</CommandItem>
-          <CommandItem onSelect={() => run(() => navigate('/reports'))}><BarChart3 className="size-4"/> Reports</CommandItem>
+          <CommandItem onSelect={() => run(() => navigate("/dashboard"))}>
+            <Home className="size-4" /> Dashboard
+          </CommandItem>
+          <CommandItem onSelect={() => run(() => navigate("/candidates"))}>
+            <Users className="size-4" /> Candidates
+          </CommandItem>
+          <CommandItem onSelect={() => run(() => navigate("/sti"))}>
+            <ClipboardCheck className="size-4" /> Assessments
+          </CommandItem>
+          <CommandItem onSelect={() => run(() => navigate("/recruiter"))}>
+            <Briefcase className="size-4" /> Recruiter hub
+          </CommandItem>
+          <CommandItem onSelect={() => run(() => navigate("/reports"))}>
+            <BarChart3 className="size-4" /> Reports
+          </CommandItem>
         </CommandGroup>
 
         <CommandSeparator />
@@ -73,7 +98,9 @@ export function CommandPalette({ open, onOpenChange, onAddCandidate }: Props) {
                 onSelect={() => run(() => navigate(`/candidates?open=${c.candidate_id}`))}
               >
                 <span className="text-base leading-none">{flag}</span>
-                <span>{c.first_name} {c.last_name}</span>
+                <span>
+                  {c.first_name} {c.last_name}
+                </span>
                 <span className="ml-auto text-xs text-muted-foreground">{c.program_name}</span>
               </CommandItem>
             );

@@ -7,8 +7,8 @@
 // Kept client-side because Cloudflare Workers cannot render PDFs
 // without native deps.
 // ─────────────────────────────────────────────────────────────
-import * as pdfjs from 'pdfjs-dist';
-import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import * as pdfjs from "pdfjs-dist";
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -22,15 +22,15 @@ export interface RasterizedPage {
 }
 
 /** Cap PDF page render width — big enough for legible OCR, small enough to keep tokens down. */
-const PDF_RENDER_MAX_WIDTH = 1600;
+const PDF_RENDER_MAX_WIDTH = 1280;
 /** Never send more than this many pages per document to the model. */
-const MAX_PAGES_PER_DOC = 20;
+const MAX_PAGES_PER_DOC = 12;
 
 async function imageFileToPage(file: File): Promise<RasterizedPage> {
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error ?? new Error('FileReader failed'));
+    reader.onerror = () => reject(reader.error ?? new Error("FileReader failed"));
     reader.readAsDataURL(file);
   });
   // Get dimensions for bbox translation.
@@ -38,7 +38,7 @@ async function imageFileToPage(file: File): Promise<RasterizedPage> {
     (resolve, reject) => {
       const img = new Image();
       img.onload = () => resolve({ widthPx: img.naturalWidth, heightPx: img.naturalHeight });
-      img.onerror = () => reject(new Error('Could not decode image'));
+      img.onerror = () => reject(new Error("Could not decode image"));
       img.src = dataUrl;
     },
   );
@@ -55,13 +55,15 @@ async function pdfToPages(file: File): Promise<RasterizedPage[]> {
     const viewport1x = page.getViewport({ scale: 1 });
     const scale = Math.min(2, PDF_RENDER_MAX_WIDTH / viewport1x.width);
     const viewport = page.getViewport({ scale });
-    const canvas = document.createElement('canvas');
+    const canvas = document.createElement("canvas");
     canvas.width = Math.ceil(viewport.width);
     canvas.height = Math.ceil(viewport.height);
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Canvas 2D context unavailable');
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas 2D context unavailable");
     await page.render({ canvasContext: ctx, viewport, canvas }).promise;
-    const dataUrl = canvas.toDataURL('image/png');
+    // JPEG is dramatically smaller than PNG for scanned documents, reducing
+    // request time and preventing large batches from exhausting tab memory.
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.88);
     out.push({ pageNumber: p, dataUrl, widthPx: canvas.width, heightPx: canvas.height });
     // release
     page.cleanup();
@@ -72,11 +74,11 @@ async function pdfToPages(file: File): Promise<RasterizedPage[]> {
 
 /** Rasterize a file into one image per page. Throws for unsupported types. */
 export async function rasterizeFile(file: File): Promise<RasterizedPage[]> {
-  const mime = (file.type || '').toLowerCase();
-  if (mime === 'application/pdf' || /\.pdf$/i.test(file.name)) {
+  const mime = (file.type || "").toLowerCase();
+  if (mime === "application/pdf" || /\.pdf$/i.test(file.name)) {
     return pdfToPages(file);
   }
-  if (mime.startsWith('image/') || /\.(png|jpe?g|webp|tiff?|heic)$/i.test(file.name)) {
+  if (mime.startsWith("image/") || /\.(png|jpe?g|webp|tiff?|heic)$/i.test(file.name)) {
     return [await imageFileToPage(file)];
   }
   throw new Error(`Unsupported file type for rasterization: ${mime || file.name}`);
@@ -84,5 +86,5 @@ export async function rasterizeFile(file: File): Promise<RasterizedPage[]> {
 
 /** Convert an ArrayBuffer of already-known bytes (e.g. downloaded from storage) into a File. */
 export function bufferToFile(buf: ArrayBuffer, fileName: string, mimeType: string | null): File {
-  return new File([buf], fileName, { type: mimeType ?? 'application/octet-stream' });
+  return new File([buf], fileName, { type: mimeType ?? "application/octet-stream" });
 }

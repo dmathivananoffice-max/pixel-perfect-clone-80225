@@ -1,35 +1,35 @@
-import type { CandidateStatus } from '@/types';
+import type { CandidateStatus } from "@/types";
 
 export interface StageMeta {
   id: CandidateStatus;
   label: string;
-  tone: 'neutral' | 'blue' | 'amber' | 'violet' | 'emerald' | 'rose' | 'zinc';
+  tone: "neutral" | "blue" | "amber" | "violet" | "emerald" | "rose" | "zinc";
   terminal?: boolean;
 }
 
 export const STAGES: StageMeta[] = [
-  { id: 'waiting',     label: 'Registered',       tone: 'neutral' },
-  { id: 'shortlisted', label: 'Shortlisted',      tone: 'blue' },
-  { id: 'interview1',  label: 'Interview Round 1', tone: 'violet' },
-  { id: 'interview2',  label: 'Interview Round 2', tone: 'violet' },
-  { id: 'contract',    label: 'Offer / Contract', tone: 'amber' },
-  { id: 'visa',        label: 'Visa',             tone: 'blue' },
-  { id: 'placed',      label: 'Placed',           tone: 'emerald', terminal: true },
-  { id: 'rejected',    label: 'Rejected',         tone: 'rose', terminal: true },
-  { id: 'withdrawn',   label: 'Withdrawn',        tone: 'zinc', terminal: true },
+  { id: "waiting", label: "Registered", tone: "neutral" },
+  { id: "shortlisted", label: "Shortlisted", tone: "blue" },
+  { id: "interview1", label: "Interview Round 1", tone: "violet" },
+  { id: "interview2", label: "Interview Round 2", tone: "violet" },
+  { id: "contract", label: "Offer / Contract", tone: "amber" },
+  { id: "visa", label: "Visa", tone: "blue" },
+  { id: "placed", label: "Placed", tone: "emerald", terminal: true },
+  { id: "rejected", label: "Rejected", tone: "rose", terminal: true },
+  { id: "withdrawn", label: "Withdrawn", tone: "zinc", terminal: true },
 ];
 
 // Allowed forward transitions. Anything else is technically a manual override.
 const TRANSITIONS: Record<CandidateStatus, CandidateStatus[]> = {
-  waiting:     ['shortlisted', 'rejected', 'withdrawn'],
-  shortlisted: ['interview1', 'rejected', 'withdrawn'],
-  interview1:  ['interview2', 'rejected', 'withdrawn'],
-  interview2:  ['contract', 'rejected', 'withdrawn'],
-  contract:    ['visa', 'withdrawn'],
-  visa:        ['placed', 'withdrawn'],
-  placed:      [],
-  rejected:    [],
-  withdrawn:   [],
+  waiting: ["shortlisted", "rejected", "withdrawn"],
+  shortlisted: ["interview1", "rejected", "withdrawn"],
+  interview1: ["interview2", "rejected", "withdrawn"],
+  interview2: ["contract", "rejected", "withdrawn"],
+  contract: ["visa", "withdrawn"],
+  visa: ["placed", "withdrawn"],
+  placed: [],
+  rejected: [],
+  withdrawn: [],
 };
 
 export function stageMeta(id: CandidateStatus): StageMeta {
@@ -41,18 +41,18 @@ export function nextStages(current: CandidateStatus): StageMeta[] {
   return STAGES.filter((s) => allowed.has(s.id));
 }
 
-export const TONE_CLASSES: Record<StageMeta['tone'], string> = {
-  neutral: 'bg-slate-100 text-slate-700 ring-slate-200',
-  blue:    'bg-blue-50 text-blue-700 ring-blue-200',
-  amber:   'bg-amber-50 text-amber-800 ring-amber-200',
-  violet:  'bg-violet-50 text-violet-700 ring-violet-200',
-  emerald: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  rose:    'bg-rose-50 text-rose-700 ring-rose-200',
-  zinc:    'bg-zinc-100 text-zinc-600 ring-zinc-200',
+export const TONE_CLASSES: Record<StageMeta["tone"], string> = {
+  neutral: "bg-slate-100 text-slate-700 ring-slate-200",
+  blue: "bg-blue-50 text-blue-700 ring-blue-200",
+  amber: "bg-amber-50 text-amber-800 ring-amber-200",
+  violet: "bg-violet-50 text-violet-700 ring-violet-200",
+  emerald: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  rose: "bg-rose-50 text-rose-700 ring-rose-200",
+  zinc: "bg-zinc-100 text-zinc-600 ring-zinc-200",
 };
 
 // ── Placement Readiness (recruiter-friendly replacement for "gate") ──
-export type ReadinessTone = 'emerald' | 'amber' | 'orange' | 'blue' | 'rose' | 'zinc' | 'violet';
+export type ReadinessTone = "emerald" | "amber" | "orange" | "blue" | "rose" | "zinc" | "violet";
 export interface ReadinessMeta {
   label: string;
   tone: ReadinessTone;
@@ -61,63 +61,55 @@ export interface ReadinessMeta {
 
 export function placementReadiness(
   status: CandidateStatus,
-  gate: 'eligible' | 'not_placement_ready' | string | null | undefined,
+  gate: "eligible" | "not_placement_ready" | string | null | undefined,
 ): ReadinessMeta {
-  if (status === 'placed')     return { label: 'Placed',              tone: 'emerald', dot: '🟢' };
-  if (status === 'rejected')   return { label: 'Rejected',            tone: 'rose',    dot: '🔴' };
-  if (status === 'withdrawn')  return { label: 'On Hold',             tone: 'zinc',    dot: '⚫' };
-  if (status === 'visa')       return { label: 'Visa Processing',     tone: 'blue',    dot: '🔵' };
-  if (status === 'contract')   return { label: 'Contract Pending',    tone: 'violet',  dot: '🟣' };
-  if (status === 'interview1' || status === 'interview2')
-                               return { label: 'Interview Pending',   tone: 'orange',  dot: '🟠' };
-  if (gate === 'not_placement_ready')
-                               return { label: 'Documents Missing',   tone: 'rose',    dot: '🔴' };
-  if (status === 'shortlisted') return { label: 'Placement Ready',    tone: 'emerald', dot: '🟢' };
-  if (status === 'waiting')    return { label: 'Assessment Pending',  tone: 'amber',   dot: '🟡' };
-  return { label: 'In Progress', tone: 'amber', dot: '🟡' };
+  if (status === "placed") return { label: "Placed", tone: "emerald", dot: "🟢" };
+  if (status === "rejected") return { label: "Rejected", tone: "rose", dot: "🔴" };
+  if (status === "withdrawn") return { label: "On Hold", tone: "zinc", dot: "⚫" };
+  if (status === "visa") return { label: "Visa Processing", tone: "blue", dot: "🔵" };
+  if (status === "contract") return { label: "Contract Pending", tone: "violet", dot: "🟣" };
+  if (status === "interview1" || status === "interview2")
+    return { label: "Interview Pending", tone: "orange", dot: "🟠" };
+  if (gate === "not_placement_ready")
+    return { label: "Documents Missing", tone: "rose", dot: "🔴" };
+  if (status === "shortlisted") return { label: "Placement Ready", tone: "emerald", dot: "🟢" };
+  if (status === "waiting") return { label: "Assessment Pending", tone: "amber", dot: "🟡" };
+  return { label: "In Progress", tone: "amber", dot: "🟡" };
 }
 
 export const READINESS_CLASSES: Record<ReadinessTone, string> = {
-  emerald: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  amber:   'bg-amber-50 text-amber-800 ring-amber-200',
-  orange:  'bg-orange-50 text-orange-700 ring-orange-200',
-  blue:    'bg-blue-50 text-blue-700 ring-blue-200',
-  rose:    'bg-rose-50 text-rose-700 ring-rose-200',
-  zinc:    'bg-zinc-100 text-zinc-600 ring-zinc-200',
-  violet:  'bg-violet-50 text-violet-700 ring-violet-200',
+  emerald: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  amber: "bg-amber-50 text-amber-800 ring-amber-200",
+  orange: "bg-orange-50 text-orange-700 ring-orange-200",
+  blue: "bg-blue-50 text-blue-700 ring-blue-200",
+  rose: "bg-rose-50 text-rose-700 ring-rose-200",
+  zinc: "bg-zinc-100 text-zinc-600 ring-zinc-200",
+  violet: "bg-violet-50 text-violet-700 ring-violet-200",
 };
 
 // Language levels
-export const LANG_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1'] as const;
-export type LangLevel = typeof LANG_LEVELS[number];
+export const LANG_LEVELS = ["A1", "A2", "B1", "B2", "C1"] as const;
+export type LangLevel = (typeof LANG_LEVELS)[number];
 
-// Deterministic pseudo-random derivations for mock enrichment
-function hash(id: string): number {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return h;
-}
-export function deriveLanguageLevel(candidateId: string): LangLevel {
-  return LANG_LEVELS[hash(candidateId) % LANG_LEVELS.length];
-}
-export function deriveSpeakingScore(candidateId: string): number | null {
-  const h = hash(candidateId + 's');
-  if (h % 5 === 0) return null;
-  return 55 + (h % 45);
-}
-export function deriveTrainingScore(candidateId: string): number | null {
-  const h = hash(candidateId + 't');
-  if (h % 4 === 0) return null;
-  return 50 + (h % 50);
-}
-export function deriveInterviewScore(candidateId: string): number | null {
-  const h = hash(candidateId + 'i');
-  if (h % 3 === 0) return null;
-  return 60 + (h % 40);
-}
-export function deriveLastActivity(candidateId: string): Date {
-  const days = hash(candidateId + 'a') % 30;
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  return d;
+/**
+ * Reads the German language level from OCR-extracted candidate fields
+ * (candidates.extracted_fields, populated by the document intelligence
+ * pipeline from real language certificates). Returns null when no
+ * certificate has been extracted yet — never a made-up value.
+ */
+export function extractLanguageLevel(extractedFields: unknown): LangLevel | null {
+  if (!extractedFields || typeof extractedFields !== "object") return null;
+  const sections = Object.values(extractedFields as Record<string, unknown>);
+  for (const section of sections) {
+    if (!section || typeof section !== "object") continue;
+    for (const [key, value] of Object.entries(section as Record<string, unknown>)) {
+      if (typeof value !== "string") continue;
+      if (!/certificate_level|german_level|language_level|cefr/i.test(key)) continue;
+      const match = value.toUpperCase().match(/A1|A2|B1|B2|C1|C2/);
+      if (match && (LANG_LEVELS as readonly string[]).includes(match[0])) {
+        return match[0] as LangLevel;
+      }
+    }
+  }
+  return null;
 }

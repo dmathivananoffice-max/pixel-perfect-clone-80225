@@ -16,7 +16,7 @@ export interface CandidateScore {
   raw_score: number;
   normalized_score?: number;
   weighted_score?: number;
-  gate_status: 'eligible' | 'not_placement_ready';
+  gate_status: "eligible" | "not_placement_ready";
 }
 
 export interface ScoreBreakdown {
