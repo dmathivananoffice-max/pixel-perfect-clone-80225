@@ -82,7 +82,8 @@ migration `20260720000100`.
 | Service | Use | Env var |
 |---|---|---|
 | Supabase (olxghlkfqtnxlbeprjpo) | DB, Auth, Storage | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` |
-| Together AI | Qwen2.5-VL OCR + extraction (server-side) | `TOGETHER_API_KEY` (server only) |
+| Mistral AI | Default vision OCR + extraction (server-side) | `MISTRAL_API_KEY` (server only) |
+| Together AI | Fallback vision OCR when Mistral key unset | `TOGETHER_API_KEY` (server only) |
 | Service role | User provisioning server functions | `SUPABASE_SERVICE_ROLE_KEY` (server only) |
 
 ## 7. Known architectural debts (not rewritten, by design)
