@@ -1,11 +1,12 @@
 // ─────────────────────────────────────────────────────────────
-// Together AI provider — real Document Intelligence backend.
+// Vision OCR provider — real Document Intelligence backend.
 //
+// Default backend is Mistral AI (see together.functions resolveVisionConfig).
 // Wraps the extractDocumentWithTogether server function behind the
 // existing OcrProvider + AiExtractor interfaces so the pipeline
 // (and every calling module) is unchanged.
 //
-// The Together call is unified OCR + extraction — the model returns
+// The vision call is unified OCR + extraction — the model returns
 // text AND structured fields with bounding boxes in a single call.
 // We stash the structured fields inside OcrResult.keyValuePairs and
 // cache the full raw response in candidate_documents.ocr_raw so the
@@ -23,7 +24,8 @@ import type {
 import { rasterizeFile, bufferToFile } from "../rasterize";
 import { extractDocumentWithTogether, type TogetherExtractResult } from "../together.functions";
 
-const PROVIDER_NAME = "together-qwen2.5-vl";
+/** Default label when the server has not yet reported a provider id. */
+const DEFAULT_PROVIDER_NAME = "mistral-vision";
 const PROVIDER_VERSION = "v1";
 
 // Namespaced key in OcrResult where we stash the structured fields
@@ -42,6 +44,7 @@ interface StashedFields {
   warnings: string[];
   usage: TogetherExtractResult["totalUsage"];
   model: string;
+  provider: string;
 }
 
 /** Convert model pixel bbox → normalized fraction bbox for storage/UI. */
@@ -62,6 +65,7 @@ function normalizeBbox(
 function buildOcrResult(
   res: TogetherExtractResult,
 ): OcrResult & { [FIELDS_STASH_KEY]?: StashedFields } {
+  const providerName = res.provider || DEFAULT_PROVIDER_NAME;
   const blocks = res.pages.map((p) => ({
     page: p.pageNumber,
     text: p.text,
@@ -82,9 +86,10 @@ function buildOcrResult(
     warnings: res.pages.flatMap((p) => p.warnings ?? []).concat(res.errors),
     usage: res.totalUsage,
     model: res.model,
+    provider: providerName,
   };
   return {
-    provider: PROVIDER_NAME,
+    provider: providerName,
     version: PROVIDER_VERSION,
     processedAt: res.processedAt,
     pageCount: res.pages.length,
@@ -97,7 +102,7 @@ function buildOcrResult(
 }
 
 export const togetherAiProvider: OcrProvider = {
-  name: PROVIDER_NAME,
+  name: DEFAULT_PROVIDER_NAME,
   version: PROVIDER_VERSION,
   async extract(ctx: OcrProviderContext, fileBytes: ArrayBuffer): Promise<OcrResult> {
     const file = bufferToFile(fileBytes, ctx.fileName, ctx.mimeType);
@@ -124,15 +129,18 @@ export const togetherAiProvider: OcrProvider = {
 };
 
 export const togetherAiExtractor: AiExtractor = {
-  name: PROVIDER_NAME,
+  name: DEFAULT_PROVIDER_NAME,
   version: PROVIDER_VERSION,
   async extract(candidateId, documents): Promise<AiExtractionResult> {
     const fields: ExtractedField[] = [];
     const warnings: AiExtractionResult["warnings"] = [];
+    let modelName = DEFAULT_PROVIDER_NAME;
 
     for (const d of documents) {
       const stash = (d.ocr as unknown as { [FIELDS_STASH_KEY]?: StashedFields })[FIELDS_STASH_KEY];
       if (!stash) continue;
+      if (stash.provider) modelName = stash.provider;
+      else if (stash.model) modelName = stash.model;
       for (const f of stash.fields) {
         fields.push({
           section: f.section,
@@ -175,7 +183,7 @@ export const togetherAiExtractor: AiExtractor = {
     void candidateId;
 
     return {
-      model: PROVIDER_NAME,
+      model: modelName,
       modelVersion: PROVIDER_VERSION,
       processedAt: new Date().toISOString(),
       fields,

@@ -62,4 +62,21 @@ describe("intake pipeline speedups", () => {
     const src = read("src/lib/intake/persist.ts");
     expect(src).toMatch(/UPLOAD_CONCURRENCY\s*=\s*([3-9]|\d{2,})/);
   });
+
+  test("Mistral is the default vision backend when its key is set", () => {
+    const src = read("src/lib/docintel/together.functions.ts");
+    expect(src).toContain('provider: "mistral-vision"');
+    expect(src).toContain("process.env.MISTRAL_API_KEY");
+    expect(src).toContain('"mistral-medium-latest"');
+    // Mistral is checked before Together / Lovable.
+    const mistralIdx = src.indexOf("const mistralKey = process.env.MISTRAL_API_KEY");
+    const togetherIdx = src.indexOf("const togetherKey = process.env.TOGETHER_API_KEY");
+    expect(mistralIdx).toBeGreaterThan(-1);
+    expect(togetherIdx).toBeGreaterThan(mistralIdx);
+  });
+
+  test("client provider defaults to mistral-vision label", () => {
+    const src = read("src/lib/docintel/providers/together.ts");
+    expect(src).toContain('DEFAULT_PROVIDER_NAME = "mistral-vision"');
+  });
 });

@@ -44,5 +44,6 @@ REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon;
 | Var | Where | Exposure |
 |---|---|---|
 | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` | client (Vite) | public by design |
-| `TOGETHER_API_KEY` | server only (Nitro server function) | must never ship to client — verified: only referenced in `*.server.ts` / server functions |
+| `MISTRAL_API_KEY` | server only (Nitro server function) | must never ship to client — default vision OCR backend |
+| `TOGETHER_API_KEY` | server only (Nitro server function) | fallback vision backend; must never ship to client |
 | `SUPABASE_SERVICE_ROLE_KEY` | server only | same |
