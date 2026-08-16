@@ -28,7 +28,9 @@ SELECT id, public FROM storage.buckets WHERE id = 'candidate-documents';  -- exp
 
 | Var | Required | Notes |
 |---|---|---|
-| `TOGETHER_API_KEY` | ✅ OCR | server-side only — without it, intake OCR stops with a clear error |
+| `MISTRAL_API_KEY` | ✅ OCR (default) | server-side only — default vision backend (`mistral-medium-latest`) |
+| `MISTRAL_VISION_MODEL` | optional | defaults to `mistral-medium-latest` |
+| `TOGETHER_API_KEY` | fallback OCR | used only when `MISTRAL_API_KEY` is unset |
 | `SUPABASE_SERVICE_ROLE_KEY` | ✅ user provisioning | server-side only (User Management invite/create) |
 | `SUPABASE_URL` / `VITE_SUPABASE_URL` | ✅ | already in code path |
 | `SUPABASE_PUBLISHABLE_KEY` / `VITE_SUPABASE_PUBLISHABLE_KEY` | ✅ | public anon key |

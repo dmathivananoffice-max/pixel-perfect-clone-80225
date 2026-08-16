@@ -30,7 +30,7 @@
 
 ### Upload → OCR → AI Review → Verification → Candidate
 - Code-level trace validated: `beginProcessing` → ZIP expansion → `persistIntakeBatch` (fingerprint dedup → storage upload → `candidate_documents` → per-file `runDocumentIntelligencePipeline` → Qwen OCR → `document_extractions`) → ReviewDashboard statuses from real persistence result → verification studio prefilled from real `document_extractions` + real document preview via signed URL → `approveCandidate` writes `status=shortlisted`, `gate_status=eligible`, `extracted_fields`, audit event.
-- **Live run not executed** (requires `TOGETHER_API_KEY` server-side + write access with a test document). Failure modes are loud: pipeline errors surface via `onError` toast; missing API key throws an explicit message.
+- **Live run not executed** (requires `MISTRAL_API_KEY` server-side + write access with a test document). Failure modes are loud: pipeline errors surface via `onError` toast; missing API key throws an explicit message.
 - ZIP path unit-verified: jszip expansion logic, junk filters, nested-zip guard, type mapping; compiles + builds.
 
 ### Assessment → Save → Dashboard
@@ -57,5 +57,5 @@
 
 1. No automated unit/E2E suite exists in the repo (no vitest/playwright config) — all validation above is static + live-REST + smoke. Recommended next: Playwright for the 5 flows above.
 2. Magic-link login round-trip not executed (needs mailbox).
-3. OCR live run not executed (needs `TOGETHER_API_KEY` + a sample document) — pipeline failure paths are explicit and surfaced to the user.
+3. OCR live run not executed (needs `MISTRAL_API_KEY` + a sample document) — pipeline failure paths are explicit and surfaced to the user.
 4. ZIP extraction verified statically; a real-world `.zip` with nested folders should be run once after deployment.

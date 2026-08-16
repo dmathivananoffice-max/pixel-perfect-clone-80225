@@ -26,8 +26,9 @@ type ProviderName = "stub" | "together-ai" | "google-document-ai" | "ocrspace";
 /**
  * Active provider selector. Swapping providers is a one-line change here —
  * every caller talks to `getOcrProvider()` / `getAiExtractor()`, never to
- * a concrete implementation. Google Document AI is the production OCR
- * engine; "ocrspace" remains available as a fallback.
+ * a concrete implementation. The "together-ai" slot is the vision OCR path
+ * whose default backend is Mistral AI (see resolveVisionConfig); Together /
+ * Lovable remain fallbacks when MISTRAL_API_KEY is unset.
  */
 const ACTIVE_PROVIDER: ProviderName = "together-ai";
 
