@@ -9,7 +9,13 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
+<<<<<<< HEAD
     "format": "prettier --write ."
+=======
+    "format": "prettier --write .",
+    "test:intake-hang": "bun test tests/intake-draft-hang.test.ts tests/intake-processing-stuck-detector.test.ts tests/intake-pipeline-speed.test.ts",
+    "verify:intake-hang": "bun scripts/verify_intake_draft_hang.ts"
+>>>>>>> b75af12 (Speed up intake OCR and draft finalisation)
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
