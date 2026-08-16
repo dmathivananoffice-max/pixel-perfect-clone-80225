@@ -1,13 +1,16 @@
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-import { useNotifications } from '@/hooks/useNotifications';
-import { useUIStore } from '@/store/uiStore';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { useNotifications } from "@/hooks/useNotifications";
+import { useUIStore } from "@/store/uiStore";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Bell, Search, Menu, LogOut, User, Settings } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Bell, Search, Menu, LogOut, User, Settings } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 export function Navbar() {
   const { user, logout } = useAuth();
@@ -17,25 +20,25 @@ export function Navbar() {
   void _sidebarOpen;
   const navigate = useNavigate();
 
-  const initials = user?.name
-    ?.split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase() || 'U';
+  const initials =
+    user?.name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase() || "U";
 
   return (
     <header className="h-16 border-b bg-background flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
       <div className="flex items-center gap-3">
-        <button
-          onClick={toggleSidebar}
-          className="p-2 rounded-md hover:bg-accent lg:hidden"
-        >
+        <button onClick={toggleSidebar} className="p-2 rounded-md hover:bg-accent lg:hidden">
           <Menu className="w-5 h-5" />
         </button>
         <div className="hidden lg:flex items-center gap-2 text-muted-foreground text-sm">
           <span>Workforce Europe</span>
           <span>/</span>
-          <span className="text-foreground font-medium capitalize">{user?.role?.replace('_', ' ') || 'Dashboard'}</span>
+          <span className="text-foreground font-medium capitalize">
+            {user?.role?.replace("_", " ") || "Dashboard"}
+          </span>
         </div>
       </div>
 
@@ -47,7 +50,7 @@ export function Navbar() {
             placeholder="Search candidates..."
             className="pl-9 w-64 h-9"
             onKeyDown={(e) => {
-              if (e.key === 'Enter') navigate('/candidates');
+              if (e.key === "Enter") navigate("/candidates");
             }}
           />
         </div>
@@ -55,7 +58,7 @@ export function Navbar() {
         {/* Notifications */}
         <button
           className="relative p-2 rounded-md hover:bg-accent"
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate("/dashboard")}
         >
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
@@ -76,15 +79,17 @@ export function Navbar() {
               </Avatar>
               <div className="hidden md:block text-left">
                 <p className="text-sm font-medium leading-none">{user?.name}</p>
-                <p className="text-xs text-muted-foreground capitalize">{user?.role?.replace('_', ' ')}</p>
+                <p className="text-xs text-muted-foreground capitalize">
+                  {user?.role?.replace("_", " ")}
+                </p>
               </div>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={() => alert('Profile - Coming soon')}>
+            <DropdownMenuItem onClick={() => alert("Profile - Coming soon")}>
               <User className="w-4 h-4 mr-2" /> Profile
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => alert('Settings - Coming soon')}>
+            <DropdownMenuItem onClick={() => alert("Settings - Coming soon")}>
               <Settings className="w-4 h-4 mr-2" /> Settings
             </DropdownMenuItem>
             <DropdownMenuItem onClick={logout}>
