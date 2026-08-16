@@ -41,6 +41,11 @@ function ocrMeanConfidence(ocr: OcrResult): number {
 export interface PipelineOptions {
   candidateId: string;
   onStep?: (step: string, detail?: string) => void;
+  /**
+   * Fresh intake has no prior human edits. Skip the human_value DB lookup
+   * to save a round-trip on the critical path (default false for re-runs).
+   */
+  skipHumanMerge?: boolean;
 }
 
 /** Aggregate OCR statistics for one pipeline run. */
@@ -135,7 +140,7 @@ async function flagCandidateForManualReview(
 export async function runDocumentIntelligencePipeline(
   opts: PipelineOptions,
 ): Promise<PipelineResult> {
-  const { candidateId, onStep } = opts;
+  const { candidateId, onStep, skipHumanMerge = false } = opts;
   onStep?.("start", candidateId);
 
   const documents = await fetchCandidateDocuments(candidateId);
@@ -188,10 +193,9 @@ export async function runDocumentIntelligencePipeline(
   // bound and one document per round-trip made large batches crawl. Every
   // promise is awaited before the pool resolves, so no unresolved promises
   // leak and one failed document can never stop the batch.
-  // Rasterising several multi-page PDFs at once can exhaust the browser tab.
-  // Two workers still overlap network time without retaining four sets of
-  // full-resolution canvases/base64 pages simultaneously.
-  const OCR_CONCURRENCY = 2;
+  // Rasterising several multi-page PDFs at once can exhaust the browser tab;
+  // three workers overlap network without holding a large canvas set.
+  const OCR_CONCURRENCY = 3;
   const processDocument = async (doc: (typeof documents)[number]) => {
     // Cross-candidate guard (defense in depth — isolation layer already filtered).
     if (doc.candidate_id !== candidateId) return;
@@ -205,6 +209,8 @@ export async function runDocumentIntelligencePipeline(
     }
 
     const docStarted = performance.now();
+    // Skip the forceFinalize round-trip when try/catch already wrote a terminal status.
+    let reachedTerminalStatus = false;
     try {
       await supabase
         .from("candidate_documents")
@@ -256,6 +262,7 @@ export async function runDocumentIntelligencePipeline(
         })
         .eq("id", doc.id)
         .eq("candidate_id", candidateId);
+      reachedTerminalStatus = true;
 
       console.info("[docintel] ocr_done", {
         candidateId,
@@ -296,6 +303,7 @@ export async function runDocumentIntelligencePipeline(
         .update({ ocr_status: "failed", ocr_error: message })
         .eq("id", doc.id)
         .eq("candidate_id", candidateId);
+      reachedTerminalStatus = true;
       onStep?.(skipped ? "ocr_skipped" : "ocr_failed", `${doc.file_name}: ${message}`);
 
       const providerLog = (ocrProvider as { __lastLog?: OcrDocumentLog }).__lastLog;
@@ -325,9 +333,10 @@ export async function runDocumentIntelligencePipeline(
         await flagCandidateForManualReview(candidateId, doc.id, doc.file_name, message);
       }
     } finally {
-      // Belt-and-suspenders: if anything above crashed between setting
-      // 'processing' and the terminal update, force the row to 'failed'.
-      await forceFinalizeDocument(doc.id, candidateId, "Pipeline terminated unexpectedly");
+      // Only hit the DB when try/catch did not already write complete/failed.
+      if (!reachedTerminalStatus) {
+        await forceFinalizeDocument(doc.id, candidateId, "Pipeline terminated unexpectedly");
+      }
     }
   };
 
@@ -399,21 +408,24 @@ export async function runDocumentIntelligencePipeline(
   }
 
   // Human-verified values already on record outrank any re-extraction (R4).
+  // Fresh intake skips this lookup — there are no human edits yet.
   let humanRows: { section: string | null; field_name: string | null; human_value: unknown; status: string | null }[] =
     [];
-  try {
-    const res = await withTimeout(
-      supabase
-        .from("document_extractions")
-        .select("section, field_name, human_value, status")
-        .eq("candidate_id", candidateId)
-        .not("human_value", "is", null),
-      PIPELINE_DB_TIMEOUT_MS,
-      "Load human-verified fields",
-    );
-    humanRows = res.data ?? [];
-  } catch (err) {
-    console.warn("[docintel] human values lookup failed/timed out", err);
+  if (!skipHumanMerge) {
+    try {
+      const res = await withTimeout(
+        supabase
+          .from("document_extractions")
+          .select("section, field_name, human_value, status")
+          .eq("candidate_id", candidateId)
+          .not("human_value", "is", null),
+        PIPELINE_DB_TIMEOUT_MS,
+        "Load human-verified fields",
+      );
+      humanRows = res.data ?? [];
+    } catch (err) {
+      console.warn("[docintel] human values lookup failed/timed out", err);
+    }
   }
   const humanValues = humanRows
     .filter((r) => r.human_value)
@@ -481,10 +493,14 @@ export async function runDocumentIntelligencePipeline(
     }));
 
   const rows = [...winnerRows, ...supersededRows];
+  result.fieldsExtracted = winnerRows.length;
+  result.lowConfidenceFields = winnerRows.filter((r) => r.status === "flagged").length;
+  if (aiResult.warnings.length > 0) {
+    result.warnings = aiResult.warnings.length;
+  }
 
-  // Values the model returned but the dictionary could not place — surfaced
-  // for the debug panel, never dropped. All DB writes below are timeout-bound:
-  // a hung token-refresh must not block returning draftFields to the intake UI.
+  // Timeout-bound DB helpers. Extraction rows are awaited (verification studio
+  // reads them); audit fan-out is backgrounded so it does not delay drafts.
   const quietDb = async (label: string, work: () => PromiseLike<unknown>) => {
     try {
       await withTimeout(work(), PIPELINE_DB_TIMEOUT_MS, label);
@@ -493,30 +509,6 @@ export async function runDocumentIntelligencePipeline(
       onStep?.("extraction_persist_failed", err instanceof Error ? err.message : String(err));
     }
   };
-
-  if (allUnmapped.length > 0) {
-    console.warn("[docintel] unmapped_fields", { candidateId, count: allUnmapped.length, allUnmapped });
-    await quietDb("unmapped_fields audit", () =>
-      supabase.from("audit_events").insert({
-        entity_type: "candidate",
-        entity_id: candidateId,
-        event_type: "unmapped_fields",
-        actor_name: "Document Intelligence Engine",
-        new_value: JSON.parse(JSON.stringify({ fields: allUnmapped })),
-      }),
-    );
-  }
-  if (reviewItems.length > 0) {
-    await quietDb("mapping_review audit", () =>
-      supabase.from("audit_events").insert({
-        entity_type: "candidate",
-        entity_id: candidateId,
-        event_type: "mapping_review_items",
-        actor_name: "Document Intelligence Engine",
-        new_value: JSON.parse(JSON.stringify({ items: reviewItems })),
-      }),
-    );
-  }
 
   if (rows.length > 0) {
     // Re-running extraction replaces prior AI rows; human values are held in
@@ -531,41 +523,65 @@ export async function runDocumentIntelligencePipeline(
     await quietDb("insert extractions", async () => {
       const { error } = await supabase.from("document_extractions").insert(rows as never);
       if (error) throw error;
-      result.fieldsExtracted = winnerRows.length;
-      result.lowConfidenceFields = winnerRows.filter((r) => r.status === "flagged").length;
     });
   }
 
-  // Audit warnings but never auto-resolve.
-  if (aiResult.warnings.length > 0) {
-    result.warnings = aiResult.warnings.length;
-    await quietDb("ai_warning audit", () =>
-      supabase.from("audit_events").insert(
-        aiResult.warnings.map((w) => ({
+  void (async () => {
+    if (allUnmapped.length > 0) {
+      console.warn("[docintel] unmapped_fields", { candidateId, count: allUnmapped.length, allUnmapped });
+      await quietDb("unmapped_fields audit", () =>
+        supabase.from("audit_events").insert({
           entity_type: "candidate",
           entity_id: candidateId,
-          event_type: "ai_warning",
+          event_type: "unmapped_fields",
           actor_name: "Document Intelligence Engine",
-          new_value: w,
-        })),
-      ),
-    );
-  }
+          new_value: JSON.parse(JSON.stringify({ fields: allUnmapped })),
+        }),
+      );
+    }
+    if (reviewItems.length > 0) {
+      await quietDb("mapping_review audit", () =>
+        supabase.from("audit_events").insert({
+          entity_type: "candidate",
+          entity_id: candidateId,
+          event_type: "mapping_review_items",
+          actor_name: "Document Intelligence Engine",
+          new_value: JSON.parse(JSON.stringify({ items: reviewItems })),
+        }),
+      );
+    }
 
-  await quietDb("ai_extraction_completed audit", () =>
-    supabase.from("audit_events").insert({
-      entity_type: "candidate",
-      entity_id: candidateId,
-      event_type: "ai_extraction_completed",
-      actor_name: "Document Intelligence Engine",
-      new_value: {
-        model: aiResult.model,
-        model_version: aiResult.modelVersion,
-        fields: rows.length,
-        low_confidence: result.lowConfidenceFields,
-      },
-    }),
-  );
+    if (aiResult.warnings.length > 0) {
+      await quietDb("ai_warning audit", () =>
+        supabase.from("audit_events").insert(
+          aiResult.warnings.map((w) => ({
+            entity_type: "candidate",
+            entity_id: candidateId,
+            event_type: "ai_warning",
+            actor_name: "Document Intelligence Engine",
+            new_value: w,
+          })),
+        ),
+      );
+    }
+
+    await quietDb("ai_extraction_completed audit", () =>
+      supabase.from("audit_events").insert({
+        entity_type: "candidate",
+        entity_id: candidateId,
+        event_type: "ai_extraction_completed",
+        actor_name: "Document Intelligence Engine",
+        new_value: {
+          model: aiResult.model,
+          model_version: aiResult.modelVersion,
+          fields: rows.length,
+          low_confidence: result.lowConfidenceFields,
+        },
+      }),
+    );
+  })().catch((err) => {
+    console.warn("[docintel] background extraction audit failed", err);
+  });
 
   console.info("[docintel] summary", {
     candidateId,
