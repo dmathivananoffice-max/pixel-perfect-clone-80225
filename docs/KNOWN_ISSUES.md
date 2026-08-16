@@ -2,6 +2,22 @@
 
 Honest list of what remains. Nothing here is hidden; everything has a plan.
 
+## Fixed in flight (2026-08-16) — intake draft hang
+
+**Symptom:** Step 4 stuck on **Building candidate drafts ~40%** / overall **90%**
+with status **Finalising candidate draft…** for several minutes.
+
+**Root cause:** After long OCR, supabase-js can park forever in silent token
+refresh on the next DB write. The progress UI caps at 90% until persistence
+resolves, so the screen looks frozen. `onError` was also unwired.
+
+**Fix (branch `cursor/fix-intake-draft-hang-4bf8`):**
+- Refresh session before draft DB writes
+- 45s hard budget for the whole draft phase + 15s per DB call
+- Timeout-bound pipeline extraction persistence
+- 90s drafts-stuck force-complete + wired `onError`
+- Duplicate in-flight persist guard
+
 ## Must do at deployment (see DEPLOYMENT_GUIDE)
 
 1. **Apply both new migrations** — `email_logs` table + mock-seed cleanup, and the
