@@ -1,15 +1,15 @@
 export type UserRole =
-  | 'super_admin'
-  | 'managing_director'
-  | 'sales_executive'
-  | 'recruiter'
-  | 'documentation_officer'
-  | 'german_trainer'
-  | 'agency_partner'
-  | 'employer'
-  | 'candidate';
+  | "super_admin"
+  | "managing_director"
+  | "sales_executive"
+  | "recruiter"
+  | "documentation_officer"
+  | "german_trainer"
+  | "agency_partner"
+  | "employer"
+  | "candidate";
 
-export type UserStatus = 'active' | 'inactive' | 'suspended';
+export type UserStatus = "active" | "inactive" | "suspended";
 
 export interface User {
   id: string;
@@ -44,7 +44,13 @@ export interface NotificationItem {
   id: string;
   title: string;
   message: string;
-  type: 'candidate_update' | 'interview_scheduled' | 'contract_ready' | 'visa_update' | 'placed' | 'system';
+  type:
+    | "candidate_update"
+    | "interview_scheduled"
+    | "contract_ready"
+    | "visa_update"
+    | "placed"
+    | "system";
   read: boolean;
   entity_type?: string;
   entity_id?: string;

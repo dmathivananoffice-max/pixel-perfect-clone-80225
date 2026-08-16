@@ -1,29 +1,29 @@
-export type SourceType = 'internal' | 'agency' | 'direct';
+export type SourceType = "internal" | "agency" | "direct";
 
 export type CandidateStatus =
-  | 'waiting'
-  | 'shortlisted'
-  | 'rejected'
-  | 'interview1'
-  | 'interview2'
-  | 'contract'
-  | 'visa'
-  | 'placed'
-  | 'withdrawn';
+  | "waiting"
+  | "shortlisted"
+  | "rejected"
+  | "interview1"
+  | "interview2"
+  | "contract"
+  | "visa"
+  | "placed"
+  | "withdrawn";
 
-export type GateStatus = 'eligible' | 'not_placement_ready';
+export type GateStatus = "eligible" | "not_placement_ready";
 
 export type DocType =
-  | 'passport'
-  | 'visa'
-  | 'police_clearance'
-  | 'qualification'
-  | 'photo'
-  | 'contract'
-  | 'offer_letter'
-  | 'other';
+  | "passport"
+  | "visa"
+  | "police_clearance"
+  | "qualification"
+  | "photo"
+  | "contract"
+  | "offer_letter"
+  | "other";
 
-export type AgencyStatus = 'active' | 'inactive' | 'suspended';
+export type AgencyStatus = "active" | "inactive" | "suspended";
 
 export interface Candidate {
   candidate_id: string;
@@ -46,17 +46,26 @@ export interface Candidate {
   gate_status: GateStatus;
   total_score?: number;
   rank?: number;
+  /** OCR/AI-extracted fields by section, written by the intake pipeline. */
+  extracted_fields?: Record<string, Record<string, string>>;
   created_at: string;
   updated_at: string;
+  /** Set when the candidate is in the 30-day recycle bin. */
+  deleted_at?: string;
+  deleted_by_name?: string;
 }
 
 export interface CandidateDocument {
   id: string;
   candidate_id: string;
   document_type: DocType;
-  uploaded_by: string;
-  file_path: string;
-  encrypted: boolean;
+  uploaded_by?: string;
+  file_path?: string;
+  /** Storage object path inside the candidate-documents bucket. */
+  storage_path?: string;
+  file_name?: string;
+  mime_type?: string;
+  encrypted?: boolean;
   verified: boolean;
   verified_by?: string;
   ocr_complete: boolean;
