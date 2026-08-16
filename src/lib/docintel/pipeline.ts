@@ -27,7 +27,9 @@ import type { OcrDocumentLog } from "./providers/ocrspace";
 import { mapDocument, type MappedValue } from "@/intake/mapper";
 import { mergeCandidateFields, validateMerged } from "@/intake/merge";
 import { canonicalDocType, classifyDocument } from "@/intake/documentTypes";
+import { withTimeout } from "@/lib/withTimeout";
 
+const PIPELINE_DB_TIMEOUT_MS = 20_000;
 /** Mean block confidence for an OCR result (0..1), used for the document badge. */
 function ocrMeanConfidence(ocr: OcrResult): number {
   const blocks = (ocr.blocks ?? []).filter((b) => typeof b.confidence === "number");
@@ -397,12 +399,23 @@ export async function runDocumentIntelligencePipeline(
   }
 
   // Human-verified values already on record outrank any re-extraction (R4).
-  const { data: humanRows } = await supabase
-    .from("document_extractions")
-    .select("section, field_name, human_value, status")
-    .eq("candidate_id", candidateId)
-    .not("human_value", "is", null);
-  const humanValues = (humanRows ?? [])
+  let humanRows: { section: string | null; field_name: string | null; human_value: unknown; status: string | null }[] =
+    [];
+  try {
+    const res = await withTimeout(
+      supabase
+        .from("document_extractions")
+        .select("section, field_name, human_value, status")
+        .eq("candidate_id", candidateId)
+        .not("human_value", "is", null),
+      PIPELINE_DB_TIMEOUT_MS,
+      "Load human-verified fields",
+    );
+    humanRows = res.data ?? [];
+  } catch (err) {
+    console.warn("[docintel] human values lookup failed/timed out", err);
+  }
+  const humanValues = humanRows
     .filter((r) => r.human_value)
     .map((r) => ({
       key: `${r.section}.${r.field_name}`,
@@ -470,71 +483,89 @@ export async function runDocumentIntelligencePipeline(
   const rows = [...winnerRows, ...supersededRows];
 
   // Values the model returned but the dictionary could not place — surfaced
-  // for the debug panel, never dropped.
+  // for the debug panel, never dropped. All DB writes below are timeout-bound:
+  // a hung token-refresh must not block returning draftFields to the intake UI.
+  const quietDb = async (label: string, work: () => PromiseLike<unknown>) => {
+    try {
+      await withTimeout(work(), PIPELINE_DB_TIMEOUT_MS, label);
+    } catch (err) {
+      console.warn(`[docintel] ${label} failed/timed out`, err);
+      onStep?.("extraction_persist_failed", err instanceof Error ? err.message : String(err));
+    }
+  };
+
   if (allUnmapped.length > 0) {
     console.warn("[docintel] unmapped_fields", { candidateId, count: allUnmapped.length, allUnmapped });
-    await supabase.from("audit_events").insert({
-      entity_type: "candidate",
-      entity_id: candidateId,
-      event_type: "unmapped_fields",
-      actor_name: "Document Intelligence Engine",
-      new_value: JSON.parse(JSON.stringify({ fields: allUnmapped })),
-    });
+    await quietDb("unmapped_fields audit", () =>
+      supabase.from("audit_events").insert({
+        entity_type: "candidate",
+        entity_id: candidateId,
+        event_type: "unmapped_fields",
+        actor_name: "Document Intelligence Engine",
+        new_value: JSON.parse(JSON.stringify({ fields: allUnmapped })),
+      }),
+    );
   }
   if (reviewItems.length > 0) {
-    await supabase.from("audit_events").insert({
-      entity_type: "candidate",
-      entity_id: candidateId,
-      event_type: "mapping_review_items",
-      actor_name: "Document Intelligence Engine",
-      new_value: JSON.parse(JSON.stringify({ items: reviewItems })),
-    });
+    await quietDb("mapping_review audit", () =>
+      supabase.from("audit_events").insert({
+        entity_type: "candidate",
+        entity_id: candidateId,
+        event_type: "mapping_review_items",
+        actor_name: "Document Intelligence Engine",
+        new_value: JSON.parse(JSON.stringify({ items: reviewItems })),
+      }),
+    );
   }
 
   if (rows.length > 0) {
     // Re-running extraction replaces prior AI rows; human values are held in
     // separate rows (human_value) and are never deleted here.
-    await supabase
-      .from("document_extractions")
-      .delete()
-      .eq("candidate_id", candidateId)
-      .is("human_value", null);
-    const { error } = await supabase.from("document_extractions").insert(rows as never);
-    if (error) {
-      onStep?.("extraction_persist_failed", error.message);
-      console.error("[docintel] extraction persist failed", error);
-    } else {
+    await quietDb("clear prior AI extractions", () =>
+      supabase
+        .from("document_extractions")
+        .delete()
+        .eq("candidate_id", candidateId)
+        .is("human_value", null),
+    );
+    await quietDb("insert extractions", async () => {
+      const { error } = await supabase.from("document_extractions").insert(rows as never);
+      if (error) throw error;
       result.fieldsExtracted = winnerRows.length;
       result.lowConfidenceFields = winnerRows.filter((r) => r.status === "flagged").length;
-    }
+    });
   }
 
   // Audit warnings but never auto-resolve.
   if (aiResult.warnings.length > 0) {
     result.warnings = aiResult.warnings.length;
-    await supabase.from("audit_events").insert(
-      aiResult.warnings.map((w) => ({
-        entity_type: "candidate",
-        entity_id: candidateId,
-        event_type: "ai_warning",
-        actor_name: "Document Intelligence Engine",
-        new_value: w,
-      })),
+    await quietDb("ai_warning audit", () =>
+      supabase.from("audit_events").insert(
+        aiResult.warnings.map((w) => ({
+          entity_type: "candidate",
+          entity_id: candidateId,
+          event_type: "ai_warning",
+          actor_name: "Document Intelligence Engine",
+          new_value: w,
+        })),
+      ),
     );
   }
 
-  await supabase.from("audit_events").insert({
-    entity_type: "candidate",
-    entity_id: candidateId,
-    event_type: "ai_extraction_completed",
-    actor_name: "Document Intelligence Engine",
-    new_value: {
-      model: aiResult.model,
-      model_version: aiResult.modelVersion,
-      fields: rows.length,
-      low_confidence: result.lowConfidenceFields,
-    },
-  });
+  await quietDb("ai_extraction_completed audit", () =>
+    supabase.from("audit_events").insert({
+      entity_type: "candidate",
+      entity_id: candidateId,
+      event_type: "ai_extraction_completed",
+      actor_name: "Document Intelligence Engine",
+      new_value: {
+        model: aiResult.model,
+        model_version: aiResult.modelVersion,
+        fields: rows.length,
+        low_confidence: result.lowConfidenceFields,
+      },
+    }),
+  );
 
   console.info("[docintel] summary", {
     candidateId,

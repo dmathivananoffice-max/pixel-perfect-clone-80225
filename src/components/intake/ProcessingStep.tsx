@@ -12,6 +12,9 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { DRAFT_STUCK_MS, PROCESSING_WATCHDOG_MS } from "@/lib/intake/hangBudgets";
+
+export { DRAFT_STUCK_MS, PROCESSING_WATCHDOG_MS } from "@/lib/intake/hangBudgets";
 
 const STEPS = [
   { icon: UploadCloud, label: "Uploading to secure storage", short: "Upload" },
@@ -46,6 +49,13 @@ export function ProcessingStep({
   const finishedRef = useRef(false);
   const startedRef = useRef(false);
   const startedAt = useRef(Date.now());
+  const draftEnteredAt = useRef<number | null>(null);
+
+  const finishOk = () => {
+    if (doneRef.current && pct >= 100) return;
+    doneRef.current = true;
+    setPct(100);
+  };
 
   // Kick off the real work once
   useEffect(() => {
@@ -56,28 +66,25 @@ export function ProcessingStep({
       return;
     }
     let cancelled = false;
-    // Watchdog: even with per-step timeouts in the persistence layer, a
-    // dropped connection must never leave this screen spinning forever.
-    const watchdog = setTimeout(
-      () => {
-        if (cancelled || doneRef.current) return;
-        doneRef.current = true;
-        onError?.("Processing took too long — the batch was saved partially. Open the dashboard to review what completed and retry the rest.");
-      },
-      15 * 60_000,
-    );
+    const watchdog = setTimeout(() => {
+      if (cancelled || doneRef.current) return;
+      doneRef.current = true;
+      setPct(100);
+      onError?.(
+        "Processing took too long — the batch was saved partially. Open the review dashboard to continue with what completed.",
+      );
+    }, PROCESSING_WATCHDOG_MS);
     run()
       .then(() => {
         if (!cancelled) {
           doneRef.current = true;
-          // Real work finished — snap to 100% instead of waiting for the
-          // ticker to crawl there.
           setPct(100);
         }
       })
       .catch((err) => {
         if (cancelled) return;
         doneRef.current = true;
+        setPct(100);
         onError?.(err instanceof Error ? err.message : String(err));
       })
       .finally(() => clearTimeout(watchdog));
@@ -90,22 +97,33 @@ export function ProcessingStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Progress ticker
+  // Progress ticker + drafts-stuck detector
   useEffect(() => {
     const t = setInterval(() => {
+      setElapsed(Math.round((Date.now() - startedAt.current) / 1000));
       setPct((p) => {
         if (doneRef.current) return 100;
-        // Progress is banded by the REAL stage reported by the pipeline:
-        // the ticker may only creep to the end of the current stage's band,
-        // so it can never race ahead of (or stall behind) actual work.
         const band = 90 / STEPS.length;
         const cap = Math.min(90, (realStepRef.current + 1) * band);
         return Math.min(cap, p + 0.6 + Math.random() * 1.2);
       });
-      setElapsed(Math.round((Date.now() - startedAt.current) / 1000));
+
+      // Force-complete when parked on drafts/finalising too long.
+      if (
+        !doneRef.current &&
+        realStepRef.current >= STEPS.length - 1 &&
+        draftEnteredAt.current != null &&
+        Date.now() - draftEnteredAt.current > DRAFT_STUCK_MS
+      ) {
+        doneRef.current = true;
+        setPct(100);
+        onError?.(
+          "Draft finalising took too long — opening review with whatever was saved. Re-run intake on any incomplete candidate.",
+        );
+      }
     }, 220);
     return () => clearInterval(t);
-  }, []);
+  }, [onError]);
 
   useEffect(() => {
     const s = Math.min(STEPS.length - 1, Math.floor((pct / 100) * STEPS.length));
@@ -128,16 +146,22 @@ export function ProcessingStep({
     else if (t.includes("classif")) s = 2;
     else if (t.includes("ocr")) s = 3;
     else if (t.includes("ai extraction")) s = 4;
-    else if (t.includes("draft") || t.includes("finalis")) s = 5;
+    else if (t.includes("draft") || t.includes("finalis") || t.includes("manual review")) s = 5;
     if (s !== null) {
       setRealStep((prev) => {
         const next = Math.max(prev, s!);
         realStepRef.current = next;
+        if (next >= STEPS.length - 1 && draftEnteredAt.current == null) {
+          draftEnteredAt.current = Date.now();
+        }
         return next;
       });
-      // Never let the bar sit below the floor of the stage we're actually in.
       const band = 90 / STEPS.length;
       setPct((p) => (doneRef.current ? p : Math.max(p, s! * band)));
+    }
+    // Pipeline reported draft ready — snap progress so we never sit at 90%.
+    if (/candidate draft ready/i.test(statusText)) {
+      finishOk();
     }
   }, [statusText]);
 
@@ -151,7 +175,6 @@ export function ProcessingStep({
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto max-w-4xl px-6 py-14">
-        {/* Header */}
         <div className="text-center">
           <div className="mx-auto mb-6 flex size-16 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-inner">
             <Sparkles className="size-7 animate-pulse" />
@@ -167,7 +190,6 @@ export function ProcessingStep({
           </p>
         </div>
 
-        {/* Master progress */}
         <div className="mt-10 rounded-2xl border border-border/60 bg-background p-6">
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2 font-medium">
@@ -182,13 +204,11 @@ export function ProcessingStep({
           <Progress value={pct} className="mt-3 h-2" />
         </div>
 
-        {/* Pipeline stages */}
         <div className="mt-8 grid gap-3 md:grid-cols-2">
           {STEPS.map((s, i) => {
             const done = i < activeStep || pct >= 100;
             const active = i === activeStep && pct < 100;
             const Icon = s.icon;
-            // Per-stage progress: derive from overall pct
             const stageStart = (i / STEPS.length) * 100;
             const stageEnd = ((i + 1) / STEPS.length) * 100;
             const stagePct =
