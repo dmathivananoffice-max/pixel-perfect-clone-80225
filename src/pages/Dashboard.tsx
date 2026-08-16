@@ -1,63 +1,99 @@
-import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useReports } from '@/hooks/useReports';
-import { useAuth } from '@/hooks/useAuth';
-import { useProductStore } from '@/store/productStore';
-import { useEngineKpis, type ProgramKey } from '@/store/selectionEngineStore';
-import { getProduct, PRODUCTS, type ProductConfig, type ProductId } from '@/config/products';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { ProductSelector } from '@/components/dashboard/ProductSelector';
-import { WidgetCard } from '@/components/dashboard/WidgetCard';
-import { QuickActions } from '@/components/dashboard/QuickActions';
-import { useAllCandidates } from '@/hooks/useAllCandidates';
-import { cn } from '@/lib/utils';
-
+import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { useReports } from "@/hooks/useReports";
+import { useAuth } from "@/hooks/useAuth";
+import { useProductStore } from "@/store/productStore";
+import { useEngineKpis, type ProgramKey } from "@/store/selectionEngineStore";
+import { getProduct, PRODUCTS, type ProductConfig, type ProductId } from "@/config/products";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { ProductSelector } from "@/components/dashboard/ProductSelector";
+import { WidgetCard } from "@/components/dashboard/WidgetCard";
+import { QuickActions } from "@/components/dashboard/QuickActions";
+import { useAllCandidates } from "@/hooks/useAllCandidates";
+import { LoadingState, ErrorState } from "@/components/QueryState";
+import { useEntityCounts } from "@/hooks/useEntityCounts";
+import { cn } from "@/lib/utils";
 
 import {
-  Users, UserCheck, UserX, Plane, Briefcase, Calendar, FileText,
-  ClipboardCheck, TrendingUp, ArrowRight, Building2, GraduationCap,
-  Stethoscope, Award, BookOpen, Globe, DollarSign, Sparkles, Activity,
-  ListChecks, Mic, MessageSquare, Home, ScrollText, FileSignature,
-  Trophy, Target, LucideIcon,
-} from 'lucide-react';
+  Users,
+  UserCheck,
+  UserX,
+  Plane,
+  Briefcase,
+  Calendar,
+  FileText,
+  ClipboardCheck,
+  TrendingUp,
+  ArrowRight,
+  Building2,
+  GraduationCap,
+  Stethoscope,
+  Award,
+  BookOpen,
+  Globe,
+  DollarSign,
+  Sparkles,
+  Activity,
+  ListChecks,
+  Mic,
+  MessageSquare,
+  Home,
+  ScrollText,
+  FileSignature,
+  Trophy,
+  Target,
+  LucideIcon,
+} from "lucide-react";
 import {
-  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, LineChart, Line, Legend,
-} from 'recharts';
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  Legend,
+} from "recharts";
 
-const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4'];
+const COLORS = ["#3b82f6", "#8b5cf6", "#10b981", "#f59e0b", "#ef4444", "#06b6d4"];
 
 /** Heuristic: infer product from a candidate's program name. */
 function inferProduct(programName?: string): ProductId {
-  const p = (programName || '').toLowerCase();
-  if (p.includes('nurse') || p.includes('nursing') || p.includes('pflege')) return 'nurses';
-  if (p.includes('ausbildung')) return 'ausbildung';
-  if (p.includes('bachelor') || p.includes('studienkolleg')) return 'pre_bachelor';
-  if (p.includes('master')) return 'pre_masters';
-  if (p.includes('mba')) return 'mba';
-  return 'ausbildung';
+  const p = (programName || "").toLowerCase();
+  if (p.includes("nurse") || p.includes("nursing") || p.includes("pflege")) return "nurses";
+  if (p.includes("ausbildung")) return "ausbildung";
+  if (p.includes("bachelor") || p.includes("studienkolleg")) return "pre_bachelor";
+  if (p.includes("master")) return "pre_masters";
+  if (p.includes("mba")) return "mba";
+  return "ausbildung";
 }
 
 function useProductMetrics(productId: ProductId) {
   const { candidates } = useAllCandidates();
   return useMemo(() => {
-    const list = productId === 'all'
-      ? candidates
-      : candidates.filter((c) => inferProduct(c.program_name) === productId);
+    const list =
+      productId === "all"
+        ? candidates
+        : candidates.filter((c) => inferProduct(c.program_name) === productId);
 
     const byStatus = (status: string) => list.filter((c) => c.status === status).length;
     return {
       total: list.length,
-      shortlisted: byStatus('shortlisted'),
-      placed: byStatus('placed'),
-      visa: byStatus('visa'),
-      contract: byStatus('contract'),
-      interviews: byStatus('interview1') + byStatus('interview2'),
-      rejected: byStatus('rejected'),
-      waiting: byStatus('waiting'),
+      shortlisted: byStatus("shortlisted"),
+      placed: byStatus("placed"),
+      visa: byStatus("visa"),
+      contract: byStatus("contract"),
+      interviews: byStatus("interview1") + byStatus("interview2"),
+      rejected: byStatus("rejected"),
+      waiting: byStatus("waiting"),
     };
   }, [productId, candidates]);
 }
@@ -67,7 +103,20 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const selectedProductId = useProductStore((s) => s.selectedProductId);
   const product = getProduct(selectedProductId);
-  const isAdmin = user?.role === 'super_admin' || user?.role === 'managing_director';
+  const isAdmin = user?.role === "super_admin" || user?.role === "managing_director";
+
+  // Shared candidate store — one fetch feeds every widget on this page.
+  const { loading, error, refetch } = useAllCandidates();
+
+  if (loading) return <LoadingState label="Loading dashboard…" />;
+  if (error)
+    return (
+      <ErrorState
+        title="Could not load the dashboard"
+        message={error}
+        onRetry={() => void refetch()}
+      />
+    );
 
   return (
     <div className="space-y-6">
@@ -78,29 +127,29 @@ export default function Dashboard() {
             <span className="uppercase tracking-wide">{product.short} Dashboard</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight">
-            {product.id === 'all' ? 'Executive Overview' : `${product.label}`}
+            {product.id === "all" ? "Executive Overview" : `${product.label}`}
           </h1>
           <p className="text-sm text-muted-foreground">Welcome back, {user?.name}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <ProductSelector />
-          <Button variant="outline" size="sm" onClick={() => navigate('/candidates')}>
+          <Button variant="outline" size="sm" onClick={() => navigate("/candidates")}>
             View Candidates
           </Button>
           {isAdmin && (
-            <Button size="sm" onClick={() => navigate('/reports')}>
+            <Button size="sm" onClick={() => navigate("/reports")}>
               <TrendingUp className="w-4 h-4 mr-2" /> Reports
             </Button>
           )}
         </div>
       </div>
 
-      {product.id === 'all' && <ExecutiveDashboard product={product} />}
-      {product.id === 'nurses' && <NursesDashboard product={product} />}
-      {product.id === 'ausbildung' && <AusbildungDashboard product={product} />}
-      {product.id === 'pre_bachelor' && <PreBachelorDashboard product={product} />}
-      {product.id === 'pre_masters' && <PreMastersDashboard product={product} />}
-      {product.id === 'mba' && <MbaDashboard product={product} />}
+      {product.id === "all" && <ExecutiveDashboard product={product} />}
+      {product.id === "nurses" && <NursesDashboard product={product} />}
+      {product.id === "ausbildung" && <AusbildungDashboard product={product} />}
+      {product.id === "pre_bachelor" && <PreBachelorDashboard product={product} />}
+      {product.id === "pre_masters" && <PreMastersDashboard product={product} />}
+      {product.id === "mba" && <MbaDashboard product={product} />}
     </div>
   );
 }
@@ -111,6 +160,7 @@ function ExecutiveDashboard({ product }: { product: ProductConfig }) {
   const metrics = useReports();
   const navigate = useNavigate();
   const { candidates } = useAllCandidates();
+  const counts = useEntityCounts();
 
   const productDistribution = useMemo(() => {
     const buckets = new Map<ProductId, number>();
@@ -118,47 +168,128 @@ function ExecutiveDashboard({ product }: { product: ProductConfig }) {
       const pid = inferProduct(c.program_name);
       buckets.set(pid, (buckets.get(pid) ?? 0) + 1);
     });
-    return PRODUCTS.filter((p) => p.id !== 'all').map((p) => ({
+    return PRODUCTS.filter((p) => p.id !== "all").map((p) => ({
       name: p.short,
       value: buckets.get(p.id) ?? 0,
     }));
   }, [candidates]);
 
-  const widgets: Array<{ label: string; value: string | number; icon: LucideIcon; accent: string }> = [
-    { label: 'Total Candidates', value: metrics.totalCandidates, icon: Users, accent: 'text-blue-600 bg-blue-50' },
-    { label: 'Active Recruitments', value: metrics.shortlisted + metrics.pendingInterviews, icon: Activity, accent: 'text-indigo-600 bg-indigo-50' },
-    { label: 'Total Employers', value: 12, icon: Building2, accent: 'text-cyan-600 bg-cyan-50' },
-    { label: 'Total Hospitals', value: 8, icon: Stethoscope, accent: 'text-rose-600 bg-rose-50' },
-    { label: 'Total Universities', value: 15, icon: GraduationCap, accent: 'text-violet-600 bg-violet-50' },
-    { label: 'Active Visas', value: metrics.inVisa, icon: Plane, accent: 'text-orange-600 bg-orange-50' },
-    { label: 'Speaking Queue', value: metrics.pendingSTI, icon: Mic, accent: 'text-purple-600 bg-purple-50' },
-    { label: 'STI Queue', value: metrics.pendingSTI, icon: ClipboardCheck, accent: 'text-yellow-600 bg-yellow-50' },
-    { label: 'Interview Queue', value: metrics.pendingInterviews, icon: Calendar, accent: 'text-pink-600 bg-pink-50' },
-    { label: 'Monthly Placements', value: metrics.placed, icon: Briefcase, accent: 'text-green-600 bg-green-50' },
-    { label: 'Revenue (MTD)', value: '€128k', icon: DollarSign, accent: 'text-emerald-600 bg-emerald-50' },
-    { label: 'Tasks Due Today', value: 7, icon: ListChecks, accent: 'text-slate-600 bg-slate-50' },
+  if (metrics.loading || counts.loading) return <LoadingState label="Loading overview…" />;
+  if (metrics.error) return <ErrorState title="Could not load overview" message={metrics.error} />;
+  if (counts.error) return <ErrorState title="Could not load overview" message={counts.error} />;
+
+  const widgets: Array<{
+    label: string;
+    value: string | number;
+    icon: LucideIcon;
+    accent: string;
+  }> = [
+    {
+      label: "Total Candidates",
+      value: metrics.totalCandidates,
+      icon: Users,
+      accent: "text-blue-600 bg-blue-50",
+    },
+    {
+      label: "Active Recruitments",
+      value: metrics.shortlisted + metrics.pendingInterviews,
+      icon: Activity,
+      accent: "text-indigo-600 bg-indigo-50",
+    },
+    {
+      label: "Total Employers",
+      value: counts.employers,
+      icon: Building2,
+      accent: "text-cyan-600 bg-cyan-50",
+    },
+    {
+      label: "Active Agencies",
+      value: counts.agencies,
+      icon: GraduationCap,
+      accent: "text-rose-600 bg-rose-50",
+    },
+    {
+      label: "Total Contracts",
+      value: counts.contracts,
+      icon: FileText,
+      accent: "text-violet-600 bg-violet-50",
+    },
+    {
+      label: "Active Visas",
+      value: metrics.inVisa,
+      icon: Plane,
+      accent: "text-orange-600 bg-orange-50",
+    },
+    {
+      label: "Speaking Queue",
+      value: metrics.pendingSTI,
+      icon: Mic,
+      accent: "text-purple-600 bg-purple-50",
+    },
+    {
+      label: "STI Queue",
+      value: metrics.pendingSTI,
+      icon: ClipboardCheck,
+      accent: "text-yellow-600 bg-yellow-50",
+    },
+    {
+      label: "Interview Queue",
+      value: metrics.pendingInterviews,
+      icon: Calendar,
+      accent: "text-pink-600 bg-pink-50",
+    },
+    {
+      label: "Monthly Placements",
+      value: metrics.placed,
+      icon: Briefcase,
+      accent: "text-green-600 bg-green-50",
+    },
+    {
+      label: "Revenue (MTD)",
+      value: "€128k",
+      icon: DollarSign,
+      accent: "text-emerald-600 bg-emerald-50",
+    },
+    { label: "Tasks Due Today", value: 7, icon: ListChecks, accent: "text-slate-600 bg-slate-50" },
   ];
 
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {widgets.map((w) => (
-          <WidgetCard key={w.label} label={w.label} value={w.value} icon={w.icon} accent={w.accent} />
+          <WidgetCard
+            key={w.label}
+            label={w.label}
+            value={w.value}
+            icon={w.icon}
+            accent={w.accent}
+          />
         ))}
       </div>
 
-      <SelectionEngineBand programs={['professional_nurses', 'ausbildung']} />
+      <SelectionEngineBand programs={["professional_nurses", "ausbildung"]} />
 
       <QuickActions actions={product.quickActions} />
 
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
-          <CardHeader><CardTitle className="text-base">Product-wise Candidate Distribution</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Product-wise Candidate Distribution</CardTitle>
+          </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={260}>
               <PieChart>
-                <Pie data={productDistribution} cx="50%" cy="50%" innerRadius={55} outerRadius={95} paddingAngle={3} dataKey="value" nameKey="name" label>
+                <Pie
+                  data={productDistribution}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={95}
+                  paddingAngle={3}
+                  dataKey="value"
+                  nameKey="name"
+                  label
+                >
                   {productDistribution.map((_, i) => (
                     <Cell key={i} fill={COLORS[i % COLORS.length]} />
                   ))}
@@ -171,7 +302,9 @@ function ExecutiveDashboard({ product }: { product: ProductConfig }) {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-base">Monthly Growth</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Monthly Growth</CardTitle>
+          </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={metrics.monthlyPlacements}>
@@ -186,7 +319,9 @@ function ExecutiveDashboard({ product }: { product: ProductConfig }) {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-base">Placement Funnel</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Placement Funnel</CardTitle>
+          </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={metrics.candidatesByStatus}>
@@ -213,11 +348,15 @@ function ExecutiveDashboard({ product }: { product: ProductConfig }) {
             </div>
             <div className="p-3 rounded-lg bg-amber-50 border border-amber-100">
               <p className="font-medium">Ausbildung: 4 contracts stuck</p>
-              <p className="text-muted-foreground text-xs">Consider following up with employer HR.</p>
+              <p className="text-muted-foreground text-xs">
+                Consider following up with employer HR.
+              </p>
             </div>
             <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-100">
               <p className="font-medium">Revenue forecast: +18%</p>
-              <p className="text-muted-foreground text-xs">Driven by MBA and Pre-Masters cohorts.</p>
+              <p className="text-muted-foreground text-xs">
+                Driven by MBA and Pre-Masters cohorts.
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -226,7 +365,7 @@ function ExecutiveDashboard({ product }: { product: ProductConfig }) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Recent Activities</CardTitle>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/candidates')}>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/candidates")}>
             View All <ArrowRight className="w-4 h-4 ml-1" />
           </Button>
         </CardHeader>
@@ -251,53 +390,134 @@ function ExecutiveDashboard({ product }: { product: ProductConfig }) {
 /* ---------- Nurses ---------- */
 
 function NursesDashboard({ product }: { product: ProductConfig }) {
-  const m = useProductMetrics('nurses');
+  const m = useProductMetrics("nurses");
   const widgets = [
-    { label: 'Total Nurses', value: m.total, icon: Stethoscope, accent: 'text-rose-600 bg-rose-50' },
-    { label: 'Language Progress', value: `${Math.round((m.shortlisted / Math.max(m.total, 1)) * 100)}%`, icon: MessageSquare, accent: 'text-blue-600 bg-blue-50' },
-    { label: 'Recognition Status', value: m.contract, icon: FileText, accent: 'text-indigo-600 bg-indigo-50' },
-    { label: 'Hospital Interviews', value: m.interviews, icon: Calendar, accent: 'text-purple-600 bg-purple-50' },
-    { label: 'Visa Status', value: m.visa, icon: Plane, accent: 'text-orange-600 bg-orange-50' },
-    { label: 'Approbation', value: m.contract, icon: Award, accent: 'text-violet-600 bg-violet-50' },
-    { label: 'B2 Passed', value: m.shortlisted, icon: Trophy, accent: 'text-emerald-600 bg-emerald-50' },
-    { label: 'Placements', value: m.placed, icon: Briefcase, accent: 'text-green-600 bg-green-50' },
-    { label: 'Recruiter Tasks', value: 5, icon: ListChecks, accent: 'text-slate-600 bg-slate-50' },
-    { label: 'Pending Documents', value: m.waiting, icon: FileText, accent: 'text-yellow-600 bg-yellow-50' },
+    {
+      label: "Total Nurses",
+      value: m.total,
+      icon: Stethoscope,
+      accent: "text-rose-600 bg-rose-50",
+    },
+    {
+      label: "Language Progress",
+      value: `${Math.round((m.shortlisted / Math.max(m.total, 1)) * 100)}%`,
+      icon: MessageSquare,
+      accent: "text-blue-600 bg-blue-50",
+    },
+    {
+      label: "Recognition Status",
+      value: m.contract,
+      icon: FileText,
+      accent: "text-indigo-600 bg-indigo-50",
+    },
+    {
+      label: "Hospital Interviews",
+      value: m.interviews,
+      icon: Calendar,
+      accent: "text-purple-600 bg-purple-50",
+    },
+    { label: "Visa Status", value: m.visa, icon: Plane, accent: "text-orange-600 bg-orange-50" },
+    {
+      label: "Approbation",
+      value: m.contract,
+      icon: Award,
+      accent: "text-violet-600 bg-violet-50",
+    },
+    {
+      label: "B2 Passed",
+      value: m.shortlisted,
+      icon: Trophy,
+      accent: "text-emerald-600 bg-emerald-50",
+    },
+    { label: "Placements", value: m.placed, icon: Briefcase, accent: "text-green-600 bg-green-50" },
+    { label: "Recruiter Tasks", value: 5, icon: ListChecks, accent: "text-slate-600 bg-slate-50" },
+    {
+      label: "Pending Documents",
+      value: m.waiting,
+      icon: FileText,
+      accent: "text-yellow-600 bg-yellow-50",
+    },
   ];
-  return <ProductBody widgets={widgets} product={product} enginePrograms={['professional_nurses']} />;
+  return (
+    <ProductBody widgets={widgets} product={product} enginePrograms={["professional_nurses"]} />
+  );
 }
 
 /* ---------- Ausbildung ---------- */
 
 function AusbildungDashboard({ product }: { product: ProductConfig }) {
-  const m = useProductMetrics('ausbildung');
+  const m = useProductMetrics("ausbildung");
   const widgets = [
-    { label: 'Total Candidates', value: m.total, icon: Users, accent: 'text-blue-600 bg-blue-50' },
-    { label: 'Company Interviews', value: m.interviews, icon: Calendar, accent: 'text-purple-600 bg-purple-50' },
-    { label: 'STI Pending', value: m.waiting, icon: ClipboardCheck, accent: 'text-yellow-600 bg-yellow-50' },
-    { label: 'Speaking Pending', value: Math.max(m.waiting - 1, 0), icon: Mic, accent: 'text-pink-600 bg-pink-50' },
-    { label: 'Contracts Pending', value: m.contract, icon: FileSignature, accent: 'text-cyan-600 bg-cyan-50' },
-    { label: 'Visa Status', value: m.visa, icon: Plane, accent: 'text-orange-600 bg-orange-50' },
-    { label: 'Employer Matching', value: m.shortlisted, icon: Target, accent: 'text-indigo-600 bg-indigo-50' },
-    { label: 'Placements', value: m.placed, icon: Briefcase, accent: 'text-green-600 bg-green-50' },
+    { label: "Total Candidates", value: m.total, icon: Users, accent: "text-blue-600 bg-blue-50" },
+    {
+      label: "Company Interviews",
+      value: m.interviews,
+      icon: Calendar,
+      accent: "text-purple-600 bg-purple-50",
+    },
+    {
+      label: "STI Pending",
+      value: m.waiting,
+      icon: ClipboardCheck,
+      accent: "text-yellow-600 bg-yellow-50",
+    },
+    {
+      label: "Speaking Pending",
+      value: Math.max(m.waiting - 1, 0),
+      icon: Mic,
+      accent: "text-pink-600 bg-pink-50",
+    },
+    {
+      label: "Contracts Pending",
+      value: m.contract,
+      icon: FileSignature,
+      accent: "text-cyan-600 bg-cyan-50",
+    },
+    { label: "Visa Status", value: m.visa, icon: Plane, accent: "text-orange-600 bg-orange-50" },
+    {
+      label: "Employer Matching",
+      value: m.shortlisted,
+      icon: Target,
+      accent: "text-indigo-600 bg-indigo-50",
+    },
+    { label: "Placements", value: m.placed, icon: Briefcase, accent: "text-green-600 bg-green-50" },
   ];
-  return <ProductBody widgets={widgets} product={product} enginePrograms={['ausbildung']} />;
-
+  return <ProductBody widgets={widgets} product={product} enginePrograms={["ausbildung"]} />;
 }
 
 /* ---------- Pre-Bachelor ---------- */
 
 function PreBachelorDashboard({ product }: { product: ProductConfig }) {
-  const m = useProductMetrics('pre_bachelor');
+  const m = useProductMetrics("pre_bachelor");
   const widgets = [
-    { label: 'Students', value: m.total, icon: BookOpen, accent: 'text-emerald-600 bg-emerald-50' },
-    { label: 'APS Status', value: m.shortlisted, icon: UserCheck, accent: 'text-blue-600 bg-blue-50' },
-    { label: 'University Apps', value: m.interviews, icon: GraduationCap, accent: 'text-violet-600 bg-violet-50' },
-    { label: 'Blocked Accounts', value: m.contract, icon: DollarSign, accent: 'text-amber-600 bg-amber-50' },
-    { label: 'Visa Status', value: m.visa, icon: Plane, accent: 'text-orange-600 bg-orange-50' },
-    { label: 'Accommodation', value: 3, icon: Home, accent: 'text-cyan-600 bg-cyan-50' },
-    { label: 'Admissions', value: m.placed, icon: Award, accent: 'text-green-600 bg-green-50' },
-    { label: 'Pending Documents', value: m.waiting, icon: FileText, accent: 'text-yellow-600 bg-yellow-50' },
+    { label: "Students", value: m.total, icon: BookOpen, accent: "text-emerald-600 bg-emerald-50" },
+    {
+      label: "APS Status",
+      value: m.shortlisted,
+      icon: UserCheck,
+      accent: "text-blue-600 bg-blue-50",
+    },
+    {
+      label: "University Apps",
+      value: m.interviews,
+      icon: GraduationCap,
+      accent: "text-violet-600 bg-violet-50",
+    },
+    {
+      label: "Blocked Accounts",
+      value: m.contract,
+      icon: DollarSign,
+      accent: "text-amber-600 bg-amber-50",
+    },
+    { label: "Visa Status", value: m.visa, icon: Plane, accent: "text-orange-600 bg-orange-50" },
+    { label: "Accommodation", value: 3, icon: Home, accent: "text-cyan-600 bg-cyan-50" },
+    { label: "Admissions", value: m.placed, icon: Award, accent: "text-green-600 bg-green-50" },
+    {
+      label: "Pending Documents",
+      value: m.waiting,
+      icon: FileText,
+      accent: "text-yellow-600 bg-yellow-50",
+    },
   ];
   return <ProductBody widgets={widgets} product={product} />;
 }
@@ -305,15 +525,35 @@ function PreBachelorDashboard({ product }: { product: ProductConfig }) {
 /* ---------- Pre-Masters ---------- */
 
 function PreMastersDashboard({ product }: { product: ProductConfig }) {
-  const m = useProductMetrics('pre_masters');
+  const m = useProductMetrics("pre_masters");
   const widgets = [
-    { label: 'Students', value: m.total, icon: GraduationCap, accent: 'text-violet-600 bg-violet-50' },
-    { label: 'SOP Progress', value: `${m.shortlisted}/${m.total}`, icon: ScrollText, accent: 'text-blue-600 bg-blue-50' },
-    { label: 'LOR Progress', value: `${m.shortlisted}/${m.total}`, icon: FileText, accent: 'text-indigo-600 bg-indigo-50' },
-    { label: 'University Apps', value: m.interviews, icon: BookOpen, accent: 'text-emerald-600 bg-emerald-50' },
-    { label: 'Scholarships', value: 4, icon: Trophy, accent: 'text-amber-600 bg-amber-50' },
-    { label: 'Admissions', value: m.placed, icon: Award, accent: 'text-green-600 bg-green-50' },
-    { label: 'Visa Pipeline', value: m.visa, icon: Plane, accent: 'text-orange-600 bg-orange-50' },
+    {
+      label: "Students",
+      value: m.total,
+      icon: GraduationCap,
+      accent: "text-violet-600 bg-violet-50",
+    },
+    {
+      label: "SOP Progress",
+      value: `${m.shortlisted}/${m.total}`,
+      icon: ScrollText,
+      accent: "text-blue-600 bg-blue-50",
+    },
+    {
+      label: "LOR Progress",
+      value: `${m.shortlisted}/${m.total}`,
+      icon: FileText,
+      accent: "text-indigo-600 bg-indigo-50",
+    },
+    {
+      label: "University Apps",
+      value: m.interviews,
+      icon: BookOpen,
+      accent: "text-emerald-600 bg-emerald-50",
+    },
+    { label: "Scholarships", value: 4, icon: Trophy, accent: "text-amber-600 bg-amber-50" },
+    { label: "Admissions", value: m.placed, icon: Award, accent: "text-green-600 bg-green-50" },
+    { label: "Visa Pipeline", value: m.visa, icon: Plane, accent: "text-orange-600 bg-orange-50" },
   ];
   return <ProductBody widgets={widgets} product={product} />;
 }
@@ -321,31 +561,63 @@ function PreMastersDashboard({ product }: { product: ProductConfig }) {
 /* ---------- MBA ---------- */
 
 function MbaDashboard({ product }: { product: ProductConfig }) {
-  const m = useProductMetrics('mba');
+  const m = useProductMetrics("mba");
   const widgets = [
-    { label: 'Universities', value: 22, icon: Globe, accent: 'text-blue-600 bg-blue-50' },
-    { label: 'Applications', value: m.interviews, icon: FileText, accent: 'text-indigo-600 bg-indigo-50' },
-    { label: 'Scholarships', value: 6, icon: Trophy, accent: 'text-amber-600 bg-amber-50' },
-    { label: 'GMAT Status', value: `${m.shortlisted} ready`, icon: Target, accent: 'text-purple-600 bg-purple-50' },
-    { label: 'Offers Received', value: m.contract, icon: Award, accent: 'text-emerald-600 bg-emerald-50' },
-    { label: 'Admissions', value: m.placed, icon: Briefcase, accent: 'text-green-600 bg-green-50' },
-    { label: 'Visa Status', value: m.visa, icon: Plane, accent: 'text-orange-600 bg-orange-50' },
+    { label: "Universities", value: 22, icon: Globe, accent: "text-blue-600 bg-blue-50" },
+    {
+      label: "Applications",
+      value: m.interviews,
+      icon: FileText,
+      accent: "text-indigo-600 bg-indigo-50",
+    },
+    { label: "Scholarships", value: 6, icon: Trophy, accent: "text-amber-600 bg-amber-50" },
+    {
+      label: "GMAT Status",
+      value: `${m.shortlisted} ready`,
+      icon: Target,
+      accent: "text-purple-600 bg-purple-50",
+    },
+    {
+      label: "Offers Received",
+      value: m.contract,
+      icon: Award,
+      accent: "text-emerald-600 bg-emerald-50",
+    },
+    { label: "Admissions", value: m.placed, icon: Briefcase, accent: "text-green-600 bg-green-50" },
+    { label: "Visa Status", value: m.visa, icon: Plane, accent: "text-orange-600 bg-orange-50" },
   ];
   return <ProductBody widgets={widgets} product={product} />;
 }
 
 /* ---------- Shared body ---------- */
 
-interface Widget { label: string; value: string | number; icon: LucideIcon; accent: string }
+interface Widget {
+  label: string;
+  value: string | number;
+  icon: LucideIcon;
+  accent: string;
+}
 
 function ProductBody({
-  widgets, product, enginePrograms,
-}: { widgets: Widget[]; product: ProductConfig; enginePrograms?: ProgramKey[] }) {
+  widgets,
+  product,
+  enginePrograms,
+}: {
+  widgets: Widget[];
+  product: ProductConfig;
+  enginePrograms?: ProgramKey[];
+}) {
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {widgets.map((w) => (
-          <WidgetCard key={w.label} label={w.label} value={w.value} icon={w.icon} accent={w.accent} />
+          <WidgetCard
+            key={w.label}
+            label={w.label}
+            value={w.value}
+            icon={w.icon}
+            accent={w.accent}
+          />
         ))}
       </div>
 
@@ -354,18 +626,6 @@ function ProductBody({
       )}
 
       <QuickActions actions={product.quickActions} />
-
-      <Card>
-        <CardHeader><CardTitle className="text-base">Charts</CardTitle></CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {product.charts.map((c) => (
-            <div key={c} className="p-4 rounded-lg border bg-muted/30 text-sm text-muted-foreground">
-              {c}
-              <p className="text-xs mt-1 opacity-70">Chart coming soon</p>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
     </>
   );
 }
@@ -373,8 +633,8 @@ function ProductBody({
 /* ---------- Selection Engine band ---------- */
 
 const PROGRAM_META: Record<ProgramKey, { label: string; emoji: string; tint: string }> = {
-  professional_nurses: { label: 'Professional Nurses', emoji: '👩‍⚕️', tint: 'sky' },
-  ausbildung:          { label: 'Ausbildung Nursing',  emoji: '🎓',   tint: 'violet' },
+  professional_nurses: { label: "Professional Nurses", emoji: "👩‍⚕️", tint: "sky" },
+  ausbildung: { label: "Ausbildung Nursing", emoji: "🎓", tint: "violet" },
 };
 
 function SelectionEngineBand({ programs }: { programs: ProgramKey[] }) {
@@ -390,7 +650,7 @@ function SelectionEngineBand({ programs }: { programs: ProgramKey[] }) {
             Live candidate readiness driven by current gates &amp; weighted criteria.
           </p>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => navigate('/admin/scoring')}>
+        <Button variant="ghost" size="sm" onClick={() => navigate("/admin/scoring")}>
           Configure <ArrowRight className="w-4 h-4 ml-1" />
         </Button>
       </CardHeader>
@@ -416,8 +676,8 @@ function SelectionEngineProgramCard({ program }: { program: ProgramKey }) {
             <span className="font-medium">{meta.label}</span>
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Gates {kpis.gatesEnforced}/{kpis.gatesTotal} enforced ·
-            weights {kpis.weightBalanced ? 'balanced' : 'unbalanced'}
+            Gates {kpis.gatesEnforced}/{kpis.gatesTotal} enforced · weights{" "}
+            {kpis.weightBalanced ? "balanced" : "unbalanced"}
           </p>
         </div>
         <Badge variant="outline" className="tabular-nums">
@@ -426,16 +686,18 @@ function SelectionEngineProgramCard({ program }: { program: ProgramKey }) {
       </div>
 
       <div className="mt-3 grid grid-cols-4 gap-2 text-center">
-        <MiniStat label="Ready"        value={kpis.ready}       tone="emerald" />
-        <MiniStat label="Progressing"  value={kpis.progressing} tone="sky" />
-        <MiniStat label="At risk"      value={kpis.atRisk}      tone="amber" />
-        <MiniStat label="Ineligible"   value={kpis.ineligible}  tone="rose" />
+        <MiniStat label="Ready" value={kpis.ready} tone="emerald" />
+        <MiniStat label="Progressing" value={kpis.progressing} tone="sky" />
+        <MiniStat label="At risk" value={kpis.atRisk} tone="amber" />
+        <MiniStat label="Ineligible" value={kpis.ineligible} tone="rose" />
       </div>
 
       <div className="mt-3">
         <div className="mb-1 flex items-center justify-between text-[11px] text-muted-foreground">
           <span>Eligible</span>
-          <span className="tabular-nums">{kpis.eligible} / {kpis.total || 0}</span>
+          <span className="tabular-nums">
+            {kpis.eligible} / {kpis.total || 0}
+          </span>
         </div>
         <Progress value={kpis.total ? (kpis.eligible / kpis.total) * 100 : 0} className="h-1.5" />
       </div>
@@ -444,19 +706,24 @@ function SelectionEngineProgramCard({ program }: { program: ProgramKey }) {
 }
 
 function MiniStat({
-  label, value, tone,
-}: { label: string; value: number; tone: 'emerald' | 'sky' | 'amber' | 'rose' }) {
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "emerald" | "sky" | "amber" | "rose";
+}) {
   const toneMap: Record<typeof tone, string> = {
-    emerald: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-    sky:     'bg-sky-50 text-sky-800 border-sky-200',
-    amber:   'bg-amber-50 text-amber-900 border-amber-200',
-    rose:    'bg-rose-50 text-rose-800 border-rose-200',
+    emerald: "bg-emerald-50 text-emerald-800 border-emerald-200",
+    sky: "bg-sky-50 text-sky-800 border-sky-200",
+    amber: "bg-amber-50 text-amber-900 border-amber-200",
+    rose: "bg-rose-50 text-rose-800 border-rose-200",
   };
   return (
-    <div className={cn('rounded-md border px-2 py-1.5', toneMap[tone])}>
+    <div className={cn("rounded-md border px-2 py-1.5", toneMap[tone])}>
       <div className="text-[10px] uppercase tracking-wide opacity-80">{label}</div>
       <div className="text-sm font-semibold tabular-nums">{value}</div>
     </div>
   );
 }
-

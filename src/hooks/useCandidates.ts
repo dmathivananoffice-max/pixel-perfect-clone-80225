@@ -1,12 +1,12 @@
-import { useState, useMemo, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import type {
   Candidate,
   CandidateDocument,
   AuditEvent,
   CandidateScore,
   FilterParams,
-} from '@/types';
+} from "@/types";
 
 interface CandidateRow {
   candidate_id: string;
@@ -29,6 +29,7 @@ interface CandidateRow {
   gate_status: string;
   total_score: number | null;
   rank: number | null;
+  extracted_fields: Record<string, Record<string, string>> | null;
   created_at: string;
   updated_at: string;
 }
@@ -46,15 +47,16 @@ function rowToCandidate(r: CandidateRow): Candidate {
     highest_qualification: r.highest_qualification ?? undefined,
     program_id: r.product_id,
     program_name: r.program_name ?? undefined,
-    source_type: r.source_type as Candidate['source_type'],
+    source_type: r.source_type as Candidate["source_type"],
     source_agency_id: r.source_agency_id ?? undefined,
     source_agency_name: r.source_agency_name ?? undefined,
     assigned_recruiter_id: r.assigned_recruiter_id ?? undefined,
     assigned_recruiter_name: r.assigned_recruiter_name ?? undefined,
-    status: r.status as Candidate['status'],
-    gate_status: r.gate_status as Candidate['gate_status'],
+    status: r.status as Candidate["status"],
+    gate_status: r.gate_status as Candidate["gate_status"],
     total_score: r.total_score ?? undefined,
     rank: r.rank ?? undefined,
+    extracted_fields: r.extracted_fields ?? undefined,
     created_at: r.created_at,
     updated_at: r.updated_at,
   };
@@ -86,13 +88,13 @@ interface ScoreRow {
 function rowToAudit(r: AuditRow): AuditEvent {
   return {
     id: r.id,
-    entity_type: r.entity_type as AuditEvent['entity_type'],
+    entity_type: r.entity_type as AuditEvent["entity_type"],
     entity_id: r.entity_id,
-    event_type: r.event_type as AuditEvent['event_type'],
-    actor_id: r.actor_id ?? '',
-    actor_name: r.actor_name ?? '',
-    old_value: (r.old_value ?? undefined) as AuditEvent['old_value'],
-    new_value: (r.new_value ?? undefined) as AuditEvent['new_value'],
+    event_type: r.event_type as AuditEvent["event_type"],
+    actor_id: r.actor_id ?? "",
+    actor_name: r.actor_name ?? "",
+    old_value: (r.old_value ?? undefined) as AuditEvent["old_value"],
+    new_value: (r.new_value ?? undefined) as AuditEvent["new_value"],
     created_at: r.created_at,
   };
 }
@@ -101,12 +103,12 @@ function rowToScore(r: ScoreRow): CandidateScore {
   return {
     id: r.id,
     candidate_id: r.candidate_id,
-    scoring_model_id: r.scoring_model_id ?? '',
+    scoring_model_id: r.scoring_model_id ?? "",
     criteria_name: r.criteria_name,
     raw_score: r.raw_score ?? 0,
     normalized_score: r.normalized_score ?? 0,
     weighted_score: r.weighted_score ?? 0,
-    gate_status: r.gate_status as CandidateScore['gate_status'],
+    gate_status: r.gate_status as CandidateScore["gate_status"],
   };
 }
 
@@ -117,43 +119,49 @@ export function useCandidates() {
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [scores, setScores] = useState<CandidateScore[]>([]);
 
+  const fetchAll = useCallback(async () => {
+    const [cRes, dRes, aRes, sRes] = await Promise.all([
+      supabase.from("candidates").select("*").order("created_at", { ascending: false }),
+      supabase.from("candidate_documents").select("*"),
+      supabase.from("audit_events").select("*").order("created_at", { ascending: false }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.from as any)("candidate_scores").select("*"),
+    ]);
+    if (cRes.data) setRows((cRes.data as CandidateRow[]).map(rowToCandidate));
+    if (dRes.data) {
+      setDocuments(
+        dRes.data.map((d) => ({
+          id: d.id,
+          candidate_id: d.candidate_id,
+          document_type: d.document_type as CandidateDocument["document_type"],
+          uploaded_by: d.uploaded_by ?? "",
+          file_path: d.storage_path,
+          storage_path: d.storage_path,
+          file_name: d.file_name,
+          mime_type: d.mime_type ?? undefined,
+          encrypted: false,
+          verified: d.verified,
+          verified_by: d.verified_by ?? undefined,
+          ocr_complete: d.ocr_complete,
+          ocr_confidence: d.ocr_confidence ?? undefined,
+          expiry_date: d.expiry_date ?? undefined,
+          created_at: d.created_at,
+        })),
+      );
+    }
+    if (aRes.data) setAuditEvents((aRes.data as AuditRow[]).map(rowToAudit));
+    if (sRes.data) setScores((sRes.data as ScoreRow[]).map(rowToScore));
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [cRes, dRes, aRes, sRes] = await Promise.all([
-        supabase.from('candidates').select('*').order('created_at', { ascending: false }),
-        supabase.from('candidate_documents').select('*'),
-        supabase.from('audit_events').select('*').order('created_at', { ascending: false }),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabase.from as any)('candidate_scores').select('*'),
-      ]);
-      if (cancelled) return;
-      if (cRes.data) setRows((cRes.data as CandidateRow[]).map(rowToCandidate));
-      if (dRes.data) {
-        setDocuments(
-          dRes.data.map((d) => ({
-            id: d.id,
-            candidate_id: d.candidate_id,
-            document_type: d.document_type as CandidateDocument['document_type'],
-            uploaded_by: d.uploaded_by ?? '',
-            file_path: d.storage_path,
-            encrypted: false,
-            verified: d.verified,
-            verified_by: d.verified_by ?? undefined,
-            ocr_complete: d.ocr_complete,
-            ocr_confidence: d.ocr_confidence ?? undefined,
-            expiry_date: d.expiry_date ?? undefined,
-            created_at: d.created_at,
-          })),
-        );
-      }
-      if (aRes.data) setAuditEvents((aRes.data as AuditRow[]).map(rowToAudit));
-      if (sRes.data) setScores((sRes.data as ScoreRow[]).map(rowToScore));
+      if (!cancelled) await fetchAll();
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [fetchAll]);
 
   const candidates = useMemo(() => {
     let data = [...rows];
@@ -170,16 +178,18 @@ export function useCandidates() {
           c.email.toLowerCase().includes(q),
       );
     }
-    if (filters.scoreMin !== undefined) data = data.filter((c) => (c.total_score || 0) >= filters.scoreMin!);
-    if (filters.scoreMax !== undefined) data = data.filter((c) => (c.total_score || 0) <= filters.scoreMax!);
+    if (filters.scoreMin !== undefined)
+      data = data.filter((c) => (c.total_score || 0) >= filters.scoreMin!);
+    if (filters.scoreMax !== undefined)
+      data = data.filter((c) => (c.total_score || 0) <= filters.scoreMax!);
 
     if (filters.sortBy) {
-      const order = filters.sortOrder === 'desc' ? -1 : 1;
+      const order = filters.sortOrder === "desc" ? -1 : 1;
       data.sort((a, b) => {
         const aVal = (a as unknown as Record<string, unknown>)[filters.sortBy!];
         const bVal = (b as unknown as Record<string, unknown>)[filters.sortBy!];
-        if (typeof aVal === 'number' && typeof bVal === 'number') return (aVal - bVal) * order;
-        return String(aVal || '').localeCompare(String(bVal || '')) * order;
+        if (typeof aVal === "number" && typeof bVal === "number") return (aVal - bVal) * order;
+        return String(aVal || "").localeCompare(String(bVal || "")) * order;
       });
     }
     return data;
@@ -197,5 +207,6 @@ export function useCandidates() {
     getCandidateScores: (id: string): CandidateScore[] =>
       scores.filter((s) => s.candidate_id === id),
     totalCount: candidates.length,
+    refresh: fetchAll,
   };
 }

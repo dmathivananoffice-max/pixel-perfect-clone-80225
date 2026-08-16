@@ -20,7 +20,7 @@ export interface STITraining {
   behaviour?: number;
   participation?: number;
   german_improvement?: number;
-  recommendation?: 'proceed' | 'caution' | 'not_recommended';
+  recommendation?: "proceed" | "caution" | "not_recommended";
   trainer_notes?: string;
   trainer_name?: string;
   assessed_at?: string;
@@ -33,7 +33,7 @@ export interface STIInterview1 {
   date?: string;
   rating?: number;
   notes?: string;
-  decision?: 'proceed' | 'hold' | 'reject';
+  decision?: "proceed" | "hold" | "reject";
   conductor_name?: string;
   created_at: string;
 }
@@ -47,6 +47,6 @@ export interface STIInterview2 {
   date?: string;
   rating?: number;
   notes?: string;
-  decision?: 'selected' | 'rejected' | 'hold';
+  decision?: "selected" | "rejected" | "hold";
   created_at: string;
 }

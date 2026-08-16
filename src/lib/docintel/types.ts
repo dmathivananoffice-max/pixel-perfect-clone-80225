@@ -21,13 +21,19 @@ export interface OcrBlock {
 
 /** Raw OCR output for a whole document. Stored verbatim on candidate_documents.ocr_raw. */
 export interface OcrResult {
-  provider: string;        // e.g. "stub", "google-document-ai"
-  version: string;         // provider version identifier
-  processedAt: string;     // ISO
+  provider: string; // e.g. "stub", "google-document-ai"
+  version: string; // provider version identifier
+  processedAt: string; // ISO
   pageCount: number;
-  text: string;            // full concatenated text
+  text: string; // full concatenated text
   blocks: OcrBlock[];
-  keyValuePairs?: Array<{ key: string; value: string; confidence: number; page: number; bbox?: BBox }>;
+  keyValuePairs?: Array<{
+    key: string;
+    value: string;
+    confidence: number;
+    page: number;
+    bbox?: BBox;
+  }>;
   tables?: Array<{ page: number; rows: string[][] }>;
 }
 
@@ -44,18 +50,18 @@ export interface OcrProviderContext {
  * Written to public.document_extractions.
  */
 export interface ExtractedField {
-  section: string;         // e.g. "identity", "language", "education"
-  fieldName: string;       // canonical key, e.g. "passport_number"
+  section: string; // e.g. "identity", "language", "education"
+  fieldName: string; // canonical key, e.g. "passport_number"
   value: string;
-  confidence: number;      // 0..1
+  confidence: number; // 0..1
   page: number;
   bbox?: BBox;
-  documentId: string;      // source document
+  documentId: string; // source document
 }
 
 /** Structured AI extraction result. Only OCR text goes into the LLM, never raw PDFs. */
 export interface AiExtractionResult {
-  model: string;              // e.g. "stub-heuristic-v1"
+  model: string; // e.g. "stub-heuristic-v1"
   modelVersion: string;
   processedAt: string;
   fields: ExtractedField[];
@@ -74,7 +80,10 @@ export interface OcrProvider {
 export interface AiExtractor {
   readonly name: string;
   readonly version: string;
-  extract(candidateId: string, documents: Array<{ documentId: string; docType: string; ocr: OcrResult }>): Promise<AiExtractionResult>;
+  extract(
+    candidateId: string,
+    documents: Array<{ documentId: string; docType: string; ocr: OcrResult }>,
+  ): Promise<AiExtractionResult>;
 }
 
 /** Low-confidence threshold below which a field is auto-flagged for manual review. */
@@ -83,10 +92,18 @@ export const LOW_CONFIDENCE_THRESHOLD = 0.65;
 /** File validation limits enforced before OCR is even attempted. */
 export const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25 MB
 export const ALLOWED_MIME_TYPES: readonly string[] = [
-  'application/pdf',
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/tiff',
-  'image/heic',
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/tiff",
+  "image/heic",
+  // Word documents — the upload UI accepts .doc/.docx and the storage
+  // bucket allows them. They are stored and previewable; the vision OCR
+  // rasterizer does not render them, so they are marked ocr_status=failed
+  // per-document (isolated) instead of blocking the candidate's other docs.
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain",
+  "application/rtf",
 ];

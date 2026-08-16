@@ -1,49 +1,105 @@
-import { useReports } from '@/hooks/useReports';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
+import { useReports } from "@/hooks/useReports";
+import { LoadingState, ErrorState } from "@/components/QueryState";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import {
-  Users, UserCheck, UserX, Plane, Briefcase, Calendar, FileText,
+  Users,
+  UserCheck,
+  UserX,
+  Plane,
+  Briefcase,
+  Calendar,
+  FileText,
   Download,
-} from 'lucide-react';
+} from "lucide-react";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, AreaChart, Area,
-} from 'recharts';
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  AreaChart,
+  Area,
+} from "recharts";
 
-const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316'];
+const COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#f97316"];
 
 export default function Reports() {
   const metrics = useReports();
 
+  if (metrics.loading) return <LoadingState label="Loading reports…" />;
+  if (metrics.error) return <ErrorState title="Could not load reports" message={metrics.error} />;
+
   const funnelData = [
-    { stage: 'Applied', count: metrics.totalCandidates, color: '#94a3b8' },
-    { stage: 'Shortlisted', count: metrics.shortlisted, color: '#3b82f6' },
-    { stage: 'Assessed', count: metrics.totalCandidates - metrics.pendingSTI, color: '#22c55e' },
-    { stage: 'Interviewed', count: metrics.pendingInterviews + metrics.placed, color: '#8b5cf6' },
-    { stage: 'Contracted', count: metrics.pendingContracts + metrics.placed, color: '#06b6d4' },
-    { stage: 'Placed', count: metrics.placed, color: '#f97316' },
+    { stage: "Applied", count: metrics.totalCandidates, color: "#94a3b8" },
+    { stage: "Shortlisted", count: metrics.shortlisted, color: "#3b82f6" },
+    { stage: "Assessed", count: metrics.totalCandidates - metrics.pendingSTI, color: "#22c55e" },
+    { stage: "Interviewed", count: metrics.pendingInterviews + metrics.placed, color: "#8b5cf6" },
+    { stage: "Contracted", count: metrics.pendingContracts + metrics.placed, color: "#06b6d4" },
+    { stage: "Placed", count: metrics.placed, color: "#f97316" },
   ];
 
   const kpiCards = [
-    { label: 'Total Candidates', value: metrics.totalCandidates, icon: <Users className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Shortlisted', value: metrics.shortlisted, icon: <UserCheck className="w-5 h-5" />, color: 'text-green-600', bg: 'bg-green-50' },
-    { label: 'Rejected', value: metrics.rejected, icon: <UserX className="w-5 h-5" />, color: 'text-red-600', bg: 'bg-red-50' },
-    { label: 'In Visa', value: metrics.inVisa, icon: <Plane className="w-5 h-5" />, color: 'text-orange-600', bg: 'bg-orange-50' },
-    { label: 'Placed', value: metrics.placed, icon: <Briefcase className="w-5 h-5" />, color: 'text-purple-600', bg: 'bg-purple-50' },
-    { label: 'Pending Interviews', value: metrics.pendingInterviews, icon: <Calendar className="w-5 h-5" />, color: 'text-cyan-600', bg: 'bg-cyan-50' },
+    {
+      label: "Total Candidates",
+      value: metrics.totalCandidates,
+      icon: <Users className="w-5 h-5" />,
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+    },
+    {
+      label: "Shortlisted",
+      value: metrics.shortlisted,
+      icon: <UserCheck className="w-5 h-5" />,
+      color: "text-green-600",
+      bg: "bg-green-50",
+    },
+    {
+      label: "Rejected",
+      value: metrics.rejected,
+      icon: <UserX className="w-5 h-5" />,
+      color: "text-red-600",
+      bg: "bg-red-50",
+    },
+    {
+      label: "In Visa",
+      value: metrics.inVisa,
+      icon: <Plane className="w-5 h-5" />,
+      color: "text-orange-600",
+      bg: "bg-orange-50",
+    },
+    {
+      label: "Placed",
+      value: metrics.placed,
+      icon: <Briefcase className="w-5 h-5" />,
+      color: "text-purple-600",
+      bg: "bg-purple-50",
+    },
+    {
+      label: "Pending Interviews",
+      value: metrics.pendingInterviews,
+      icon: <Calendar className="w-5 h-5" />,
+      color: "text-cyan-600",
+      bg: "bg-cyan-50",
+    },
   ];
 
   const exportCSV = () => {
     // Simple CSV export
-    const headers = ['ID', 'Name', 'Program', 'Status', 'Score', 'Country'];
+    const headers = ["ID", "Name", "Program", "Status", "Score", "Country"];
     // Would need actual candidate data here
-    const csv = [headers.join(',')].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const csv = [headers.join(",")].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = 'candidates-report.csv';
+    a.download = "candidates-report.csv";
     a.click();
   };
 
@@ -74,9 +130,7 @@ export default function Reports() {
                   <p className="text-sm text-muted-foreground">{kpi.label}</p>
                   <p className="text-2xl font-bold">{kpi.value}</p>
                 </div>
-                <div className={`p-3 rounded-lg ${kpi.bg} ${kpi.color}`}>
-                  {kpi.icon}
-                </div>
+                <div className={`p-3 rounded-lg ${kpi.bg} ${kpi.color}`}>{kpi.icon}</div>
               </div>
             </CardContent>
           </Card>
@@ -114,7 +168,9 @@ export default function Reports() {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
-          <CardHeader><CardTitle className="text-base">Candidates by Status</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Candidates by Status</CardTitle>
+          </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
@@ -138,7 +194,9 @@ export default function Reports() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-base">Monthly Placements</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Monthly Placements</CardTitle>
+          </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
               <AreaChart data={metrics.monthlyPlacements}>
@@ -146,14 +204,22 @@ export default function Reports() {
                 <XAxis dataKey="month" />
                 <YAxis />
                 <Tooltip />
-                <Area type="monotone" dataKey="count" fill="#3b82f6" stroke="#3b82f6" fillOpacity={0.3} />
+                <Area
+                  type="monotone"
+                  dataKey="count"
+                  fill="#3b82f6"
+                  stroke="#3b82f6"
+                  fillOpacity={0.3}
+                />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-base">Program Performance</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Program Performance</CardTitle>
+          </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={metrics.topPrograms} layout="vertical">
@@ -168,12 +234,29 @@ export default function Reports() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-base">Conversion Rates</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Conversion Rates</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-4">
             {[
-              { label: 'Applied to Shortlisted', rate: metrics.totalCandidates > 0 ? (metrics.shortlisted / metrics.totalCandidates) * 100 : 0 },
-              { label: 'Shortlisted to Placed', rate: metrics.shortlisted > 0 ? (metrics.placed / metrics.shortlisted) * 100 : 0 },
-              { label: 'Overall Conversion', rate: metrics.totalCandidates > 0 ? (metrics.placed / metrics.totalCandidates) * 100 : 0 },
+              {
+                label: "Applied to Shortlisted",
+                rate:
+                  metrics.totalCandidates > 0
+                    ? (metrics.shortlisted / metrics.totalCandidates) * 100
+                    : 0,
+              },
+              {
+                label: "Shortlisted to Placed",
+                rate: metrics.shortlisted > 0 ? (metrics.placed / metrics.shortlisted) * 100 : 0,
+              },
+              {
+                label: "Overall Conversion",
+                rate:
+                  metrics.totalCandidates > 0
+                    ? (metrics.placed / metrics.totalCandidates) * 100
+                    : 0,
+              },
             ].map((item) => (
               <div key={item.label}>
                 <div className="flex justify-between text-sm mb-1">
