@@ -16,6 +16,8 @@ import { runDocumentIntelligencePipeline } from "@/lib/docintel/pipeline";
 import { normalizeExtractionField } from "@/lib/docintel/form-schema";
 import { guessDocType } from "./doctype";
 import { resolveCountryName } from "@/intake/normalisers";
+import { withTimeout } from "@/lib/withTimeout";
+import { DRAFT_DB_TIMEOUT_MS, DRAFT_PHASE_BUDGET_MS } from "./hangBudgets";
 
 // ---------- Hang guards ----------
 // Supabase storage uploads / hashing / OCR can stall forever on a dropped
@@ -23,31 +25,28 @@ import { resolveCountryName } from "@/intake/normalisers";
 // single stuck file can NEVER freeze the whole batch — the file is marked
 // failed and the batch continues.
 
-/** Reject with a clear error if `p` doesn't settle within `ms`. */
-function withTimeout<T>(p: PromiseLike<T>, ms: number, label: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const t = setTimeout(
-      () => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s — skipped so the batch can continue.`)),
-      ms,
-    );
-    Promise.resolve(p).then(
-      (v) => {
-        clearTimeout(t);
-        resolve(v);
-      },
-      (e) => {
-        clearTimeout(t);
-        reject(e);
-      },
-    );
-  });
-}
-
 const HASH_TIMEOUT_MS = 60_000;
 const DOC_INSERT_TIMEOUT_MS = 30_000;
 const PIPELINE_TIMEOUT_MS = 10 * 60_000; // per candidate, OCR of all its docs
-const DRAFT_DB_TIMEOUT_MS = 30_000; // every post-OCR draft-creation DB call
+const SESSION_REFRESH_MS = 8_000;
 
+/**
+ * After a long OCR run the access token is often near expiry. supabase-js
+ * then parks forever inside silent refresh on the next DB write — that is
+ * the production hang on "Finalising candidate draft…". Refresh first,
+ * bound, and continue even if refresh fails (draft writes still timeout).
+ */
+async function ensureFreshSession(): Promise<void> {
+  try {
+    await withTimeout(
+      supabase.auth.refreshSession(),
+      SESSION_REFRESH_MS,
+      "Session refresh before draft save",
+    );
+  } catch (e) {
+    console.warn("[intake] session refresh before draft failed — continuing with timeouts", e);
+  }
+}
 /** Upload timeout scales with file size: 45s base + 30s per MB, capped at 4 min. */
 function uploadTimeoutMs(sizeBytes: number): number {
   const mb = sizeBytes / (1024 * 1024);
@@ -475,169 +474,193 @@ export async function persistIntakeBatch(params: {
     const draftStarted = performance.now();
     console.info("[intake] draft_creation START", { candidateId: candDbId });
     try {
-      // Every DB call below is timeout-bound: supabase-js can park forever
-      // in its silent token-refresh path after a long OCR run, and a hung
-      // call here is exactly what froze the "Building candidate drafts"
-      // stage. On any failure the draft is marked and the batch continues.
-      let exs: {
-        field_name: string | null;
-        ai_value: unknown;
-        confidence: number | null;
-        section: string | null;
-        status?: string | null;
-      }[] | null = pipelineFields.map((field) => ({
-        field_name: field.fieldName,
-        ai_value: field.value,
-        confidence: field.confidence,
-        section: field.section,
-        status: "pending",
-      }));
+      // Entire draft phase is budget-capped. Nested DB calls also use
+      // DRAFT_DB_TIMEOUT_MS; this outer budget stops any missed await from
+      // parking the UI on "Finalising candidate draft…" forever.
+      await withTimeout(
+        (async () => {
+          await ensureFreshSession();
+          onStatus?.("Finalising candidate draft…");
 
-      if (!exs || exs.length === 0) {
-        // OCR ran but produced nothing (or the pipeline threw).
-        try {
-          await withTimeout(
-            supabase
-              .from("candidates")
-              .update({
-                verification_state: {
-                  status: "manual_review",
-                  extractionConfidence: 0,
-                  ocr_state: pipelineErr ? "failed" : "empty",
-                  ocr_error: pipelineErr,
-                },
-              })
-              .eq("candidate_id", candDbId),
-            DRAFT_DB_TIMEOUT_MS,
-            "Marking candidate for manual review",
-          );
-        } catch (e) {
-          console.warn("[intake] manual_review update failed for", candDbId, e);
-        }
-        identityByCand.set(candDbId, { confidence: 0, status: "manual_review", docsUploaded });
-        continue;
-      }
+          // Every DB call below is timeout-bound: supabase-js can park forever
+          // in its silent token-refresh path after a long OCR run, and a hung
+          // call here is exactly what froze the "Building candidate drafts"
+          // stage. On any failure the draft is marked and the batch continues.
+          let exs: {
+            field_name: string | null;
+            ai_value: unknown;
+            confidence: number | null;
+            section: string | null;
+            status?: string | null;
+          }[] | null = pipelineFields.map((field) => ({
+            field_name: field.fieldName,
+            ai_value: field.value,
+            confidence: field.confidence,
+            section: field.section,
+            status: "pending",
+          }));
 
-      onStatus?.("Finalising candidate draft…");
-      // Rows are already canonical (`section` + `field_name`) because the
-      // mapping layer ran inside the pipeline. Pick by namespaced key only.
-      const pick = (keys: string[]): { value: string; confidence: number } | null => {
-        const cand = exs
-          .filter(
-            (e) =>
-              keys.includes(`${(e.section ?? "").toLowerCase()}.${(e.field_name ?? "").toLowerCase()}`) &&
-              e.ai_value,
-          )
-          .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))[0];
-        return cand
-          ? { value: String(cand.ai_value), confidence: Number(cand.confidence ?? 0) }
-          : null;
-      };
-      const firstName = pick(["personal.first_name"]);
-      const lastName = pick(["personal.last_name"]);
-      const fullName = null;
-      const email = pick(["contact.email"]);
-      const country = pick(["personal.nationality", "contact.country"]);
+          if (!exs || exs.length === 0) {
+            // OCR ran but produced nothing (or the pipeline threw).
+            try {
+              await withTimeout(
+                supabase
+                  .from("candidates")
+                  .update({
+                    verification_state: {
+                      status: "manual_review",
+                      extractionConfidence: 0,
+                      ocr_state: pipelineErr ? "failed" : "empty",
+                      ocr_error: pipelineErr,
+                    },
+                  })
+                  .eq("candidate_id", candDbId),
+                DRAFT_DB_TIMEOUT_MS,
+                "Marking candidate for manual review",
+              );
+            } catch (e) {
+              console.warn("[intake] manual_review update failed for", candDbId, e);
+            }
+            identityByCand.set(candDbId, {
+              confidence: 0,
+              status: "manual_review",
+              docsUploaded,
+            });
+            return;
+          }
 
-      let fn = firstName?.value;
-      let ln = lastName?.value;
-      void fullName;
+          // Rows are already canonical (`section` + `field_name`) because the
+          // mapping layer ran inside the pipeline. Pick by namespaced key only.
+          const pick = (keys: string[]): { value: string; confidence: number } | null => {
+            const cand = exs
+              .filter(
+                (e) =>
+                  keys.includes(
+                    `${(e.section ?? "").toLowerCase()}.${(e.field_name ?? "").toLowerCase()}`,
+                  ) && e.ai_value,
+              )
+              .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))[0];
+            return cand
+              ? { value: String(cand.ai_value), confidence: Number(cand.confidence ?? 0) }
+              : null;
+          };
+          const firstName = pick(["personal.first_name"]);
+          const lastName = pick(["personal.last_name"]);
+          const email = pick(["contact.email"]);
+          const country = pick(["personal.nationality", "contact.country"]);
 
-      const patch: Record<string, unknown> = {};
-      if (fn) patch.first_name = fn;
-      if (ln) patch.last_name = ln;
-      let normalizedEmail: string | undefined;
-      const emailValue = email?.value?.trim().toLowerCase() ?? "";
-      // A placeholder is a row key, never an extracted contact value.
-      if (emailValue && !emailValue.endsWith("@intake.local") && EMAIL_RE.test(emailValue)) {
-        normalizedEmail = emailValue;
-        patch.email = normalizedEmail;
-      }
-      if (country?.value) patch.country = resolveCountryName(country.value) ?? country.value;
+          let fn = firstName?.value;
+          let ln = lastName?.value;
 
-      const extractedFields: Record<string, Record<string, string>> = {};
-      for (const e of exs) {
-        const normalized = normalizeExtractionField({
-          section: e.section,
-          field_name: e.field_name,
-          value: e.ai_value,
-          confidence: e.confidence,
-        });
-        if (!normalized) continue;
-        extractedFields[normalized.section] = extractedFields[normalized.section] ?? {};
-        extractedFields[normalized.section][normalized.field_name] = normalized.value;
-      }
-      patch.extracted_fields = extractedFields;
+          const patch: Record<string, unknown> = {};
+          if (fn) patch.first_name = fn;
+          if (ln) patch.last_name = ln;
+          let normalizedEmail: string | undefined;
+          const emailValue = email?.value?.trim().toLowerCase() ?? "";
+          // A placeholder is a row key, never an extracted contact value.
+          if (emailValue && !emailValue.endsWith("@intake.local") && EMAIL_RE.test(emailValue)) {
+            normalizedEmail = emailValue;
+            patch.email = normalizedEmail;
+          }
+          if (country?.value) patch.country = resolveCountryName(country.value) ?? country.value;
 
-      const meanConf =
-        exs.reduce((a, e) => a + Number(e.confidence ?? 0), 0) / Math.max(1, exs.length);
+          const extractedFields: Record<string, Record<string, string>> = {};
+          for (const e of exs) {
+            const normalized = normalizeExtractionField({
+              section: e.section,
+              field_name: e.field_name,
+              value: e.ai_value,
+              confidence: e.confidence,
+            });
+            if (!normalized) continue;
+            extractedFields[normalized.section] = extractedFields[normalized.section] ?? {};
+            extractedFields[normalized.section][normalized.field_name] = normalized.value;
+          }
+          patch.extracted_fields = extractedFields;
 
-      // Post-OCR duplicate detection.
-      let isDuplicate = false;
-      if (normalizedEmail) {
-        try {
-          const { data: dupes } = await withTimeout(
-            supabase
-              .from("candidates")
-              .select("candidate_id")
-              .eq("email", normalizedEmail)
-              .neq("candidate_id", candDbId)
-              .limit(1),
-            DRAFT_DB_TIMEOUT_MS,
-            "Duplicate check",
-          );
-          isDuplicate = !!(dupes && dupes.length > 0);
-        } catch (e) {
-          console.warn("[intake] duplicate check failed for", candDbId, e);
-        }
-      }
+          const meanConf =
+            exs.reduce((a, e) => a + Number(e.confidence ?? 0), 0) / Math.max(1, exs.length);
 
-      // Derive status from OCR reality.
-      let status: BatchCandidate["status"];
-      if (isDuplicate) status = "duplicate";
-      else if (!fn || !ln) status = "manual_review";
-      else if (meanConf < 0.7) status = "low_confidence";
-      else if (!country?.value) status = "low_confidence";
-      else status = "ready";
+          // Post-OCR duplicate detection.
+          let isDuplicate = false;
+          if (normalizedEmail) {
+            try {
+              const { data: dupes } = await withTimeout(
+                supabase
+                  .from("candidates")
+                  .select("candidate_id")
+                  .eq("email", normalizedEmail)
+                  .neq("candidate_id", candDbId)
+                  .limit(1),
+                DRAFT_DB_TIMEOUT_MS,
+                "Duplicate check",
+              );
+              isDuplicate = !!(dupes && dupes.length > 0);
+            } catch (e) {
+              console.warn("[intake] duplicate check failed for", candDbId, e);
+            }
+          }
 
-      patch.verification_state = {
-        status,
-        extractionConfidence: meanConf,
-        ocr_state: "complete",
-        isDuplicate,
-      };
+          // Derive status from OCR reality.
+          let status: BatchCandidate["status"];
+          if (isDuplicate) status = "duplicate";
+          else if (!fn || !ln) status = "manual_review";
+          else if (meanConf < 0.7) status = "low_confidence";
+          else if (!country?.value) status = "low_confidence";
+          else status = "ready";
 
-      identityByCand.set(candDbId, {
-        firstName: fn,
-        lastName: ln,
-        email: normalizedEmail,
-        country: country?.value,
-        confidence: meanConf,
-        status,
-        docsUploaded,
-      });
+          patch.verification_state = {
+            status,
+            extractionConfidence: meanConf,
+            ocr_state: "complete",
+            isDuplicate,
+          };
 
-      if (Object.keys(patch).length > 0) {
-        try {
-          const { error: idErr } = await withTimeout(
-            supabase
-              .from("candidates")
-              .update(patch as never)
-              .eq("candidate_id", candDbId),
-            DRAFT_DB_TIMEOUT_MS,
-            "Saving candidate draft",
-          );
-          if (idErr)
-            console.warn("[intake] identity backfill failed for", candDbId, idErr.message);
-        } catch (e) {
-          console.warn("[intake] identity backfill failed for", candDbId, e);
-        }
-      }
+          identityByCand.set(candDbId, {
+            firstName: fn,
+            lastName: ln,
+            email: normalizedEmail,
+            country: country?.value,
+            confidence: meanConf,
+            status,
+            docsUploaded,
+          });
+
+          if (Object.keys(patch).length > 0) {
+            try {
+              const { error: idErr } = await withTimeout(
+                supabase
+                  .from("candidates")
+                  .update(patch as never)
+                  .eq("candidate_id", candDbId),
+                DRAFT_DB_TIMEOUT_MS,
+                "Saving candidate draft",
+              );
+              if (idErr)
+                console.warn("[intake] identity backfill failed for", candDbId, idErr.message);
+            } catch (e) {
+              console.warn("[intake] identity backfill failed for", candDbId, e);
+            }
+          }
+        })(),
+        DRAFT_PHASE_BUDGET_MS,
+        "Draft phase",
+      );
     } catch (e) {
-      // Draft creation failed — mark it failed and keep the batch moving.
+      // Draft creation failed or budget exhausted — mark and keep moving.
       console.warn("[intake] draft creation failed for", candDbId, e);
-      identityByCand.set(candDbId, { confidence: 0, status: "manual_review", docsUploaded });
-      onStatus?.("Draft failed — routed to manual review");
+      if (!identityByCand.has(candDbId)) {
+        identityByCand.set(candDbId, {
+          confidence: 0,
+          status: "manual_review",
+          docsUploaded,
+        });
+      }
+      onStatus?.(
+        e instanceof Error && /timed out|did not respond/i.test(e.message)
+          ? "Draft save timed out — routed to manual review"
+          : "Draft failed — routed to manual review",
+      );
     } finally {
       // Always runs: emits completion + timing for this draft, so progress
       // can never park below 100% on a stuck draft.
@@ -646,6 +669,7 @@ export async function persistIntakeBatch(params: {
         elapsedMs: Math.round(performance.now() - draftStarted),
         status: identityByCand.get(candDbId)?.status ?? "unknown",
       });
+      onStatus?.("Candidate draft ready");
     }
   }
 
