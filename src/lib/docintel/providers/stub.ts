@@ -17,9 +17,9 @@ import type {
   AiExtractor,
   AiExtractionResult,
   ExtractedField,
-} from '../types';
+} from "../types";
 
-const VERSION = 'stub-v1';
+const VERSION = "stub-v1";
 
 function seededRandom(seed: string): () => number {
   // Tiny deterministic RNG so re-processing the same doc yields the same output.
@@ -29,7 +29,7 @@ function seededRandom(seed: string): () => number {
     h = Math.imul(h, 16777619);
   }
   return () => {
-    h += 0x6D2B79F5;
+    h += 0x6d2b79f5;
     let t = h;
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
@@ -38,7 +38,7 @@ function seededRandom(seed: string): () => number {
 }
 
 export const stubOcrProvider: OcrProvider = {
-  name: 'stub',
+  name: "stub",
   version: VERSION,
   async extract(ctx: OcrProviderContext): Promise<OcrResult> {
     const rand = seededRandom(ctx.documentId);
@@ -59,11 +59,11 @@ export const stubOcrProvider: OcrProvider = {
       });
     });
     return {
-      provider: 'stub',
+      provider: "stub",
       version: VERSION,
       processedAt: new Date().toISOString(),
       pageCount,
-      text: lines.join('\n'),
+      text: lines.join("\n"),
       blocks,
       keyValuePairs: [],
       tables: [],
@@ -72,51 +72,149 @@ export const stubOcrProvider: OcrProvider = {
 };
 
 // Map filename hint → canonical section/fields.
-function fieldsFor(docType: string, documentId: string): Array<Omit<ExtractedField, 'documentId'>> {
+function fieldsFor(docType: string, documentId: string): Array<Omit<ExtractedField, "documentId">> {
   const rand = seededRandom(documentId);
   const conf = () => Math.round((0.55 + rand() * 0.42) * 1000) / 1000;
   const page = 1;
   const bbox = (i: number) => ({ x: 0.1, y: 0.15 + i * 0.08, w: 0.6, h: 0.05 });
   switch (docType) {
-    case 'passport':
+    case "passport":
       return [
-        { section: 'identity', fieldName: 'passport_number', value: '', confidence: conf(), page, bbox: bbox(0) },
-        { section: 'identity', fieldName: 'passport_expiry', value: '', confidence: conf(), page, bbox: bbox(1) },
-        { section: 'identity', fieldName: 'nationality',      value: '', confidence: conf(), page, bbox: bbox(2) },
-        { section: 'identity', fieldName: 'date_of_birth',    value: '', confidence: conf(), page, bbox: bbox(3) },
+        {
+          section: "passport",
+          fieldName: "passport_no",
+          value: "",
+          confidence: conf(),
+          page,
+          bbox: bbox(0),
+        },
+        {
+          section: "passport",
+          fieldName: "expiry_date",
+          value: "",
+          confidence: conf(),
+          page,
+          bbox: bbox(1),
+        },
+        {
+          section: "personal",
+          fieldName: "nationality",
+          value: "",
+          confidence: conf(),
+          page,
+          bbox: bbox(2),
+        },
+        {
+          section: "personal",
+          fieldName: "dob",
+          value: "",
+          confidence: conf(),
+          page,
+          bbox: bbox(3),
+        },
       ];
-    case 'sprach':
+    case "sprach":
       return [
-        { section: 'language', fieldName: 'certificate_level', value: '', confidence: conf(), page, bbox: bbox(0) },
-        { section: 'language', fieldName: 'issued_on',         value: '', confidence: conf(), page, bbox: bbox(1) },
-        { section: 'language', fieldName: 'issuing_institute', value: '', confidence: conf(), page, bbox: bbox(2) },
+        {
+          section: "language",
+          fieldName: "level",
+          value: "",
+          confidence: conf(),
+          page,
+          bbox: bbox(0),
+        },
+        {
+          section: "language",
+          fieldName: "cert_date",
+          value: "",
+          confidence: conf(),
+          page,
+          bbox: bbox(1),
+        },
+        {
+          section: "language",
+          fieldName: "provider",
+          value: "",
+          confidence: conf(),
+          page,
+          bbox: bbox(2),
+        },
       ];
-    case 'degree':
+    case "degree":
       return [
-        { section: 'education', fieldName: 'degree_title',    value: '', confidence: conf(), page, bbox: bbox(0) },
-        { section: 'education', fieldName: 'institution',     value: '', confidence: conf(), page, bbox: bbox(1) },
-        { section: 'education', fieldName: 'graduation_year', value: '', confidence: conf(), page, bbox: bbox(2) },
+        {
+          section: "education",
+          fieldName: "qualification",
+          value: "",
+          confidence: conf(),
+          page,
+          bbox: bbox(0),
+        },
+        {
+          section: "education",
+          fieldName: "institution",
+          value: "",
+          confidence: conf(),
+          page,
+          bbox: bbox(1),
+        },
+        {
+          section: "education",
+          fieldName: "year",
+          value: "",
+          confidence: conf(),
+          page,
+          bbox: bbox(2),
+        },
       ];
-    case 'cv':
+    case "cv":
       return [
-        { section: 'employment', fieldName: 'most_recent_role',    value: '', confidence: conf(), page, bbox: bbox(0) },
-        { section: 'employment', fieldName: 'most_recent_employer', value: '', confidence: conf(), page, bbox: bbox(1) },
-        { section: 'employment', fieldName: 'years_experience',    value: '', confidence: conf(), page, bbox: bbox(2) },
+        {
+          section: "employment",
+          fieldName: "role",
+          value: "",
+          confidence: conf(),
+          page,
+          bbox: bbox(0),
+        },
+        {
+          section: "employment",
+          fieldName: "most_recent_employer",
+          value: "",
+          confidence: conf(),
+          page,
+          bbox: bbox(1),
+        },
+        {
+          section: "employment",
+          fieldName: "years_experience",
+          value: "",
+          confidence: conf(),
+          page,
+          bbox: bbox(2),
+        },
       ];
     default:
       return [
-        { section: 'general', fieldName: 'summary', value: '', confidence: conf(), page, bbox: bbox(0) },
+        {
+          section: "general",
+          fieldName: "summary",
+          value: "",
+          confidence: conf(),
+          page,
+          bbox: bbox(0),
+        },
       ];
   }
 }
 
 export const stubAiExtractor: AiExtractor = {
-  name: 'stub-heuristic',
+  name: "stub-heuristic",
   version: VERSION,
   async extract(candidateId, documents): Promise<AiExtractionResult> {
     // Guardrail: fail fast if the caller mixed docs from different candidates.
     for (const d of documents) {
-      if (!d.documentId) throw new Error('AI extraction requires documentId');
+      if (!d.documentId) throw new Error("AI extraction requires documentId");
     }
     const fields: ExtractedField[] = [];
     for (const doc of documents) {
@@ -126,17 +224,20 @@ export const stubAiExtractor: AiExtractor = {
       }
     }
     // Same-candidate consistency warnings (never cross-candidate).
-    const warnings: AiExtractionResult['warnings'] = [];
-    const nationalities = fields.filter((f) => f.fieldName === 'nationality').map((f) => f.value).filter(Boolean);
+    const warnings: AiExtractionResult["warnings"] = [];
+    const nationalities = fields
+      .filter((f) => f.fieldName === "nationality")
+      .map((f) => f.value)
+      .filter(Boolean);
     if (new Set(nationalities).size > 1) {
       warnings.push({
-        code: 'nationality_mismatch',
+        code: "nationality_mismatch",
         message: `Nationality differs across ${nationalities.length} documents for this candidate.`,
-        fieldName: 'nationality',
+        fieldName: "nationality",
       });
     }
     return {
-      model: 'stub-heuristic',
+      model: "stub-heuristic",
       modelVersion: VERSION,
       processedAt: new Date().toISOString(),
       fields,

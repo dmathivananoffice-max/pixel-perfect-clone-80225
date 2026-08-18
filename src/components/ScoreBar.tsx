@@ -2,24 +2,30 @@ interface ScoreBarProps {
   score: number;
   maxScore?: number;
   showLabel?: boolean;
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
   className?: string;
 }
 
 // Muted, semantic-only fill tones. Success/warning/error — nothing decorative.
 function getScoreColor(score: number, maxScore: number): string {
   const pct = score / maxScore;
-  if (pct >= 0.85) return 'bg-emerald-500/80';
-  if (pct >= 0.7)  return 'bg-primary';
-  if (pct >= 0.5)  return 'bg-amber-500/80';
-  if (pct >= 0.3)  return 'bg-orange-500/80';
-  return 'bg-red-500/80';
+  if (pct >= 0.85) return "bg-emerald-500/80";
+  if (pct >= 0.7) return "bg-primary";
+  if (pct >= 0.5) return "bg-amber-500/80";
+  if (pct >= 0.3) return "bg-orange-500/80";
+  return "bg-red-500/80";
 }
 
-export function ScoreBar({ score, maxScore = 100, showLabel = true, size = 'md', className = '' }: ScoreBarProps) {
+export function ScoreBar({
+  score,
+  maxScore = 100,
+  showLabel = true,
+  size = "md",
+  className = "",
+}: ScoreBarProps) {
   const pct = Math.min(Math.max((score / maxScore) * 100, 0), 100);
   const colorClass = getScoreColor(score, maxScore);
-  const heightClass = size === 'sm' ? 'h-1.5' : size === 'lg' ? 'h-3' : 'h-2';
+  const heightClass = size === "sm" ? "h-1.5" : size === "lg" ? "h-3" : "h-2";
 
   return (
     <div className={`w-full ${className}`}>

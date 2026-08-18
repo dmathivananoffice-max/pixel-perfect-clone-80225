@@ -1,13 +1,28 @@
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-  DropdownMenuSeparator, DropdownMenuLabel,
-} from '@/components/ui/dropdown-menu';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
 import {
-  Mic, GraduationCap, Users, UserPlus, Building2, ArrowRight, Mail,
-  MessageCircle, Send, FileText, X, ChevronDown, Download,
-} from 'lucide-react';
-import { toast } from 'sonner';
+  Mic,
+  GraduationCap,
+  Users,
+  UserPlus,
+  Building2,
+  ArrowRight,
+  Mail,
+  MessageCircle,
+  Send,
+  FileText,
+  X,
+  ChevronDown,
+  Download,
+} from "lucide-react";
+import { toast } from "sonner";
 
 interface Props {
   count: number;
@@ -19,7 +34,7 @@ export function BulkActionsBar({ count, onClear, onAction }: Props) {
   if (count === 0) return null;
   const run = (label: string) => {
     onAction(label);
-    toast.success(`${label} queued`, { description: `${count} candidate${count > 1 ? 's' : ''}` });
+    toast.success(`${label} queued`, { description: `${count} candidate${count > 1 ? "s" : ""}` });
   };
 
   return (
@@ -37,30 +52,35 @@ export function BulkActionsBar({ count, onClear, onAction }: Props) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="center">
           <DropdownMenuLabel className="text-[11px]">Assessments</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => run('Speaking Assessment')}>
+          <DropdownMenuItem onClick={() => run("Speaking Assessment")}>
             <Mic className="size-4" /> Speaking Assessment
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => run('Training')}>
+          <DropdownMenuItem onClick={() => run("Training")}>
             <GraduationCap className="size-4" /> Training
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => run('Interview Round 1')}>
+          <DropdownMenuItem onClick={() => run("Interview Round 1")}>
             <Users className="size-4" /> Interview Round 1
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => run('Interview Round 2')}>
+          <DropdownMenuItem onClick={() => run("Interview Round 2")}>
             <Users className="size-4" /> Interview Round 2
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuLabel className="text-[11px]">People</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => run('Recruiter')}>
+          <DropdownMenuItem onClick={() => run("Recruiter")}>
             <UserPlus className="size-4" /> Recruiter
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => run('Employer')}>
+          <DropdownMenuItem onClick={() => run("Employer")}>
             <Building2 className="size-4" /> Employer
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Button size="sm" variant="ghost" className="rounded-full gap-1.5" onClick={() => run('Stage move')}>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="rounded-full gap-1.5"
+        onClick={() => run("Stage move")}
+      >
         <ArrowRight className="size-4" /> Move
       </Button>
 
@@ -71,21 +91,43 @@ export function BulkActionsBar({ count, onClear, onAction }: Props) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="center">
-          <DropdownMenuItem onClick={() => run('Email')}><Mail className="size-4"/> Email</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => run('WhatsApp')}><MessageCircle className="size-4"/> WhatsApp</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => run('SMS')}><Send className="size-4"/> SMS</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => run("Email")}>
+            <Mail className="size-4" /> Email
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => run("WhatsApp")}>
+            <MessageCircle className="size-4" /> WhatsApp
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => run("SMS")}>
+            <Send className="size-4" /> SMS
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Button size="sm" variant="ghost" className="rounded-full gap-1.5" onClick={() => run('Report')}>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="rounded-full gap-1.5"
+        onClick={() => run("Report")}
+      >
         <FileText className="size-4" /> Report
       </Button>
-      <Button size="sm" variant="ghost" className="rounded-full gap-1.5" onClick={() => run('Export')}>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="rounded-full gap-1.5"
+        onClick={() => run("Export")}
+      >
         <Download className="size-4" /> Export
       </Button>
 
       <span className="mx-1 h-5 w-px bg-border" />
-      <Button size="sm" variant="ghost" className="rounded-full" onClick={onClear} aria-label="Clear selection">
+      <Button
+        size="sm"
+        variant="ghost"
+        className="rounded-full"
+        onClick={onClear}
+        aria-label="Clear selection"
+      >
         <X className="size-4" />
       </Button>
     </div>
