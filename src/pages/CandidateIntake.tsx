@@ -25,6 +25,7 @@ import {
   Gauge,
   PanelRightOpen,
   PanelRightClose,
+  Bug,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,9 @@ import { ProcessingStep } from "@/components/intake/ProcessingStep";
 import { ReviewDashboard } from "@/components/intake/ReviewDashboard";
 import { VerificationQueue, type QueueProgress } from "@/components/intake/VerificationQueue";
 import { DocumentFingerprintPanel } from "@/components/intake/DocumentFingerprintPanel";
+import { ExtractionDebugDrawer } from "@/components/intake/ExtractionDebugDrawer";
+import { MigrationBanner } from "@/components/intake/MigrationBanner";
+import { useMigrationFlush } from "@/hooks/useMigrationFlush";
 import {
   makeIntakeBatchShell,
   type IntakeBatch,
@@ -522,6 +526,7 @@ export default function CandidateIntake() {
   const [zoom, setZoom] = useState(100);
   const [docOpen, setDocOpen] = useState(false); // mobile / tablet drawer
   const [fingerprintOpen, setFingerprintOpen] = useState(false); // staff audit panel
+  const [debugOpen, setDebugOpen] = useState(false);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
 
   // Staff-only audit panel: Documentation Officer, Operations Manager
@@ -750,8 +755,19 @@ export default function CandidateIntake() {
   // (exit defined below)
 
   function saveDraft() {
-    toast.success("Draft saved", { description: "You can resume from Candidates → Drafts." });
+    void persistDraftNow().then(() => {
+      toast.success("Draft saved", { description: "You can resume from Candidates → Drafts." });
+    });
   }
+
+  const persistDraftNow = useCallback(async () => {
+    if (!activeCandidateId) return;
+    const r = await saveCandidateDraft(activeCandidateId, {
+      values,
+      verifiedSections: Array.from(verified),
+    });
+    if (r.ok) setSavedAt(new Date(r.savedAt));
+  }, [activeCandidateId, values, verified]);
 
   function setFieldValue(section: SectionId, key: string, v: string) {
     setValues((prev) => ({ ...prev, [section]: { ...(prev[section] ?? {}), [key]: v } }));
@@ -1074,9 +1090,20 @@ export default function CandidateIntake() {
     return idx >= 0 ? { pos: idx + 1, total } : null;
   })();
   const inStudio = stage === "section" || stage === "review";
+  const flush = useMigrationFlush({
+    enabled: inStudio && !!activeCandidateId,
+    onSave: persistDraftNow,
+  });
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground">
+      {flush.active && flush.resumeAt && (
+        <MigrationBanner
+          resumeAt={flush.resumeAt}
+          remainingMs={flush.remainingMs}
+          readOnly={flush.readOnly}
+        />
+      )}
       {/* Top bar */}
       <header className="flex items-center justify-between border-b border-border/60 bg-background/95 px-4 py-3 backdrop-blur sm:px-6">
         <div className="flex items-center gap-3 min-w-0">
@@ -1169,6 +1196,18 @@ export default function CandidateIntake() {
             >
               <ShieldCheck className="size-3.5" />
               <span className="hidden md:inline">Fingerprints</span>
+            </Button>
+          )}
+          {inStudio && canSeeFingerprint && activeCandidateId && (
+            <Button
+              variant={debugOpen ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setDebugOpen((v) => !v)}
+              className="gap-1.5 text-[11px]"
+              title="Extraction debug — Part 9"
+            >
+              <Bug className="size-3.5" />
+              <span className="hidden md:inline">Debug</span>
             </Button>
           )}
         </div>
@@ -1286,7 +1325,7 @@ export default function CandidateIntake() {
               {stage === "section" && (
                 <div className="relative flex flex-1 min-h-0 flex-row overflow-hidden min-w-0">
                   {/* Form — primary workspace (recognition before recall) */}
-                  <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-r border-border/60">
+                  <div className={cn("flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-r border-border/60", flush.readOnly && "pointer-events-none opacity-70")}>
                     <SectionNav
                       currentIndex={sectionIndex}
                       verified={verified}
@@ -1393,11 +1432,17 @@ export default function CandidateIntake() {
                       </div>
                     </div>
                   )}
+                  {canSeeFingerprint && activeCandidateId && debugOpen && (
+                    <ExtractionDebugDrawer
+                      candidateId={activeCandidateId}
+                      onClose={() => setDebugOpen(false)}
+                    />
+                  )}
                 </div>
               )}
 
               {stage === "review" && (
-                <div className="flex flex-1 min-h-0">
+                <div className={cn("flex flex-1 min-h-0", flush.readOnly && "pointer-events-none opacity-70")}>
                   <ReviewStep
                     product={product!}
                     values={values}

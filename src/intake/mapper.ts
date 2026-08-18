@@ -71,7 +71,13 @@ export interface MapDocumentResult {
   mrzPresent: boolean;
   mrzChecksumValid: boolean;
   /** extracted name → resolved key (or null) — powers the debug panel. */
-  trace: Array<{ extracted: string; resolved: string | null; outcome: string }>;
+  trace: Array<{
+    extracted: string;
+    resolved: string | null;
+    outcome: string;
+    rawValue?: string;
+    normalisedValue?: string;
+  }>;
 }
 
 export function normaliseKeyName(name: string): string {
@@ -205,7 +211,7 @@ export function mapDocument(input: MapDocumentInput): MapDocumentResult {
           page: 1,
           snippet: mrz.line2,
         });
-        trace.push({ extracted: `mrz:${key}`, resolved: key, outcome: "mrz" });
+        trace.push({ extracted: `mrz:${key}`, resolved: key, outcome: "mrz", rawValue: mf.value, normalisedValue: norm.value });
       }
       if (!mrz.checksumValid) {
         reviewItems.push({
@@ -220,7 +226,7 @@ export function mapDocument(input: MapDocumentInput): MapDocumentResult {
   for (const raw of input.fields) {
     const value = (raw.value ?? "").toString().trim();
     if (!value || value.toLowerCase() === "null" || value === "-" || /^n\/?a$/i.test(value)) {
-      trace.push({ extracted: raw.name, resolved: null, outcome: "empty" });
+      trace.push({ extracted: raw.name, resolved: null, outcome: "empty", rawValue: value });
       continue;
     }
     const res = resolveKey(raw.name, docType, {
@@ -236,7 +242,7 @@ export function mapDocument(input: MapDocumentInput): MapDocumentResult {
         docType,
         reason: res.reason ?? "no_alias",
       });
-      trace.push({ extracted: raw.name, resolved: null, outcome: res.reason ?? "no_alias" });
+      trace.push({ extracted: raw.name, resolved: null, outcome: res.reason ?? "no_alias", rawValue: value });
       if (res.reason === "ambiguous" && res.ambiguous) {
         reviewItems.push({
           code: "ambiguous_section",
@@ -267,7 +273,13 @@ export function mapDocument(input: MapDocumentInput): MapDocumentResult {
       bbox: raw.bbox ?? null,
       snippet: raw.rawText,
     });
-    trace.push({ extracted: raw.name, resolved: def.key, outcome: "mapped" });
+    trace.push({
+      extracted: raw.name,
+      resolved: def.key,
+      outcome: "mapped",
+      rawValue: value,
+      normalisedValue: norm.value,
+    });
   }
 
   return { mapped, unmapped, reviewItems, mrzPresent, mrzChecksumValid, trace };

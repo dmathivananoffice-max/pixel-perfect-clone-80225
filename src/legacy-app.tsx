@@ -23,6 +23,7 @@ const ContractSigning = lazy(() => import("@/pages/ContractSigning"));
 const EmailCenter = lazy(() => import("@/pages/EmailCenter"));
 const UserManagement = lazy(() => import("@/pages/UserManagement"));
 const RolesPermissions = lazy(() => import("@/pages/RolesPermissions"));
+const Parity = lazy(() => import("@/pages/Parity"));
 const Reports = lazy(() => import("@/pages/Reports"));
 
 function PageLoader() {
@@ -76,6 +77,7 @@ function App() {
             <Route path="/documents/bulk" element={<Navigate to="/candidates/new" replace />} />
             <Route path="/admin/users" element={<UserManagement />} />
             <Route path="/admin/roles" element={<RolesPermissions />} />
+            <Route path="/admin/parity" element={<Parity />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Route>

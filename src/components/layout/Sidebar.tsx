@@ -113,6 +113,12 @@ const navItems: NavItem[] = [
     roles: ["super_admin", "managing_director"],
   },
   {
+    label: "Parity",
+    path: "/admin/parity",
+    icon: <ShieldCheck className="w-5 h-5" />,
+    roles: ["super_admin", "managing_director"],
+  },
+  {
     label: "Reports",
     path: "/reports",
     icon: <BarChart3 className="w-5 h-5" />,

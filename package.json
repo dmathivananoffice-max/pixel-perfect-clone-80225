@@ -11,7 +11,9 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test:intake-hang": "bun test tests/intake-draft-hang.test.ts tests/intake-processing-stuck-detector.test.ts tests/intake-pipeline-speed.test.ts",
-    "verify:intake-hang": "bun scripts/verify_intake_draft_hang.ts"
+    "verify:intake-hang": "bun scripts/verify_intake_draft_hang.ts",
+    "test:sprint0": "bun test tests/sprint0-readiness-freeze.test.ts tests/sprint0-parity.test.ts src/intake/__tests__/mapper.test.ts",
+    "capture:readiness": "bun scripts/capture_readiness_snapshots.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

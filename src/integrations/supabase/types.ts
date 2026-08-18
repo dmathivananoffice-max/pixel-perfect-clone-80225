@@ -197,6 +197,7 @@ export type Database = {
           verified_at: string | null
           verified_by: string | null
           version: number
+          extraction_debug: Json | null
         }
         Insert: {
           ai_model_version?: string | null
@@ -230,6 +231,7 @@ export type Database = {
           verified_at?: string | null
           verified_by?: string | null
           version?: number
+          extraction_debug?: Json | null
         }
         Update: {
           ai_model_version?: string | null
@@ -263,6 +265,7 @@ export type Database = {
           verified_at?: string | null
           verified_by?: string | null
           version?: number
+          extraction_debug?: Json | null
         }
         Relationships: [
           {
@@ -344,6 +347,7 @@ export type Database = {
           total_score: number | null
           updated_at: string
           verification_state: Json
+          schema_version: number
         }
         Insert: {
           assigned_recruiter_id?: string | null
@@ -375,6 +379,7 @@ export type Database = {
           total_score?: number | null
           updated_at?: string
           verification_state?: Json
+          schema_version?: number
         }
         Update: {
           assigned_recruiter_id?: string | null
@@ -406,6 +411,7 @@ export type Database = {
           total_score?: number | null
           updated_at?: string
           verification_state?: Json
+          schema_version?: number
         }
         Relationships: [
           {
@@ -877,9 +883,121 @@ export type Database = {
         }
         Relationships: []
       }
+      intake_schema_meta: {
+        Row: {
+          key: string
+          value: Json
+          updated_at: string
+        }
+        Insert: {
+          key: string
+          value: Json
+          updated_at?: string
+        }
+        Update: {
+          key?: string
+          value?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      readiness_snapshots: {
+        Row: {
+          id: string
+          candidate_id: string
+          readiness_pct: number
+          captured_at: string
+          schema_version: number | null
+          required_total: number | null
+          required_satisfied: number | null
+          fingerprint: Json
+        }
+        Insert: {
+          id?: string
+          candidate_id: string
+          readiness_pct: number
+          captured_at?: string
+          schema_version?: number | null
+          required_total?: number | null
+          required_satisfied?: number | null
+          fingerprint?: Json
+        }
+        Update: {
+          id?: string
+          candidate_id?: string
+          readiness_pct?: number
+          captured_at?: string
+          schema_version?: number | null
+          required_total?: number | null
+          required_satisfied?: number | null
+          fingerprint?: Json
+        }
+        Relationships: []
+      }
+      system_notices: {
+        Row: {
+          id: string
+          kind: string
+          payload: Json
+          created_at: string
+          expires_at: string | null
+          created_by_name: string | null
+        }
+        Insert: {
+          id?: string
+          kind: string
+          payload?: Json
+          created_at?: string
+          expires_at?: string | null
+          created_by_name?: string | null
+        }
+        Update: {
+          id?: string
+          kind?: string
+          payload?: Json
+          created_at?: string
+          expires_at?: string | null
+          created_by_name?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      intake_candidates: {
+        Row: {
+          assigned_recruiter_id: string | null
+          assigned_recruiter_name: string | null
+          batch_id: string | null
+          candidate_id: string
+          country: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by_name: string | null
+          dob: string | null
+          email: string
+          extracted_fields: Json
+          first_name: string
+          gate_status: string
+          gender: string | null
+          highest_qualification: string | null
+          is_mock: boolean
+          last_name: string
+          phone: string
+          product_id: string
+          program_name: string | null
+          rank: number | null
+          schema_version: number
+          source_agency_id: string | null
+          source_agency_name: string | null
+          source_type: string
+          status: string
+          total_score: number | null
+          updated_at: string
+          verification_state: Json
+        }
+        Relationships: []
+      }
     }
     Functions: {
       current_role_key: { Args: never; Returns: string }

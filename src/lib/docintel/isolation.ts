@@ -40,6 +40,7 @@ export interface IsolatedDocument {
   verified: boolean;
   verified_by: string | null;
   verified_at: string | null;
+  extraction_debug?: unknown;
 }
 
 export interface IsolatedExtraction {

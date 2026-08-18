@@ -4,7 +4,7 @@
 //   4 confidence · 5 recency
 // ─────────────────────────────────────────────────────────────
 import { docAuthority } from "./documentTypes";
-import { FIELD_BY_KEY, requiredFields } from "./fieldDictionary";
+import { FIELD_BY_KEY, requiredFieldsForSchemaVersion } from "./fieldDictionary";
 import type { FieldStatus, MappedValue } from "./mapper";
 
 export interface CompetingValue {
@@ -192,8 +192,14 @@ export function validateMerged(fields: MergedField[]): ReviewItem[] {
 /**
  * ONE definition of readiness, shared by Mission Control's extraction
  * success % and the per-candidate readiness ring (Part 7.4).
+ * Required-field list is resolved from the candidate's schema_version.
+ * Version 1 always uses LEGACY_REQUIRED_SET (the freeze). Version 2+
+ * uses the live dictionary — which at Sprint 0 is identical.
  */
-export function readiness(fields: MergedField[]): {
+export function readiness(
+  fields: MergedField[],
+  schemaVersion: number | null | undefined = 1,
+): {
   requiredTotal: number;
   requiredSatisfied: number;
   pct: number;
@@ -201,7 +207,7 @@ export function readiness(fields: MergedField[]): {
   conflicts: number;
   missingRequired: string[];
 } {
-  const req = requiredFields();
+  const req = requiredFieldsForSchemaVersion(schemaVersion);
   const byKey = new Map(fields.map((f) => [f.key, f]));
   let satisfied = 0;
   let lowConfidence = 0;

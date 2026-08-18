@@ -211,8 +211,36 @@ export function fieldsForSection(section: string): FieldDef[] {
   return FIELD_DICTIONARY.filter((d) => d.section === section);
 }
 
+/**
+ * CURRENT required-field list, copied verbatim at Sprint 0.
+ * Used for schema_version 1 so later dictionary edits cannot move
+ * existing candidates' readiness_pct. Do not reorder or rewrite these
+ * strings — they are the freeze.
+ */
+export const LEGACY_REQUIRED_SET: readonly string[] = [
+  "personal.first_name",
+  "personal.last_name",
+  "personal.dob",
+  "personal.nationality",
+  "passport.passport_no",
+  "passport.expiry_date",
+  "contact.email",
+  "contact.phone",
+  "education.qualification",
+  "language.level",
+];
+
 export function requiredFields(): FieldDef[] {
   return FIELD_DICTIONARY.filter((d) => d.required);
+}
+
+/** Resolve the required-field list for a candidate's schema_version. */
+export function requiredFieldsForSchemaVersion(version: number | null | undefined): FieldDef[] {
+  const v = version ?? 1;
+  if (v <= 1) {
+    return LEGACY_REQUIRED_SET.map((key) => FIELD_BY_KEY[key]).filter(Boolean);
+  }
+  return requiredFields();
 }
 
 /** Namespaced key → {section, field} for legacy consumers. */

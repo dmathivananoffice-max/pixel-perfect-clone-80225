@@ -24,10 +24,11 @@ import { fetchCandidateDocuments } from "./isolation";
 import { getOcrProvider, getAiExtractor } from ".";
 import { LOW_CONFIDENCE_THRESHOLD, type OcrResult } from "./types";
 import type { OcrDocumentLog } from "./providers/ocrspace";
-import { mapDocument, type MappedValue } from "@/intake/mapper";
+import { mapDocument, type MappedValue, type MapDocumentResult } from "@/intake/mapper";
 import { mergeCandidateFields, validateMerged } from "@/intake/merge";
 import { canonicalDocType, classifyDocument } from "@/intake/documentTypes";
 import { withTimeout } from "@/lib/withTimeout";
+import type { ExtractionDebugPayload } from "@/lib/intake/extractionDebug";
 
 const PIPELINE_DB_TIMEOUT_MS = 20_000;
 /** Mean block confidence for an OCR result (0..1), used for the document badge. */
@@ -386,6 +387,7 @@ export async function runDocumentIntelligencePipeline(
   onStep?.("mapping");
   const allMapped: MappedValue[] = [];
   const allUnmapped: Array<Record<string, unknown>> = [];
+  const mapByDoc = new Map<string, MapDocumentResult>();
   for (const [documentId, v] of ocrByDoc.entries()) {
     const docFields = aiResult.fields.filter((f) => f.documentId === documentId);
     const res = mapDocument({
@@ -401,6 +403,7 @@ export async function runDocumentIntelligencePipeline(
         bbox: f.bbox ?? null,
       })),
     });
+    mapByDoc.set(documentId, res);
     allMapped.push(...res.mapped);
     for (const u of res.unmapped) {
       allUnmapped.push({ ...u });
@@ -510,6 +513,7 @@ export async function runDocumentIntelligencePipeline(
     }
   };
 
+  let dbWriteError: string | null = null;
   if (rows.length > 0) {
     // Re-running extraction replaces prior AI rows; human values are held in
     // separate rows (human_value) and are never deleted here.
@@ -522,9 +526,77 @@ export async function runDocumentIntelligencePipeline(
     );
     await quietDb("insert extractions", async () => {
       const { error } = await supabase.from("document_extractions").insert(rows as never);
-      if (error) throw error;
+      if (error) {
+        dbWriteError = error.message;
+        throw error;
+      }
     });
   }
+
+  // Part 9 debug payload — staff drawer only; does not affect draftFields.
+  const mergeDecision = merged.map((f) => ({
+    key: f.key,
+    winner: f.value,
+    source: f.source,
+    status: f.status,
+    competing: f.competing.map((c) => ({
+      value: c.value,
+      docType: c.docType,
+      confidence: c.confidence,
+    })),
+  }));
+  const debugAt = new Date().toISOString();
+  void (async () => {
+    for (const doc of documents) {
+      const mapped = mapByDoc.get(doc.id);
+      const ocrBundle = ocrByDoc.get(doc.id);
+      if (!mapped && !ocrBundle) continue;
+      const classif = classifyDocument({
+        fileName: doc.file_name,
+        ocrText: ocrBundle?.ocr.text,
+      });
+      const payload: ExtractionDebugPayload = {
+        uploadedFile: {
+          fileName: doc.file_name,
+          storagePath: doc.storage_path,
+          mimeType: doc.mime_type,
+          sizeBytes: doc.size_bytes,
+        },
+        ocrOutput: {
+          text: ocrBundle?.ocr.text ?? "",
+          pageCount: ocrBundle?.ocr.pageCount ?? doc.page_count,
+          provider: ocrBundle?.ocr.provider ?? doc.ocr_provider,
+          confidence: doc.ocr_confidence,
+        },
+        classification: classif,
+        rawModelJson: ocrBundle?.ocr ?? doc.ocr_raw,
+        mapping: mapped?.trace ?? [],
+        normalisation: (mapped?.mapped ?? []).map((m) => ({
+          extracted: m.rawValue,
+          before: m.rawValue,
+          after: m.value,
+          flags: m.flags,
+          note: m.note,
+        })),
+        mergeDecision,
+        dbWrite: {
+          ok: !dbWriteError,
+          fieldsWritten: rows.length,
+          error: dbWriteError,
+          at: debugAt,
+        },
+      };
+      await quietDb(`extraction_debug ${doc.id}`, () =>
+        supabase
+          .from("candidate_documents")
+          .update({ extraction_debug: JSON.parse(JSON.stringify(payload)) as never })
+          .eq("id", doc.id)
+          .eq("candidate_id", candidateId),
+      );
+    }
+  })().catch((err) => {
+    console.warn("[docintel] extraction_debug persist failed", err);
+  });
 
   void (async () => {
     if (allUnmapped.length > 0) {
