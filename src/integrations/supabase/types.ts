@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
@@ -322,6 +322,8 @@ export type Database = {
           country: string
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by_name: string | null
           dob: string | null
           email: string
           extracted_fields: Json
@@ -351,6 +353,8 @@ export type Database = {
           country?: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by_name?: string | null
           dob?: string | null
           email?: string
           extracted_fields?: Json
@@ -380,6 +384,8 @@ export type Database = {
           country?: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by_name?: string | null
           dob?: string | null
           email?: string
           extracted_fields?: Json
@@ -521,6 +527,97 @@ export type Database = {
             columns: ["document_id"]
             isOneToOne: false
             referencedRelation: "candidate_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_logs: {
+        Row: {
+          agency_id: string | null
+          body: string | null
+          candidate_id: string | null
+          clicked_at: string | null
+          created_at: string
+          created_by: string | null
+          employer_id: string | null
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          opened_at: string | null
+          provider_message_id: string | null
+          recipient_email: string
+          sent_at: string | null
+          sent_by: string | null
+          status: string
+          subject: string
+          template: string
+          template_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          agency_id?: string | null
+          body?: string | null
+          candidate_id?: string | null
+          clicked_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          employer_id?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          opened_at?: string | null
+          provider_message_id?: string | null
+          recipient_email: string
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+          subject: string
+          template?: string
+          template_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string | null
+          body?: string | null
+          candidate_id?: string | null
+          clicked_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          employer_id?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          opened_at?: string | null
+          provider_message_id?: string | null
+          recipient_email?: string
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+          subject?: string
+          template?: string
+          template_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "email_logs_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "employers"
             referencedColumns: ["id"]
           },
         ]
@@ -790,6 +887,7 @@ export type Database = {
       has_role: { Args: { _role_key: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
+      purge_binned_candidates: { Args: never; Returns: number }
     }
     Enums: {
       [_ in never]: never

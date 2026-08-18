@@ -1,8 +1,11 @@
 // ─────────────────────────────────────────────────────────────
-// Together AI server function — the ONLY place TOGETHER_API_KEY
-// is touched. Every call goes through here so we can swap the
-// provider (Anthropic, OpenAI, Vertex, etc.) without changing
-// any calling code.
+// Vision OCR server function — the ONLY place vision API keys
+// (MISTRAL_API_KEY / TOGETHER_API_KEY / LOVABLE_API_KEY) are touched.
+// Every call goes through here so we can swap the provider without
+// changing any calling code.
+//
+// Default backend: Mistral AI (mistral-medium-latest).
+// Fallbacks: Together AI, then Lovable AI gateway.
 //
 // Isolation invariants enforced server-side:
 //   • The caller must be authenticated (requireSupabaseAuth).
@@ -11,14 +14,16 @@
 //     call the model at all — no cross-candidate leakage possible.
 //
 // Input protocol:
-//   The client rasterizes the file to per-page PNG data URLs and
+//   The client rasterizes the file to per-page JPEG data URLs and
 //   posts them here. We never accept a storage_path from the client
 //   and re-download it under service role, because that would
 //   bypass RLS.
 // ─────────────────────────────────────────────────────────────
-import { createServerFn } from '@tanstack/react-start';
-import { z } from 'zod';
-import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { normalizeExtractionField } from "./form-schema";
+import { buildMasterOcrPrompt } from "./master-prompt";
 
 const PageInput = z.object({
   pageNumber: z.number().int().positive(),
@@ -32,7 +37,7 @@ const ExtractInput = z.object({
   documentId: z.string().min(8),
   docType: z.string().min(1),
   fileName: z.string().min(1),
-  pages: z.array(PageInput).min(1).max(20),
+  pages: z.array(PageInput).min(1).max(12),
 });
 
 export interface TogetherFieldRaw {
@@ -54,11 +59,11 @@ export interface TogetherPageRaw {
   /** Full model response for this page, JSON-stringified so it round-trips through the RPC boundary. */
   rawJson: string;
   usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number } | null;
-
-
 }
 
 export interface TogetherExtractResult {
+  /** Stable provider id for audit/UI (e.g. mistral-vision). */
+  provider: string;
   model: string;
   processedAt: string;
   documentId: string;
@@ -70,41 +75,111 @@ export interface TogetherExtractResult {
   errors: string[];
 }
 
-function buildPrompt(docType: string, fileName: string): string {
-  return [
-    `You are a document intelligence engine.`,
-    `Document type hint: "${docType}". Original filename: "${fileName}".`,
-    ``,
-    `Extract every relevant field visible on THIS page image. Return ONLY a single valid JSON object (no prose, no markdown fences) matching this schema:`,
-    `{`,
-    `  "text": "<full transcribed text on this page>",`,
-    `  "fields": [`,
-    `    {`,
-    `      "section": "identity | education | employment | language | medical | driving | address | contact | general",`,
-    `      "field_name": "<snake_case canonical key, e.g. passport_number, date_of_birth, degree_title>",`,
-    `      "value": "<exact value as written on the document>",`,
-    `      "confidence": <number 0..1>,`,
-    `      "page_number": <this page's number>,`,
-    `      "bounding_box": [x1, y1, x2, y2]`,
-    `    }`,
-    `  ],`,
-    `  "warnings": ["<non-fatal notes, e.g. text partially obscured>"]`,
-    `}`,
-    ``,
-    `Rules:`,
-    `- bounding_box is REQUIRED for every field and must be in image pixel coordinates: [x1, y1, x2, y2] where (x1,y1) is the top-left corner and (x2,y2) is the bottom-right corner of the rendered text on this page image.`,
-    `- If you cannot read a field, do NOT include it. Never invent data.`,
-    `- Do not merge information from other documents; extract only what is visible on THIS image.`,
-    `- Never include personal opinions or summaries. Field values must be verbatim.`,
-    `- For German language certificates (Goethe, TELC, ÖSD, TestDaF) include: certificate_level, certificate_number, examination_date, issuing_institute, module_reading, module_listening, module_writing, module_speaking when visible.`,
-    `- Output must be a single JSON object. Do not wrap it in prose or code fences.`,
-  ].join('\n');
+function buildPrompt(docType: string, fileName: string, pageNumber: number): string {
+  return buildMasterOcrPrompt(docType, fileName, pageNumber);
+}
+
+function metadataWarnings(meta: unknown): string[] {
+  if (!meta || typeof meta !== "object") return [];
+  const m = meta as Record<string, unknown>;
+  const out: string[] = [];
+  const pick = (k: string, label: string) => {
+    const v = m[k];
+    if (typeof v === "string" && v.trim()) out.push(`${label}: ${v.trim()}`);
+    if (typeof v === "boolean" && v) out.push(`${label}: true`);
+  };
+  pick("document_title", "document_title");
+  pick("certificate_number", "certificate_number");
+  pick("registration_number", "registration_number");
+  pick("institution_name", "institution_name");
+  pick("institution_address", "institution_address");
+  pick("signatory_name", "signatory_name");
+  pick("signatory_designation", "signatory_designation");
+  pick("issue_date", "metadata_issue_date");
+  pick("qr_code_present", "qr_code_present");
+  pick("barcode_present", "barcode_present");
+  pick("stamp_present", "stamp_present");
+  pick("signature_present", "signature_present");
+  return out.map((s) => `metadata:${s}`);
+}
+
+function parsePageFields(
+  raw: unknown,
+  pageNumber: number,
+): { fields: TogetherFieldRaw[]; warnings: string[]; text: string; documentType?: string } {
+  const v = (raw && typeof raw === "object" ? raw : {}) as {
+    text?: string;
+    fields?: unknown[];
+    extractions?: unknown[];
+    warnings?: unknown[];
+    document_type?: string;
+    document_metadata?: unknown;
+    quality?: { requires_manual_review?: boolean; image_quality?: string; ocr_quality?: string };
+  };
+
+  const warnings: string[] = Array.isArray(v.warnings) ? v.warnings.map(String) : [];
+  warnings.push(...metadataWarnings(v.document_metadata));
+  if (v.document_type) warnings.push(`document_type:${v.document_type}`);
+  if (v.quality?.requires_manual_review) warnings.push("requires_manual_review");
+  if (v.quality?.image_quality) warnings.push(`image_quality:${v.quality.image_quality}`);
+  if (v.quality?.ocr_quality) warnings.push(`ocr_quality:${v.quality.ocr_quality}`);
+
+  // Prefer new `extractions` array; fall back to legacy `fields`.
+  const rawList = Array.isArray(v.extractions)
+    ? v.extractions
+    : Array.isArray(v.fields)
+      ? v.fields
+      : [];
+
+  const fields: TogetherFieldRaw[] = [];
+  for (const item of rawList) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    const normalized = normalizeExtractionField({
+      section: row.section,
+      field_name: row.field_name,
+      value: row.value,
+      confidence: row.confidence,
+      evidence: row.evidence,
+      bounding_box: row.bounding_box,
+      page_number: row.page_number ?? pageNumber,
+    });
+    if (!normalized) continue;
+    // Drop very low-confidence values (prefer omit + warn).
+    if (normalized.confidence > 0 && normalized.confidence < 0.6) {
+      warnings.push(
+        `low_confidence_omitted:${normalized.section}.${normalized.field_name}=${normalized.confidence}`,
+      );
+      continue;
+    }
+    if (normalized.evidence) {
+      warnings.push(`evidence:${normalized.section}.${normalized.field_name}:${normalized.evidence}`);
+    }
+    fields.push({
+      section: normalized.section,
+      field_name: normalized.field_name,
+      value: normalized.value,
+      confidence: normalized.confidence,
+      page_number: pageNumber,
+      bounding_box: normalized.bounding_box ?? null,
+    });
+  }
+
+  return {
+    fields,
+    warnings,
+    text: typeof v.text === "string" ? v.text : "",
+    documentType: typeof v.document_type === "string" ? v.document_type : undefined,
+  };
 }
 
 function stripFences(s: string): string {
   const t = s.trim();
-  if (t.startsWith('```')) {
-    return t.replace(/^```(?:json)?\s*/i, '').replace(/```$/, '').trim();
+  if (t.startsWith("```")) {
+    return t
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/```$/, "")
+      .trim();
   }
   return t;
 }
@@ -123,67 +198,207 @@ async function callTogether(
   model: string,
   prompt: string,
   imageDataUrl: string,
-): Promise<{ content: string; usage?: TogetherPageRaw['usage'] }> {
-  const url = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
+): Promise<{ content: string; usage?: TogetherPageRaw["usage"] }> {
+  const url = `${baseUrl.replace(/\/$/, "")}/chat/completions`;
   const body = {
     model,
     messages: [
       {
-        role: 'user',
+        role: "user",
         content: [
-          { type: 'text', text: prompt },
-          { type: 'image_url', image_url: { url: imageDataUrl } },
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: imageDataUrl } },
         ],
       },
     ],
     temperature: 0,
-    max_tokens: 4096,
-    response_format: { type: 'json_object' as const },
+    max_tokens: 6144,
+    response_format: { type: "json_object" as const },
   };
 
-  // Exponential backoff on 429 / 5xx.
-  const maxAttempts = 4;
-  let lastErr = '';
+  // Exponential backoff on 429 / 5xx. Two attempts keeps OCR responsive when
+  // the provider is healthy; further retries mostly add latency on hard failures.
+  const maxAttempts = 2;
+  const requestTimeoutMs = 45_000;
+  let lastErr = "";
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(requestTimeoutMs),
+      });
+    } catch (error) {
+      const timedOut = error instanceof Error && error.name === "TimeoutError";
+      lastErr = timedOut
+        ? `Vision request timed out after ${Math.round(requestTimeoutMs / 1000)}s`
+        : error instanceof Error
+          ? error.message
+          : String(error);
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 500 * Math.pow(2, attempt - 1)));
+        continue;
+      }
+      break;
+    }
     if (res.ok) {
       const json = (await res.json()) as {
         choices?: Array<{ message?: { content?: string } }>;
-        usage?: TogetherPageRaw['usage'];
+        usage?: TogetherPageRaw["usage"];
       };
-      const content = json.choices?.[0]?.message?.content ?? '';
+      const content = json.choices?.[0]?.message?.content ?? "";
       return { content, usage: json.usage };
     }
-    const text = await res.text().catch(() => '');
-    lastErr = `Together AI ${res.status}: ${text.slice(0, 500)}`;
+    const text = await res.text().catch(() => "");
+    lastErr = `Vision API ${res.status}: ${text.slice(0, 500)}`;
     if (res.status !== 429 && res.status < 500) break;
     await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt - 1)));
   }
-  throw new Error(lastErr || 'Together AI call failed');
+  throw new Error(lastErr || "Vision API call failed");
 }
 
-export const extractDocumentWithTogether = createServerFn({ method: 'POST' })
+// ── Multimodal preflight ──────────────────────────────────────
+// Verifies the configured model actually accepts image input before we
+// spend time rasterizing pages and burning tokens. Cached per-model so we
+// only pay the cost once per server instance.
+const TINY_PNG_DATA_URL =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+
+type PreflightResult =
+  | { ok: true; model: string }
+  | { ok: false; model: string; reason: string; status?: number };
+
+const preflightCache = new Map<string, Promise<PreflightResult>>();
+
+async function preflightVisionModel(
+  apiKey: string,
+  baseUrl: string,
+  model: string,
+): Promise<PreflightResult> {
+  const cached = preflightCache.get(model);
+  if (cached) return cached;
+  const run = (async (): Promise<PreflightResult> => {
+    const url = `${baseUrl.replace(/\/$/, "")}/chat/completions`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        max_tokens: 1,
+        temperature: 0,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: "ok" },
+              { type: "image_url", image_url: { url: TINY_PNG_DATA_URL } },
+            ],
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (res.ok) return { ok: true, model };
+    const text = (await res.text().catch(() => "")).slice(0, 800);
+    const lower = text.toLowerCase();
+    let reason = `Together AI ${res.status}: ${text}`;
+    if (lower.includes("multimodal not supported")) {
+      reason = `Model "${model}" does not accept image input (multimodal not supported). Set TOGETHER_VISION_MODEL to a vision-language endpoint (e.g. a dedicated endpoint for Qwen2.5-VL / Qwen3-VL).`;
+    } else if (lower.includes("model_not_available") || lower.includes("non-serverless")) {
+      reason = `Model "${model}" is not serverless on this account. Create a dedicated endpoint on Together AI and set TOGETHER_VISION_MODEL to that endpoint ID.`;
+    } else if (res.status === 401 || res.status === 403) {
+      reason = `Together AI rejected the API key (${res.status}). Check TOGETHER_API_KEY.`;
+    } else if (res.status === 404) {
+      reason = `Model/endpoint "${model}" not found (404). Verify TOGETHER_VISION_MODEL.`;
+    }
+    return { ok: false, model, reason, status: res.status };
+  })();
+  preflightCache.set(model, run);
+  const result = await run;
+  // Don't cache transient/server failures — allow retry after backoff.
+  if (!result.ok && (result.status === 429 || (result.status ?? 0) >= 500)) {
+    preflightCache.delete(model);
+  }
+  return result;
+}
+
+/**
+ * Resolve the vision backend.
+ * Priority: Mistral (default) → Together AI → Lovable AI gateway.
+ */
+function resolveVisionConfig(): {
+  provider: string;
+  apiKey: string | undefined;
+  baseUrl: string;
+  model: string;
+  needsPreflight: boolean;
+  missingMessage: string;
+} {
+  // Mistral is the default OCR/vision backend.
+  const mistralKey = process.env.MISTRAL_API_KEY;
+  if (mistralKey) {
+    return {
+      provider: "mistral-vision",
+      apiKey: mistralKey,
+      baseUrl: process.env.MISTRAL_API_BASE_URL ?? "https://api.mistral.ai/v1",
+      model: process.env.MISTRAL_VISION_MODEL ?? "mistral-medium-latest",
+      needsPreflight: false,
+      missingMessage: "MISTRAL_API_KEY is not configured on the server.",
+    };
+  }
+  const togetherKey = process.env.TOGETHER_API_KEY;
+  if (togetherKey) {
+    return {
+      provider: "together-qwen2.5-vl",
+      apiKey: togetherKey,
+      baseUrl: process.env.TOGETHER_API_BASE_URL ?? "https://api.together.ai/v1",
+      model: process.env.TOGETHER_VISION_MODEL ?? "Qwen/Qwen2.5-VL-72B-Instruct",
+      needsPreflight: true,
+      missingMessage: "TOGETHER_API_KEY is not configured on the server.",
+    };
+  }
+  return {
+    provider: "lovable-vision",
+    apiKey: process.env.LOVABLE_API_KEY,
+    baseUrl: "https://ai.gateway.lovable.dev/v1",
+    model: process.env.LOVABLE_VISION_MODEL ?? "google/gemini-2.5-flash",
+    needsPreflight: false,
+    missingMessage:
+      "No OCR vision backend is configured (needs MISTRAL_API_KEY, or TOGETHER_API_KEY / LOVABLE_API_KEY).",
+  };
+}
+
+/** Public server fn so the UI can validate vision config on demand. */
+export const validateTogetherVisionModel = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async (): Promise<PreflightResult & { baseUrl: string; provider: string }> => {
+    const { apiKey, baseUrl, model, missingMessage, provider } = resolveVisionConfig();
+    if (!apiKey) {
+      return { ok: false, model, reason: missingMessage, baseUrl, provider };
+    }
+    preflightCache.delete(model); // bypass cache for on-demand validation
+    const r = await preflightVisionModel(apiKey, baseUrl, model);
+    return { ...r, baseUrl, provider };
+  });
+
+export const extractDocumentWithTogether = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ExtractInput.parse(input))
   .handler(async ({ data, context }): Promise<TogetherExtractResult> => {
-    const apiKey = process.env.TOGETHER_API_KEY;
-    const baseUrl = process.env.TOGETHER_API_BASE_URL ?? 'https://api.together.ai/v1';
-    const model = process.env.TOGETHER_VISION_MODEL ?? 'Qwen/Qwen2.5-VL-72B-Instruct';
-    if (!apiKey) throw new Error('TOGETHER_API_KEY is not configured on the server.');
+    const { apiKey, baseUrl, model, needsPreflight, missingMessage, provider } = resolveVisionConfig();
+    if (!apiKey) throw new Error(missingMessage);
 
     // ISOLATION GATE: verify the doc belongs to the caller-visible candidate BEFORE any model call.
     const { data: doc, error } = await context.supabase
-      .from('candidate_documents')
-      .select('id, candidate_id')
-      .eq('id', data.documentId)
-      .eq('candidate_id', data.candidateId)
+      .from("candidate_documents")
+      .select("id, candidate_id")
+      .eq("id", data.documentId)
+      .eq("candidate_id", data.candidateId)
       .maybeSingle();
     if (error) throw new Error(`Isolation check failed: ${error.message}`);
     if (!doc) {
@@ -192,12 +407,19 @@ export const extractDocumentWithTogether = createServerFn({ method: 'POST' })
       );
     }
 
-    const prompt = buildPrompt(data.docType, data.fileName);
     const pagesOut: TogetherPageRaw[] = [];
     const errors: string[] = [];
     const totalUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
 
-    for (const page of data.pages) {
+    // Preflight: bail out early if the configured model can't accept images.
+    if (needsPreflight) {
+      const pf = await preflightVisionModel(apiKey, baseUrl, model);
+      if (!pf.ok) throw new Error(`Vision model preflight failed: ${pf.reason}`);
+    }
+
+
+    const processPage = async (page: (typeof data.pages)[number]) => {
+      const prompt = buildPrompt(data.docType, data.fileName, page.pageNumber);
       try {
         const { content, usage } = await callTogether(apiKey, baseUrl, model, prompt, page.dataUrl);
         if (usage) {
@@ -212,49 +434,36 @@ export const extractDocumentWithTogether = createServerFn({ method: 'POST' })
             pageNumber: page.pageNumber,
             widthPx: page.widthPx,
             heightPx: page.heightPx,
-            text: '',
+            text: "",
             fields: [],
             warnings: [`invalid_json:${parsed.error}`],
             rawJson: JSON.stringify({ rawContent: content }),
-            usage: usage ? { prompt_tokens: usage.prompt_tokens ?? 0, completion_tokens: usage.completion_tokens ?? 0, total_tokens: usage.total_tokens ?? 0 } : null,
-
+            usage: usage
+              ? {
+                  prompt_tokens: usage.prompt_tokens ?? 0,
+                  completion_tokens: usage.completion_tokens ?? 0,
+                  total_tokens: usage.total_tokens ?? 0,
+                }
+              : null,
           });
-          continue;
+          return;
         }
-        const v = parsed.value as {
-          text?: string;
-          fields?: TogetherFieldRaw[];
-          warnings?: string[];
-        };
-        const fields = Array.isArray(v.fields)
-          ? v.fields
-              .filter((f) => f && typeof f.field_name === 'string' && typeof f.value === 'string')
-              .map<TogetherFieldRaw>((f) => ({
-                section: String(f.section ?? 'general'),
-                field_name: String(f.field_name),
-                value: String(f.value),
-                confidence: Math.max(0, Math.min(1, Number(f.confidence ?? 0))),
-                page_number: page.pageNumber,
-                bounding_box: Array.isArray(f.bounding_box) && f.bounding_box.length === 4
-                  ? [
-                      Number(f.bounding_box[0]),
-                      Number(f.bounding_box[1]),
-                      Number(f.bounding_box[2]),
-                      Number(f.bounding_box[3]),
-                    ]
-                  : null,
-              }))
-          : [];
+        const pageParsed = parsePageFields(parsed.value, page.pageNumber);
         pagesOut.push({
           pageNumber: page.pageNumber,
           widthPx: page.widthPx,
           heightPx: page.heightPx,
-          text: typeof v.text === 'string' ? v.text : '',
-          fields,
-          warnings: Array.isArray(v.warnings) ? v.warnings.map(String) : [],
-          rawJson: JSON.stringify(v),
-          usage: usage ? { prompt_tokens: usage.prompt_tokens ?? 0, completion_tokens: usage.completion_tokens ?? 0, total_tokens: usage.total_tokens ?? 0 } : null,
-
+          text: pageParsed.text,
+          fields: pageParsed.fields,
+          warnings: pageParsed.warnings,
+          rawJson: JSON.stringify(parsed.value),
+          usage: usage
+            ? {
+                prompt_tokens: usage.prompt_tokens ?? 0,
+                completion_tokens: usage.completion_tokens ?? 0,
+                total_tokens: usage.total_tokens ?? 0,
+              }
+            : null,
         });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
@@ -263,15 +472,30 @@ export const extractDocumentWithTogether = createServerFn({ method: 'POST' })
           pageNumber: page.pageNumber,
           widthPx: page.widthPx,
           heightPx: page.heightPx,
-          text: '',
+          text: "",
           fields: [],
           warnings: [`page_failed:${msg}`],
-          rawJson: 'null',
+          rawJson: "null",
         });
       }
-    }
+    };
+
+    // Process a few pages at a time. Overlaps network for multi-page PDFs
+    // while keeping memory and provider load bounded.
+    const PAGE_CONCURRENCY = 3;
+    const queue = [...data.pages];
+    const workers = Array.from({ length: Math.min(PAGE_CONCURRENCY, queue.length) }, async () => {
+      while (queue.length > 0) {
+        const page = queue.shift();
+        if (!page) break;
+        await processPage(page);
+      }
+    });
+    await Promise.all(workers);
+    pagesOut.sort((a, b) => a.pageNumber - b.pageNumber);
 
     return {
+      provider,
       model,
       processedAt: new Date().toISOString(),
       documentId: data.documentId,

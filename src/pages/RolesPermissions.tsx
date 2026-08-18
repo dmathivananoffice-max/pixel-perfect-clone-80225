@@ -1,84 +1,169 @@
-import { useMemo, useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
+import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
-} from '@/components/ui/dialog';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
-} from '@/components/ui/sheet';
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import { cn } from '@/lib/utils';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import {
-  Search, Plus, MoreHorizontal, Copy, Pencil, Trash2, ShieldCheck, Users,
-  ChevronDown, ChevronRight, History, Lock, Filter, ArrowUpDown, CheckCheck, X,
-} from 'lucide-react';
-import toast from 'react-hot-toast';
+  Search,
+  Plus,
+  MoreHorizontal,
+  Copy,
+  Pencil,
+  Trash2,
+  ShieldCheck,
+  Users,
+  ChevronDown,
+  ChevronRight,
+  History,
+  Lock,
+  Filter,
+  ArrowUpDown,
+  CheckCheck,
+  X,
+} from "lucide-react";
+import toast from "react-hot-toast";
 import {
-  PERMISSION_GROUPS, ROLE_TEMPLATES, ACTION_LABEL, MOCK_USERS_BY_ROLE, INITIAL_AUDIT,
-  type Role, type PermissionAction, type AuditEntry, type RoleUser,
-} from '@/lib/rbac';
-import { supabase } from '@/integrations/supabase/client';
+  PERMISSION_GROUPS,
+  ROLE_TEMPLATES,
+  ACTION_LABEL,
+  type Role,
+  type PermissionAction,
+  type AuditEntry,
+  type RoleUser,
+} from "@/lib/rbac";
+import { supabase } from "@/integrations/supabase/client";
 
-type SortMode = 'name' | 'users' | 'modified';
+/** Maps an RBAC template id ("role-super-admin") to app_users.role_key ("super_admin"). */
+function roleKeyFor(roleId: string): string {
+  return roleId.replace(/^role-/, "").replace(/-/g, "_");
+}
+
+type SortMode = "name" | "users" | "modified";
 
 export default function RolesPermissions() {
   const { user } = useAuth();
-  const isSuperAdmin = user?.role === 'super_admin';
+  const isSuperAdmin = user?.role === "super_admin";
 
   const [roles, setRoles] = useState<Role[]>(ROLE_TEMPLATES);
   const [selectedId, setSelectedId] = useState<string>(ROLE_TEMPLATES[0].id);
-  const [search, setSearch] = useState('');
-  const [sort, setSort] = useState<SortMode>('name');
-  const [permSearch, setPermSearch] = useState('');
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<SortMode>("name");
+  const [permSearch, setPermSearch] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(PERMISSION_GROUPS.map((g) => [g.id, true]))
+    Object.fromEntries(PERMISSION_GROUPS.map((g) => [g.id, true])),
   );
   const [showRoleDialog, setShowRoleDialog] = useState(false);
-  const [dialogMode, setDialogMode] = useState<'create' | 'edit' | 'duplicate'>('create');
-  const [roleForm, setRoleForm] = useState({ name: '', description: '' });
+  const [dialogMode, setDialogMode] = useState<"create" | "edit" | "duplicate">("create");
+  const [roleForm, setRoleForm] = useState({ name: "", description: "" });
   const [confirmDelete, setConfirmDelete] = useState<Role | null>(null);
   const [confirmChange, setConfirmChange] = useState<null | {
-    permKey: string; action: PermissionAction; enable: boolean; label: string;
+    permKey: string;
+    action: PermissionAction;
+    enable: boolean;
+    label: string;
   }>(null);
   const [showUsers, setShowUsers] = useState(false);
   const [showAudit, setShowAudit] = useState(false);
-  const [audit, setAudit] = useState<AuditEntry[]>(INITIAL_AUDIT);
+  // Session-local audit trail — starts empty, entries are appended as the
+  // admin actually changes permissions. No fabricated history.
+  const [audit, setAudit] = useState<AuditEntry[]>([]);
+
+  // Real user assignments from app_users, grouped by role_key.
+  const [usersByRole, setUsersByRole] = useState<Map<string, RoleUser[]>>(new Map());
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("app_users")
+        .select("id, full_name, email, role_key, metadata")
+        .eq("active", true);
+      if (cancelled || !data) return;
+      const next = new Map<string, RoleUser[]>();
+      for (const row of data as {
+        id: string;
+        full_name: string;
+        email: string;
+        role_key: string;
+        metadata: { department?: string } | null;
+      }[]) {
+        const list = next.get(row.role_key) ?? [];
+        list.push({
+          id: row.id,
+          name: row.full_name,
+          email: row.email,
+          department: row.metadata?.department ?? "—",
+        });
+        next.set(row.role_key, list);
+      }
+      setUsersByRole(next);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const usersForRole = (roleId: string): RoleUser[] => usersByRole.get(roleKeyFor(roleId)) ?? [];
+  const realUserCount = (roleId: string): number => usersForRole(roleId).length;
 
   const filteredRoles = useMemo(() => {
     const q = search.trim().toLowerCase();
     let list = roles.filter((r) => !q || r.name.toLowerCase().includes(q));
     list = [...list].sort((a, b) => {
-      if (sort === 'users') return b.userCount - a.userCount;
-      if (sort === 'modified') return b.lastModified.localeCompare(a.lastModified);
+      if (sort === "users") {
+        const countOf = (id: string) => usersByRole.get(roleKeyFor(id))?.length ?? 0;
+        return countOf(b.id) - countOf(a.id);
+      }
+      if (sort === "modified") return b.lastModified.localeCompare(a.lastModified);
       return a.name.localeCompare(b.name);
     });
     return list;
-  }, [roles, search, sort]);
+  }, [roles, search, sort, usersByRole]);
 
   const selectedRole = roles.find((r) => r.id === selectedId) ?? roles[0];
 
   const visibleGroups = useMemo(() => {
     const q = permSearch.trim().toLowerCase();
     if (!q) return PERMISSION_GROUPS;
-    return PERMISSION_GROUPS
-      .map((g) => ({
-        ...g,
-        permissions: g.permissions.filter(
-          (p) => p.label.toLowerCase().includes(q) || p.key.toLowerCase().includes(q)
-        ),
-      }))
-      .filter((g) => g.permissions.length > 0);
+    return PERMISSION_GROUPS.map((g) => ({
+      ...g,
+      permissions: g.permissions.filter(
+        (p) => p.label.toLowerCase().includes(q) || p.key.toLowerCase().includes(q),
+      ),
+    })).filter((g) => g.permissions.length > 0);
   }, [permSearch]);
 
   const totalActions = useMemo(() => {
@@ -87,7 +172,7 @@ export default function RolesPermissions() {
     for (const g of PERMISSION_GROUPS) {
       for (const p of g.permissions) {
         total += p.actions.length;
-        selected += (selectedRole.grants[p.key]?.length ?? 0);
+        selected += selectedRole.grants[p.key]?.length ?? 0;
       }
     }
     return { total, selected };
@@ -95,7 +180,7 @@ export default function RolesPermissions() {
 
   // ---------- Mutations ----------
 
-  const logAudit = (entry: Omit<AuditEntry, 'id' | 'timestamp' | 'roleId' | 'roleName'>) => {
+  const logAudit = (entry: Omit<AuditEntry, "id" | "timestamp" | "roleId" | "roleName">) => {
     const roleId = selectedRole.id;
     const roleName = selectedRole.name;
     const timestamp = new Date().toISOString();
@@ -110,10 +195,10 @@ export default function RolesPermissions() {
       ...prev,
     ]);
     // Persist to audit_events so it shows up in the Dashboard activity feed.
-    void supabase.from('audit_events').insert({
-      entity_type: 'role',
+    void supabase.from("audit_events").insert({
+      entity_type: "role",
       entity_id: crypto.randomUUID(),
-      event_type: 'role_permission_change',
+      event_type: "role_permission_change",
       actor_name: entry.actor,
       new_value: {
         role: roleName,
@@ -125,12 +210,21 @@ export default function RolesPermissions() {
   };
 
   const updateRole = (id: string, patch: Partial<Role>) => {
-    setRoles((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch, lastModified: new Date().toISOString() } : r)));
+    setRoles((prev) =>
+      prev.map((r) =>
+        r.id === id ? { ...r, ...patch, lastModified: new Date().toISOString() } : r,
+      ),
+    );
   };
 
-  const toggleAction = (permKey: string, action: PermissionAction, enable: boolean, isCritical: boolean) => {
+  const toggleAction = (
+    permKey: string,
+    action: PermissionAction,
+    enable: boolean,
+    isCritical: boolean,
+  ) => {
     if (!isSuperAdmin) {
-      toast.error('Only Super Administrator can change permissions');
+      toast.error("Only Super Administrator can change permissions");
       return;
     }
     if (isCritical && !confirmChange) {
@@ -138,7 +232,7 @@ export default function RolesPermissions() {
       return;
     }
     const current = selectedRole.grants[permKey] ?? [];
-    const before = current.join(', ') || '—';
+    const before = current.join(", ") || "—";
     const next = enable
       ? Array.from(new Set([...current, action]))
       : current.filter((a) => a !== action);
@@ -146,99 +240,122 @@ export default function RolesPermissions() {
     if (next.length === 0) delete grants[permKey];
 
     // Guardrail: prevent Super Admin from removing their own access to roles module
-    if (
-      selectedRole.id === 'role-super-admin' &&
-      permKey.startsWith('roles.') &&
-      !enable
-    ) {
-      toast.error('Super Administrator cannot remove its own access to Roles & Permissions');
+    if (selectedRole.id === "role-super-admin" && permKey.startsWith("roles.") && !enable) {
+      toast.error("Super Administrator cannot remove its own access to Roles & Permissions");
       return;
     }
 
     updateRole(selectedRole.id, { grants });
     logAudit({
-      actor: user?.name ?? 'Unknown',
-      summary: `${enable ? 'Enabled' : 'Disabled'} ${ACTION_LABEL[action]} on ${permKey}`,
+      actor: user?.name ?? "Unknown",
+      summary: `${enable ? "Enabled" : "Disabled"} ${ACTION_LABEL[action]} on ${permKey}`,
       before,
-      after: next.join(', ') || '—',
+      after: next.join(", ") || "—",
     });
   };
 
-  const applyGroup = (groupId: string, mode: 'all' | 'clear') => {
+  const applyGroup = (groupId: string, mode: "all" | "clear") => {
     if (!isSuperAdmin) return;
     const group = PERMISSION_GROUPS.find((g) => g.id === groupId);
     if (!group) return;
     const grants = { ...selectedRole.grants };
     for (const p of group.permissions) {
-      if (mode === 'all') grants[p.key] = [...p.actions];
+      if (mode === "all") grants[p.key] = [...p.actions];
       else delete grants[p.key];
     }
     updateRole(selectedRole.id, { grants });
     logAudit({
-      actor: user?.name ?? 'Unknown',
-      summary: `${mode === 'all' ? 'Selected all' : 'Cleared all'} in ${group.name}`,
+      actor: user?.name ?? "Unknown",
+      summary: `${mode === "all" ? "Selected all" : "Cleared all"} in ${group.name}`,
     });
   };
 
-  const selectAll = (mode: 'all' | 'clear') => {
+  const selectAll = (mode: "all" | "clear") => {
     if (!isSuperAdmin) return;
     const grants: Record<string, PermissionAction[]> = {};
-    if (mode === 'all') {
-      for (const g of PERMISSION_GROUPS) for (const p of g.permissions) grants[p.key] = [...p.actions];
+    if (mode === "all") {
+      for (const g of PERMISSION_GROUPS)
+        for (const p of g.permissions) grants[p.key] = [...p.actions];
     }
     updateRole(selectedRole.id, { grants });
     logAudit({
-      actor: user?.name ?? 'Unknown',
-      summary: mode === 'all' ? 'Selected every permission' : 'Cleared every permission',
+      actor: user?.name ?? "Unknown",
+      summary: mode === "all" ? "Selected every permission" : "Cleared every permission",
     });
   };
 
   const openCreate = () => {
-    if (!isSuperAdmin) { toast.error('Only Super Administrator can create roles'); return; }
-    setDialogMode('create'); setRoleForm({ name: '', description: '' }); setShowRoleDialog(true);
+    if (!isSuperAdmin) {
+      toast.error("Only Super Administrator can create roles");
+      return;
+    }
+    setDialogMode("create");
+    setRoleForm({ name: "", description: "" });
+    setShowRoleDialog(true);
   };
   const openEdit = () => {
-    if (!isSuperAdmin) { toast.error('Only Super Administrator can rename roles'); return; }
-    setDialogMode('edit');
+    if (!isSuperAdmin) {
+      toast.error("Only Super Administrator can rename roles");
+      return;
+    }
+    setDialogMode("edit");
     setRoleForm({ name: selectedRole.name, description: selectedRole.description });
     setShowRoleDialog(true);
   };
   const openDuplicate = () => {
-    if (!isSuperAdmin) { toast.error('Only Super Administrator can duplicate roles'); return; }
-    setDialogMode('duplicate');
+    if (!isSuperAdmin) {
+      toast.error("Only Super Administrator can duplicate roles");
+      return;
+    }
+    setDialogMode("duplicate");
     setRoleForm({ name: `${selectedRole.name} (Copy)`, description: selectedRole.description });
     setShowRoleDialog(true);
   };
 
   const saveRoleDialog = () => {
     const name = roleForm.name.trim();
-    if (!name) { toast.error('Role name is required'); return; }
-    if (dialogMode === 'edit') {
+    if (!name) {
+      toast.error("Role name is required");
+      return;
+    }
+    if (dialogMode === "edit") {
       updateRole(selectedRole.id, { name, description: roleForm.description });
-      logAudit({ actor: user?.name ?? 'Unknown', summary: `Renamed role to "${name}"` });
-      toast.success('Role updated');
+      logAudit({ actor: user?.name ?? "Unknown", summary: `Renamed role to "${name}"` });
+      toast.success("Role updated");
     } else {
-      const base = dialogMode === 'duplicate' ? selectedRole.grants : {};
+      const base = dialogMode === "duplicate" ? selectedRole.grants : {};
       const id = `role-${Date.now()}`;
       const newRole: Role = {
-        id, name, description: roleForm.description, system: false,
-        userCount: 0, createdBy: user?.name ?? 'Unknown',
-        lastModified: new Date().toISOString(), grants: { ...base },
+        id,
+        name,
+        description: roleForm.description,
+        system: false,
+        userCount: 0,
+        createdBy: user?.name ?? "Unknown",
+        lastModified: new Date().toISOString(),
+        grants: { ...base },
       };
       setRoles((prev) => [newRole, ...prev]);
       setSelectedId(id);
-      toast.success(dialogMode === 'duplicate' ? 'Role duplicated' : 'Role created');
+      toast.success(dialogMode === "duplicate" ? "Role duplicated" : "Role created");
     }
     setShowRoleDialog(false);
   };
 
   const deleteRole = (role: Role) => {
-    if (role.system) { toast.error('System roles cannot be deleted'); return; }
-    if (role.userCount > 0) { toast.error(`Reassign ${role.userCount} users before deleting`); return; }
+    if (role.system) {
+      toast.error("System roles cannot be deleted");
+      return;
+    }
+    const n = realUserCount(role.id);
+    if (n > 0) {
+      toast.error(`Reassign ${n} users before deleting`);
+      return;
+    }
     setRoles((prev) => prev.filter((r) => r.id !== role.id));
     if (selectedId === role.id) setSelectedId(roles[0]?.id);
     setConfirmDelete(null);
-    toast.success('Role deleted');
+    toast.success("Role deleted");
   };
 
   // ---------- Render ----------
@@ -291,9 +408,13 @@ export default function RolesPermissions() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setSort('name')}>Sort by name</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSort('users')}>Sort by user count</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSort('modified')}>Sort by last modified</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSort("name")}>Sort by name</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSort("users")}>
+                    Sort by user count
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSort("modified")}>
+                    Sort by last modified
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -310,22 +431,18 @@ export default function RolesPermissions() {
                   key={role.id}
                   onClick={() => setSelectedId(role.id)}
                   className={cn(
-                    'w-full text-left px-4 py-3 border-l-2 transition-colors',
-                    active
-                      ? 'border-primary bg-accent/60'
-                      : 'border-transparent hover:bg-muted/60'
+                    "w-full text-left px-4 py-3 border-l-2 transition-colors",
+                    active ? "border-primary bg-accent/60" : "border-transparent hover:bg-muted/60",
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm font-medium truncate">{role.name}</span>
-                        {role.system && (
-                          <Lock className="w-3 h-3 text-muted-foreground shrink-0" />
-                        )}
+                        {role.system && <Lock className="w-3 h-3 text-muted-foreground shrink-0" />}
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5 truncate">
-                        {role.userCount} {role.userCount === 1 ? 'user' : 'users'}
+                        {realUserCount(role.id)} {realUserCount(role.id) === 1 ? "user" : "users"}
                       </div>
                     </div>
                   </div>
@@ -349,7 +466,9 @@ export default function RolesPermissions() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="text-xl font-semibold tracking-tight">{selectedRole.name}</h2>
                   {selectedRole.system && (
-                    <Badge variant="outline" className="gap-1"><Lock className="w-3 h-3" /> System</Badge>
+                    <Badge variant="outline" className="gap-1">
+                      <Lock className="w-3 h-3" /> System
+                    </Badge>
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
@@ -359,7 +478,8 @@ export default function RolesPermissions() {
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => setShowUsers(true)}>
                   <Users className="w-4 h-4 mr-2" />
-                  {selectedRole.userCount} {selectedRole.userCount === 1 ? 'user' : 'users'}
+                  {realUserCount(selectedRole.id)}{" "}
+                  {realUserCount(selectedRole.id) === 1 ? "user" : "users"}
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -389,10 +509,16 @@ export default function RolesPermissions() {
 
             {/* Meta grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-              <Meta label="Users" value={String(selectedRole.userCount)} />
-              <Meta label="Permissions" value={`${totalActions.selected} / ${totalActions.total}`} />
+              <Meta label="Users" value={String(realUserCount(selectedRole.id))} />
+              <Meta
+                label="Permissions"
+                value={`${totalActions.selected} / ${totalActions.total}`}
+              />
               <Meta label="Created by" value={selectedRole.createdBy} />
-              <Meta label="Last modified" value={new Date(selectedRole.lastModified).toLocaleDateString()} />
+              <Meta
+                label="Last modified"
+                value={new Date(selectedRole.lastModified).toLocaleDateString()}
+              />
             </div>
           </div>
 
@@ -408,33 +534,56 @@ export default function RolesPermissions() {
               />
             </div>
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" onClick={() => setExpanded(Object.fromEntries(PERMISSION_GROUPS.map((g) => [g.id, true])))}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  setExpanded(Object.fromEntries(PERMISSION_GROUPS.map((g) => [g.id, true])))
+                }
+              >
                 Expand all
               </Button>
               <Button variant="ghost" size="sm" onClick={() => setExpanded({})}>
                 Collapse all
               </Button>
               <span className="w-px h-5 bg-border mx-1" />
-              <Button variant="ghost" size="sm" onClick={() => selectAll('all')} disabled={!isSuperAdmin}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => selectAll("all")}
+                disabled={!isSuperAdmin}
+              >
                 <CheckCheck className="w-4 h-4 mr-1.5" /> Select all
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => selectAll('clear')} disabled={!isSuperAdmin}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => selectAll("clear")}
+                disabled={!isSuperAdmin}
+              >
                 <X className="w-4 h-4 mr-1.5" /> Clear
               </Button>
             </div>
-            <Select onValueChange={(v) => {
-              const preset = ROLE_TEMPLATES.find((r) => r.id === v);
-              if (!preset || !isSuperAdmin) return;
-              updateRole(selectedRole.id, { grants: { ...preset.grants } });
-              logAudit({ actor: user?.name ?? 'Unknown', summary: `Applied preset "${preset.name}"` });
-              toast.success(`Preset applied: ${preset.name}`);
-            }}>
+            <Select
+              onValueChange={(v) => {
+                const preset = ROLE_TEMPLATES.find((r) => r.id === v);
+                if (!preset || !isSuperAdmin) return;
+                updateRole(selectedRole.id, { grants: { ...preset.grants } });
+                logAudit({
+                  actor: user?.name ?? "Unknown",
+                  summary: `Applied preset "${preset.name}"`,
+                });
+                toast.success(`Preset applied: ${preset.name}`);
+              }}
+            >
               <SelectTrigger className="h-9 w-[180px]">
                 <SelectValue placeholder="Apply preset…" />
               </SelectTrigger>
               <SelectContent>
                 {ROLE_TEMPLATES.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -445,7 +594,8 @@ export default function RolesPermissions() {
             {visibleGroups.map((group) => {
               const open = expanded[group.id] ?? true;
               const groupSelected = group.permissions.reduce(
-                (n, p) => n + (selectedRole.grants[p.key]?.length ?? 0), 0
+                (n, p) => n + (selectedRole.grants[p.key]?.length ?? 0),
+                0,
               );
               const groupTotal = group.permissions.reduce((n, p) => n + p.actions.length, 0);
               return (
@@ -455,20 +605,33 @@ export default function RolesPermissions() {
                     className="w-full flex items-center justify-between px-6 py-3.5 hover:bg-muted/40 transition-colors"
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      {open ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
-                            : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />}
+                      {open ? (
+                        <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                      )}
                       <span className="text-sm font-medium truncate">{group.name}</span>
                       <Badge variant="outline" className="text-[10px] font-normal ml-1">
                         {groupSelected} / {groupTotal}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs"
-                        onClick={() => applyGroup(group.id, 'all')} disabled={!isSuperAdmin}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => applyGroup(group.id, "all")}
+                        disabled={!isSuperAdmin}
+                      >
                         All
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs"
-                        onClick={() => applyGroup(group.id, 'clear')} disabled={!isSuperAdmin}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => applyGroup(group.id, "clear")}
+                        disabled={!isSuperAdmin}
+                      >
                         None
                       </Button>
                     </div>
@@ -485,25 +648,29 @@ export default function RolesPermissions() {
                             <div
                               key={perm.key}
                               className={cn(
-                                'grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 px-4 py-3',
-                                idx < group.permissions.length - 1 && 'border-b'
+                                "grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 px-4 py-3",
+                                idx < group.permissions.length - 1 && "border-b",
                               )}
                             >
                               <div className="min-w-0">
                                 <div className="text-sm font-medium">{perm.label}</div>
-                                <div className="text-[11px] text-muted-foreground font-mono">{perm.key}</div>
+                                <div className="text-[11px] text-muted-foreground font-mono">
+                                  {perm.key}
+                                </div>
                               </div>
                               <div className="flex flex-wrap gap-x-4 gap-y-2 md:justify-end">
                                 {perm.actions.map((a) => {
                                   const checked = granted.includes(a);
                                   const isCritical =
-                                    a === 'delete' || a === 'approve' || perm.key.startsWith('roles.');
+                                    a === "delete" ||
+                                    a === "approve" ||
+                                    perm.key.startsWith("roles.");
                                   return (
                                     <label
                                       key={a}
                                       className={cn(
-                                        'flex items-center gap-1.5 text-xs cursor-pointer select-none',
-                                        !isSuperAdmin && 'opacity-60 cursor-not-allowed'
+                                        "flex items-center gap-1.5 text-xs cursor-pointer select-none",
+                                        !isSuperAdmin && "opacity-60 cursor-not-allowed",
                                       )}
                                     >
                                       <Checkbox
@@ -513,10 +680,12 @@ export default function RolesPermissions() {
                                           toggleAction(perm.key, a, !!v, isCritical)
                                         }
                                       />
-                                      <span className={cn(
-                                        'capitalize',
-                                        checked ? 'text-foreground' : 'text-muted-foreground'
-                                      )}>
+                                      <span
+                                        className={cn(
+                                          "capitalize",
+                                          checked ? "text-foreground" : "text-muted-foreground",
+                                        )}
+                                      >
                                         {ACTION_LABEL[a]}
                                       </span>
                                     </label>
@@ -546,32 +715,41 @@ export default function RolesPermissions() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {dialogMode === 'create' && 'New role'}
-              {dialogMode === 'edit' && 'Edit role'}
-              {dialogMode === 'duplicate' && 'Duplicate role'}
+              {dialogMode === "create" && "New role"}
+              {dialogMode === "edit" && "Edit role"}
+              {dialogMode === "duplicate" && "Duplicate role"}
             </DialogTitle>
             <DialogDescription>
-              {dialogMode === 'duplicate'
-                ? 'Creates a new role with the same permissions as the current one.'
-                : 'Roles group permissions and are assigned to users.'}
+              {dialogMode === "duplicate"
+                ? "Creates a new role with the same permissions as the current one."
+                : "Roles group permissions and are assigned to users."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
               <Label>Name</Label>
-              <Input className="mt-1.5" value={roleForm.name}
-                onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })} />
+              <Input
+                className="mt-1.5"
+                value={roleForm.name}
+                onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
+              />
             </div>
             <div>
               <Label>Description</Label>
-              <Textarea className="mt-1.5" rows={3} value={roleForm.description}
-                onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })} />
+              <Textarea
+                className="mt-1.5"
+                rows={3}
+                value={roleForm.description}
+                onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })}
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRoleDialog(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setShowRoleDialog(false)}>
+              Cancel
+            </Button>
             <Button onClick={saveRoleDialog}>
-              {dialogMode === 'edit' ? 'Save changes' : 'Create role'}
+              {dialogMode === "edit" ? "Save changes" : "Create role"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -583,12 +761,19 @@ export default function RolesPermissions() {
           <DialogHeader>
             <DialogTitle>Delete role</DialogTitle>
             <DialogDescription>
-              This will permanently remove <span className="font-medium">{confirmDelete?.name}</span>. This action is audited and cannot be undone.
+              This will permanently remove{" "}
+              <span className="font-medium">{confirmDelete?.name}</span>. This action is audited and
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmDelete(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => confirmDelete && deleteRole(confirmDelete)}>
+            <Button variant="outline" onClick={() => setConfirmDelete(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => confirmDelete && deleteRole(confirmDelete)}
+            >
               Delete role
             </Button>
           </DialogFooter>
@@ -601,33 +786,39 @@ export default function RolesPermissions() {
           <DialogHeader>
             <DialogTitle>Confirm permission change</DialogTitle>
             <DialogDescription>
-              You are about to {confirmChange?.enable ? 'enable' : 'disable'}{' '}
-              <span className="font-mono text-foreground">{confirmChange?.label}</span> for{' '}
-              <span className="font-medium">{selectedRole.name}</span>. Critical permissions affect production access.
+              You are about to {confirmChange?.enable ? "enable" : "disable"}{" "}
+              <span className="font-mono text-foreground">{confirmChange?.label}</span> for{" "}
+              <span className="font-medium">{selectedRole.name}</span>. Critical permissions affect
+              production access.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmChange(null)}>Cancel</Button>
-            <Button onClick={() => {
-              if (!confirmChange) return;
-              const { permKey, action, enable } = confirmChange;
-              setConfirmChange(null);
-              // apply without re-prompting
-              const current = selectedRole.grants[permKey] ?? [];
-              const before = current.join(', ') || '—';
-              const next = enable
-                ? Array.from(new Set([...current, action]))
-                : current.filter((a) => a !== action);
-              const grants = { ...selectedRole.grants, [permKey]: next };
-              if (next.length === 0) delete grants[permKey];
-              updateRole(selectedRole.id, { grants });
-              logAudit({
-                actor: user?.name ?? 'Unknown',
-                summary: `${enable ? 'Enabled' : 'Disabled'} ${ACTION_LABEL[action]} on ${permKey}`,
-                before, after: next.join(', ') || '—',
-                reason: 'Confirmed critical change',
-              });
-            }}>
+            <Button variant="outline" onClick={() => setConfirmChange(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!confirmChange) return;
+                const { permKey, action, enable } = confirmChange;
+                setConfirmChange(null);
+                // apply without re-prompting
+                const current = selectedRole.grants[permKey] ?? [];
+                const before = current.join(", ") || "—";
+                const next = enable
+                  ? Array.from(new Set([...current, action]))
+                  : current.filter((a) => a !== action);
+                const grants = { ...selectedRole.grants, [permKey]: next };
+                if (next.length === 0) delete grants[permKey];
+                updateRole(selectedRole.id, { grants });
+                logAudit({
+                  actor: user?.name ?? "Unknown",
+                  summary: `${enable ? "Enabled" : "Disabled"} ${ACTION_LABEL[action]} on ${permKey}`,
+                  before,
+                  after: next.join(", ") || "—",
+                  reason: "Confirmed critical change",
+                });
+              }}
+            >
               Confirm change
             </Button>
           </DialogFooter>
@@ -647,11 +838,13 @@ export default function RolesPermissions() {
               <Button variant="outline">Assign</Button>
             </div>
             <div className="rounded-lg border divide-y">
-              {(MOCK_USERS_BY_ROLE[selectedRole.id] ?? []).map((u: RoleUser) => (
+              {usersForRole(selectedRole.id).map((u: RoleUser) => (
                 <div key={u.id} className="flex items-center justify-between p-3">
                   <div className="min-w-0">
                     <div className="text-sm font-medium truncate">{u.name}</div>
-                    <div className="text-xs text-muted-foreground truncate">{u.email} · {u.department}</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {u.email} · {u.department}
+                    </div>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -668,7 +861,7 @@ export default function RolesPermissions() {
                   </DropdownMenu>
                 </div>
               ))}
-              {(MOCK_USERS_BY_ROLE[selectedRole.id] ?? []).length === 0 && (
+              {usersForRole(selectedRole.id).length === 0 && (
                 <div className="p-6 text-center text-sm text-muted-foreground">
                   No users assigned yet.
                 </div>
@@ -683,7 +876,9 @@ export default function RolesPermissions() {
         <SheetContent className="sm:max-w-xl">
           <SheetHeader>
             <SheetTitle>Audit trail</SheetTitle>
-            <SheetDescription>Every permission change is logged with who, what and when.</SheetDescription>
+            <SheetDescription>
+              Every permission change is logged with who, what and when.
+            </SheetDescription>
           </SheetHeader>
           <div className="mt-6 space-y-3 max-h-[calc(100vh-8rem)] overflow-y-auto pr-1">
             {audit.map((a) => (
@@ -701,11 +896,11 @@ export default function RolesPermissions() {
                   <div className="grid grid-cols-2 gap-2 mt-3 text-[11px] font-mono">
                     <div className="rounded bg-muted/60 px-2 py-1.5">
                       <div className="text-muted-foreground mb-0.5">Before</div>
-                      <div className="text-foreground break-words">{a.before ?? '—'}</div>
+                      <div className="text-foreground break-words">{a.before ?? "—"}</div>
                     </div>
                     <div className="rounded bg-muted/60 px-2 py-1.5">
                       <div className="text-muted-foreground mb-0.5">After</div>
-                      <div className="text-foreground break-words">{a.after ?? '—'}</div>
+                      <div className="text-foreground break-words">{a.after ?? "—"}</div>
                     </div>
                   </div>
                 )}

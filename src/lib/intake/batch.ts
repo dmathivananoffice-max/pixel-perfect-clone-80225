@@ -2,29 +2,33 @@
 // Intake batch model — mock data shape for the AI Review Dashboard
 // ─────────────────────────────────────────────────────────────
 
-export type IntakeMode = 'single' | 'bulk';
+export type IntakeMode = "single" | "bulk";
 
 export type BatchStatus =
-  | 'ready'
-  | 'duplicate'
-  | 'missing_docs'
-  | 'manual_review'
-  | 'low_confidence'
-  | 'approved';
+  "ready" | "duplicate" | "missing_docs" | "manual_review" | "low_confidence" | "approved";
 
 export interface BatchDocument {
-  key: string;              // e.g. 'passport'
-  label: string;            // e.g. 'Passport'
-  german: string;           // e.g. 'reisepass'
+  key: string; // e.g. 'passport'
+  label: string; // e.g. 'Passport'
+  german: string; // e.g. 'reisepass'
   present: boolean;
-  confidence?: number;      // 0..1
-  issue?: 'unreadable' | 'low_confidence' | null;
+  confidence?: number; // 0..1
+  issue?: "unreadable" | "low_confidence" | null;
 }
 
 export interface FieldFocus {
   section:
-    | 'personal' | 'passport' | 'contact' | 'education' | 'language'
-    | 'employment' | 'internship' | 'social' | 'medical' | 'driving' | 'documents';
+    | "personal"
+    | "passport"
+    | "contact"
+    | "education"
+    | "language"
+    | "employment"
+    | "internship"
+    | "social"
+    | "medical"
+    | "driving"
+    | "documents";
   fieldKey: string;
   reason?: string;
 }
@@ -36,11 +40,11 @@ export interface BatchCandidate {
   country: string;
   email: string;
   status: BatchStatus;
-  extractionConfidence: number;   // 0..1
+  extractionConfidence: number; // 0..1
   documents: BatchDocument[];
   duplicateOf?: string;
-  similarity?: number;             // 0..1
-  focus?: FieldFocus;              // where the dashboard should land you
+  similarity?: number; // 0..1
+  focus?: FieldFocus; // where the dashboard should land you
 }
 
 export interface IntakeBatch {
@@ -54,19 +58,20 @@ export interface IntakeBatch {
 }
 
 // Reference doc set — kept in sync with CandidateIntake's REQUIRED_UPLOADS
-const DOC_SET: Omit<BatchDocument, 'present' | 'confidence' | 'issue'>[] = [
-  { key: 'passport', label: 'Passport',              german: 'reisepass' },
-  { key: 'photo',    label: 'Photo',                 german: 'lichtbild' },
-  { key: 'degree',   label: 'Highest degree',        german: 'bachelorzeugnis' },
-  { key: 'sprach',   label: 'Language certificate',  german: 'sprachzertifikat' },
-  { key: 'cv',       label: 'CV',                    german: 'lebenslauf' },
-  { key: 'police',   label: 'Police clearance',      german: 'fuehrungszeugnis' },
-  { key: 'medical',  label: 'Medical fitness',       german: 'gesundheitszeugnis' },
-  { key: 'driving',  label: 'Driving licence',       german: 'fuehrerschein' },
+const DOC_SET: Omit<BatchDocument, "present" | "confidence" | "issue">[] = [
+  { key: "passport", label: "Passport", german: "reisepass" },
+  { key: "photo", label: "Photo", german: "lichtbild" },
+  { key: "degree", label: "Highest degree", german: "bachelorzeugnis" },
+  { key: "sprach", label: "Language certificate", german: "sprachzertifikat" },
+  { key: "cv", label: "CV", german: "lebenslauf" },
+  { key: "police", label: "Police clearance", german: "fuehrungszeugnis" },
+  { key: "medical", label: "Medical fitness", german: "gesundheitszeugnis" },
+  { key: "driving", label: "Driving licence", german: "fuehrerschein" },
 ];
 
 function seededDocs(seed: number): { docs: BatchDocument[]; missing: number; low: number } {
-  let missing = 0, low = 0;
+  let missing = 0,
+    low = 0;
   const docs: BatchDocument[] = DOC_SET.map((d, i) => {
     const s = (seed * 13 + i * 7) % 11;
     const present = s !== 0;
@@ -78,7 +83,7 @@ function seededDocs(seed: number): { docs: BatchDocument[]; missing: number; low
       ...d,
       present,
       confidence: rawConf,
-      issue: !present ? null : lowConf ? 'low_confidence' : null,
+      issue: !present ? null : lowConf ? "low_confidence" : null,
     };
   });
   return { docs, missing, low };
@@ -98,7 +103,7 @@ export function makeIntakeBatchShell(
   count?: number,
   batchToken?: string,
 ): IntakeBatch {
-  const size = Math.max(1, count ?? (mode === 'single' ? 1 : 1));
+  const size = Math.max(1, count ?? (mode === "single" ? 1 : 1));
   const token = batchToken ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
   const candidates: BatchCandidate[] = [];
 
@@ -106,11 +111,11 @@ export function makeIntakeBatchShell(
     const { docs } = seededDocs(i + 1);
     candidates.push({
       id: `cand-${i}`,
-      firstName: 'Pending',
+      firstName: "Pending",
       lastName: `Candidate ${i + 1}`,
-      country: '',
+      country: "",
       email: `pending+${token}-${i + 1}@intake.local`,
-      status: 'ready',
+      status: "ready",
       extractionConfidence: 0,
       documents: docs.map((d) => ({ ...d, present: false, confidence: undefined, issue: null })),
     });
@@ -118,7 +123,7 @@ export function makeIntakeBatchShell(
 
   return {
     id: `batch-${Date.now()}`,
-    name: mode === 'single' ? 'Single candidate intake' : nextBatchName(),
+    name: mode === "single" ? "Single candidate intake" : nextBatchName(),
     mode,
     product,
     productLabel,
@@ -132,17 +137,23 @@ export const makeMockBatch = makeIntakeBatchShell;
 
 function nextBatchName(): string {
   const d = new Date();
-  const month = d.toLocaleString('en-US', { month: 'long' });
+  const month = d.toLocaleString("en-US", { month: "long" });
   return `${month} intake`;
 }
 
 export function statusMeta(s: BatchStatus) {
   switch (s) {
-    case 'ready':          return { label: 'Ready',          tone: 'text-emerald-700 bg-emerald-50 ring-emerald-200' };
-    case 'duplicate':      return { label: 'Duplicate',      tone: 'text-amber-800 bg-amber-50 ring-amber-200' };
-    case 'missing_docs':   return { label: 'Missing docs',   tone: 'text-rose-700 bg-rose-50 ring-rose-200' };
-    case 'manual_review':  return { label: 'Manual review',  tone: 'text-violet-700 bg-violet-50 ring-violet-200' };
-    case 'low_confidence': return { label: 'Low confidence', tone: 'text-orange-700 bg-orange-50 ring-orange-200' };
-    case 'approved':       return { label: 'Approved',       tone: 'text-emerald-800 bg-emerald-100 ring-emerald-300' };
+    case "ready":
+      return { label: "Ready", tone: "text-emerald-700 bg-emerald-50 ring-emerald-200" };
+    case "duplicate":
+      return { label: "Duplicate", tone: "text-amber-800 bg-amber-50 ring-amber-200" };
+    case "missing_docs":
+      return { label: "Missing docs", tone: "text-rose-700 bg-rose-50 ring-rose-200" };
+    case "manual_review":
+      return { label: "Manual review", tone: "text-violet-700 bg-violet-50 ring-violet-200" };
+    case "low_confidence":
+      return { label: "Low confidence", tone: "text-orange-700 bg-orange-50 ring-orange-200" };
+    case "approved":
+      return { label: "Approved", tone: "text-emerald-800 bg-emerald-100 ring-emerald-300" };
   }
 }
