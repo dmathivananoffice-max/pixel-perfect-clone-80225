@@ -1,12 +1,16 @@
-import { useProductStore } from '@/store/productStore';
-import { PRODUCTS, getProduct, type ProductId } from '@/config/products';
+import { useProductStore } from "@/store/productStore";
+import { PRODUCTS, getProduct, type ProductId } from "@/config/products";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
-import { ChevronDown, Check } from 'lucide-react';
-import { cn } from '@/lib/utils';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { ChevronDown, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function ProductSelector() {
   const selectedProductId = useProductStore((s) => s.selectedProductId);
@@ -18,7 +22,7 @@ export function ProductSelector() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
-          <span className={cn('p-1 rounded', active.accent)}>
+          <span className={cn("p-1 rounded", active.accent)}>
             <Icon className="w-4 h-4" />
           </span>
           <span className="font-medium">{active.label}</span>
@@ -37,7 +41,7 @@ export function ProductSelector() {
               onClick={() => setProduct(p.id as ProductId)}
               className="gap-2 cursor-pointer"
             >
-              <span className={cn('p-1 rounded', p.accent)}>
+              <span className={cn("p-1 rounded", p.accent)}>
                 <PIcon className="w-4 h-4" />
               </span>
               <span className="flex-1">{p.label}</span>
