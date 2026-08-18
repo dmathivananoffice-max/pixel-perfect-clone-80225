@@ -13,14 +13,14 @@
 //      Google response.
 //   3. Map the response to our `OcrResult` shape below.
 // ─────────────────────────────────────────────────────────────
-import type { OcrProvider, OcrProviderContext, OcrResult } from '../types';
+import type { OcrProvider, OcrProviderContext, OcrResult } from "../types";
 
 export const googleDocAiProvider: OcrProvider = {
-  name: 'google-document-ai',
-  version: 'skeleton-v0',
+  name: "google-document-ai",
+  version: "skeleton-v0",
   async extract(_ctx: OcrProviderContext, _fileBytes: ArrayBuffer): Promise<OcrResult> {
     throw new Error(
-      'google-document-ai provider not configured. Add GCP credentials as secrets and wire the server function first.',
+      "google-document-ai provider not configured. Add GCP credentials as secrets and wire the server function first.",
     );
   },
 };

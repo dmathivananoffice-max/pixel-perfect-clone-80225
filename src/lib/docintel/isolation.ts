@@ -10,7 +10,7 @@
 // Rule: if you find yourself writing `supabase.from('candidate_documents')`
 // anywhere outside this file, stop and use these helpers instead.
 // ─────────────────────────────────────────────────────────────
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from "@/integrations/supabase/client";
 
 export interface IsolatedDocument {
   id: string;
@@ -40,6 +40,7 @@ export interface IsolatedDocument {
   verified: boolean;
   verified_by: string | null;
   verified_at: string | null;
+  extraction_debug?: unknown;
 }
 
 export interface IsolatedExtraction {
@@ -61,9 +62,9 @@ export interface IsolatedExtraction {
 }
 
 function assertCandidateId(candidateId: string) {
-  if (!candidateId || typeof candidateId !== 'string' || candidateId.length < 8) {
+  if (!candidateId || typeof candidateId !== "string" || candidateId.length < 8) {
     throw new Error(
-      '[docintel/isolation] Refusing document query without a valid candidate id. Cross-candidate access is forbidden.',
+      "[docintel/isolation] Refusing document query without a valid candidate id. Cross-candidate access is forbidden.",
     );
   }
 }
@@ -72,13 +73,15 @@ function assertCandidateId(candidateId: string) {
 export async function fetchCandidateDocuments(candidateId: string): Promise<IsolatedDocument[]> {
   assertCandidateId(candidateId);
   const { data, error } = await supabase
-    .from('candidate_documents')
-    .select('*')
-    .eq('candidate_id', candidateId)
-    .order('created_at', { ascending: false });
+    .from("candidate_documents")
+    .select("*")
+    .eq("candidate_id", candidateId)
+    .order("created_at", { ascending: false });
   if (error) throw error;
   // Defense in depth: even if the DB returned an unrelated row, we filter it out client-side too.
-  return (data ?? []).filter((d) => d.candidate_id === candidateId) as unknown as IsolatedDocument[];
+  return (data ?? []).filter(
+    (d) => d.candidate_id === candidateId,
+  ) as unknown as IsolatedDocument[];
 }
 
 /**
@@ -91,12 +94,12 @@ export async function fetchDocumentForCandidate(
   documentId: string,
 ): Promise<IsolatedDocument | null> {
   assertCandidateId(candidateId);
-  if (!documentId) throw new Error('documentId required');
+  if (!documentId) throw new Error("documentId required");
   const { data, error } = await supabase
-    .from('candidate_documents')
-    .select('*')
-    .eq('candidate_id', candidateId)
-    .eq('id', documentId)
+    .from("candidate_documents")
+    .select("*")
+    .eq("candidate_id", candidateId)
+    .eq("id", documentId)
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
@@ -105,15 +108,19 @@ export async function fetchDocumentForCandidate(
 }
 
 /** All extractions for a candidate. Hard-scoped by candidate_id. */
-export async function fetchExtractionsForCandidate(candidateId: string): Promise<IsolatedExtraction[]> {
+export async function fetchExtractionsForCandidate(
+  candidateId: string,
+): Promise<IsolatedExtraction[]> {
   assertCandidateId(candidateId);
   const { data, error } = await supabase
-    .from('document_extractions')
-    .select('*')
-    .eq('candidate_id', candidateId)
-    .order('processed_at', { ascending: true });
+    .from("document_extractions")
+    .select("*")
+    .eq("candidate_id", candidateId)
+    .order("processed_at", { ascending: true });
   if (error) throw error;
-  return (data ?? []).filter((e) => e.candidate_id === candidateId) as unknown as IsolatedExtraction[];
+  return (data ?? []).filter(
+    (e) => e.candidate_id === candidateId,
+  ) as unknown as IsolatedExtraction[];
 }
 
 /**
@@ -121,7 +128,10 @@ export async function fetchExtractionsForCandidate(candidateId: string): Promise
  * against the document BEFORE the URL is generated — a mismatch
  * throws and no URL is issued.
  */
-export async function getPreviewUrl(candidateId: string, documentId: string): Promise<string | null> {
+export async function getPreviewUrl(
+  candidateId: string,
+  documentId: string,
+): Promise<string | null> {
   const doc = await fetchDocumentForCandidate(candidateId, documentId);
   if (!doc) {
     throw new Error(
@@ -129,7 +139,7 @@ export async function getPreviewUrl(candidateId: string, documentId: string): Pr
     );
   }
   const { data, error } = await supabase.storage
-    .from('candidate-documents')
+    .from("candidate-documents")
     .createSignedUrl(doc.storage_path, 300);
   if (error) throw error;
   return data?.signedUrl ?? null;

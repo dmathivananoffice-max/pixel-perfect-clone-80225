@@ -1,11 +1,12 @@
 // ─────────────────────────────────────────────────────────────
-// Together AI provider — real Document Intelligence backend.
+// Vision OCR provider — real Document Intelligence backend.
 //
+// Default backend is Mistral AI (see together.functions resolveVisionConfig).
 // Wraps the extractDocumentWithTogether server function behind the
 // existing OcrProvider + AiExtractor interfaces so the pipeline
 // (and every calling module) is unchanged.
 //
-// The Together call is unified OCR + extraction — the model returns
+// The vision call is unified OCR + extraction — the model returns
 // text AND structured fields with bounding boxes in a single call.
 // We stash the structured fields inside OcrResult.keyValuePairs and
 // cache the full raw response in candidate_documents.ocr_raw so the
@@ -19,16 +20,17 @@ import type {
   OcrProvider,
   OcrProviderContext,
   OcrResult,
-} from '../types';
-import { rasterizeFile, bufferToFile } from '../rasterize';
-import { extractDocumentWithTogether, type TogetherExtractResult } from '../together.functions';
+} from "../types";
+import { rasterizeFile, bufferToFile } from "../rasterize";
+import { extractDocumentWithTogether, type TogetherExtractResult } from "../together.functions";
 
-const PROVIDER_NAME = 'together-qwen2.5-vl';
-const PROVIDER_VERSION = 'v1';
+/** Default label when the server has not yet reported a provider id. */
+const DEFAULT_PROVIDER_NAME = "mistral-vision";
+const PROVIDER_VERSION = "v1";
 
 // Namespaced key in OcrResult where we stash the structured fields
 // returned by the model so the AiExtractor can reuse them.
-const FIELDS_STASH_KEY = '__together_fields__';
+const FIELDS_STASH_KEY = "__together_fields__";
 
 interface StashedFields {
   fields: Array<{
@@ -40,8 +42,9 @@ interface StashedFields {
     bbox: { x: number; y: number; w: number; h: number } | null;
   }>;
   warnings: string[];
-  usage: TogetherExtractResult['totalUsage'];
+  usage: TogetherExtractResult["totalUsage"];
   model: string;
+  provider: string;
 }
 
 /** Convert model pixel bbox → normalized fraction bbox for storage/UI. */
@@ -59,7 +62,10 @@ function normalizeBbox(
   return { x, y, w, h };
 }
 
-function buildOcrResult(res: TogetherExtractResult): OcrResult & { [FIELDS_STASH_KEY]?: StashedFields } {
+function buildOcrResult(
+  res: TogetherExtractResult,
+): OcrResult & { [FIELDS_STASH_KEY]?: StashedFields } {
+  const providerName = res.provider || DEFAULT_PROVIDER_NAME;
   const blocks = res.pages.map((p) => ({
     page: p.pageNumber,
     text: p.text,
@@ -80,13 +86,14 @@ function buildOcrResult(res: TogetherExtractResult): OcrResult & { [FIELDS_STASH
     warnings: res.pages.flatMap((p) => p.warnings ?? []).concat(res.errors),
     usage: res.totalUsage,
     model: res.model,
+    provider: providerName,
   };
   return {
-    provider: PROVIDER_NAME,
+    provider: providerName,
     version: PROVIDER_VERSION,
     processedAt: res.processedAt,
     pageCount: res.pages.length,
-    text: res.pages.map((p) => p.text).join('\n\n---\n\n'),
+    text: res.pages.map((p) => p.text).join("\n\n---\n\n"),
     blocks,
     keyValuePairs: [],
     tables: [],
@@ -95,14 +102,14 @@ function buildOcrResult(res: TogetherExtractResult): OcrResult & { [FIELDS_STASH
 }
 
 export const togetherAiProvider: OcrProvider = {
-  name: PROVIDER_NAME,
+  name: DEFAULT_PROVIDER_NAME,
   version: PROVIDER_VERSION,
   async extract(ctx: OcrProviderContext, fileBytes: ArrayBuffer): Promise<OcrResult> {
     const file = bufferToFile(fileBytes, ctx.fileName, ctx.mimeType);
     const pages = await rasterizeFile(file);
     // Guess a doc type hint from filename — the server function passes it
     // to the model as context (not a code branch).
-    const docTypeHint = ctx.fileName.replace(/\.[^.]+$/, '').toLowerCase();
+    const docTypeHint = ctx.fileName.replace(/\.[^.]+$/, "").toLowerCase();
     const result = await extractDocumentWithTogether({
       data: {
         candidateId: ctx.candidateId,
@@ -122,15 +129,18 @@ export const togetherAiProvider: OcrProvider = {
 };
 
 export const togetherAiExtractor: AiExtractor = {
-  name: PROVIDER_NAME,
+  name: DEFAULT_PROVIDER_NAME,
   version: PROVIDER_VERSION,
   async extract(candidateId, documents): Promise<AiExtractionResult> {
     const fields: ExtractedField[] = [];
-    const warnings: AiExtractionResult['warnings'] = [];
+    const warnings: AiExtractionResult["warnings"] = [];
+    let modelName = DEFAULT_PROVIDER_NAME;
 
     for (const d of documents) {
       const stash = (d.ocr as unknown as { [FIELDS_STASH_KEY]?: StashedFields })[FIELDS_STASH_KEY];
       if (!stash) continue;
+      if (stash.provider) modelName = stash.provider;
+      else if (stash.model) modelName = stash.model;
       for (const f of stash.fields) {
         fields.push({
           section: f.section,
@@ -143,7 +153,7 @@ export const togetherAiExtractor: AiExtractor = {
         });
       }
       for (const w of stash.warnings) {
-        warnings.push({ code: 'model_warning', message: w });
+        warnings.push({ code: "model_warning", message: w });
       }
     }
 
@@ -158,12 +168,12 @@ export const togetherAiExtractor: AiExtractor = {
         ),
       );
 
-    for (const key of ['date_of_birth', 'nationality', 'passport_number', 'full_name']) {
+    for (const key of ["dob", "nationality", "passport_no", "first_name", "last_name"]) {
       const distinct = byField(key);
       if (distinct.length > 1) {
         warnings.push({
-          code: 'cross_document_mismatch',
-          message: `Field "${key}" differs across this candidate's documents: ${distinct.join(' | ')}`,
+          code: "cross_document_mismatch",
+          message: `Field "${key}" differs across this candidate's documents: ${distinct.join(" | ")}`,
           fieldName: key,
         });
       }
@@ -173,7 +183,7 @@ export const togetherAiExtractor: AiExtractor = {
     void candidateId;
 
     return {
-      model: PROVIDER_NAME,
+      model: modelName,
       modelVersion: PROVIDER_VERSION,
       processedAt: new Date().toISOString(),
       fields,

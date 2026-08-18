@@ -22,7 +22,11 @@ function getAuthReturnState() {
 
   return {
     code: search.get("code"),
-    error: search.get("error_description") ?? search.get("error") ?? hash.get("error_description") ?? hash.get("error"),
+    error:
+      search.get("error_description") ??
+      search.get("error") ??
+      hash.get("error_description") ??
+      hash.get("error"),
     hasTokenHash: hash.has("access_token") || hash.has("refresh_token"),
   };
 }
@@ -84,13 +88,16 @@ export function LegacyAppMount() {
         // implicit token hash. Complete that exchange before mounting routes;
         // otherwise /login can briefly render the send-link form again.
         if (authReturn.code) {
-          const { error } = await clientMod.authSupabase.auth.exchangeCodeForSession(authReturn.code);
+          const { error } = await clientMod.authSupabase.auth.exchangeCodeForSession(
+            authReturn.code,
+          );
           if (error) throw error;
         }
 
-        const session = authReturn.code || authReturn.hasTokenHash
-          ? await waitForHydratedSession(clientMod.authSupabase)
-          : (await clientMod.authSupabase.auth.getSession()).data.session;
+        const session =
+          authReturn.code || authReturn.hasTokenHash
+            ? await waitForHydratedSession(clientMod.authSupabase)
+            : (await clientMod.authSupabase.auth.getSession()).data.session;
 
         await storeMod.useAuthStore.getState().hydrateFromSession(session ?? null);
       } catch (innerErr) {
@@ -119,7 +126,9 @@ export function LegacyAppMount() {
       // Clean the token fragment from the URL so it doesn't linger.
       if (
         typeof window !== "undefined" &&
-        (window.location.hash || window.location.search.includes("code=") || window.location.search.includes("error="))
+        (window.location.hash ||
+          window.location.search.includes("code=") ||
+          window.location.search.includes("error="))
       ) {
         try {
           const cleanSearch = new URLSearchParams(window.location.search);
@@ -128,7 +137,11 @@ export function LegacyAppMount() {
           cleanSearch.delete("error_code");
           cleanSearch.delete("error_description");
           const nextSearch = cleanSearch.toString();
-          window.history.replaceState(null, "", window.location.pathname + (nextSearch ? `?${nextSearch}` : ""));
+          window.history.replaceState(
+            null,
+            "",
+            window.location.pathname + (nextSearch ? `?${nextSearch}` : ""),
+          );
         } catch (cleanupErr) {
           console.error("[startup] URL hash cleanup failed", cleanupErr);
         }

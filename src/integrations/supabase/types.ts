@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
@@ -197,6 +197,7 @@ export type Database = {
           verified_at: string | null
           verified_by: string | null
           version: number
+          extraction_debug: Json | null
         }
         Insert: {
           ai_model_version?: string | null
@@ -230,6 +231,7 @@ export type Database = {
           verified_at?: string | null
           verified_by?: string | null
           version?: number
+          extraction_debug?: Json | null
         }
         Update: {
           ai_model_version?: string | null
@@ -263,6 +265,7 @@ export type Database = {
           verified_at?: string | null
           verified_by?: string | null
           version?: number
+          extraction_debug?: Json | null
         }
         Relationships: [
           {
@@ -322,6 +325,8 @@ export type Database = {
           country: string
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by_name: string | null
           dob: string | null
           email: string
           extracted_fields: Json
@@ -342,6 +347,7 @@ export type Database = {
           total_score: number | null
           updated_at: string
           verification_state: Json
+          schema_version: number
         }
         Insert: {
           assigned_recruiter_id?: string | null
@@ -351,6 +357,8 @@ export type Database = {
           country?: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by_name?: string | null
           dob?: string | null
           email?: string
           extracted_fields?: Json
@@ -371,6 +379,7 @@ export type Database = {
           total_score?: number | null
           updated_at?: string
           verification_state?: Json
+          schema_version?: number
         }
         Update: {
           assigned_recruiter_id?: string | null
@@ -380,6 +389,8 @@ export type Database = {
           country?: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by_name?: string | null
           dob?: string | null
           email?: string
           extracted_fields?: Json
@@ -400,6 +411,7 @@ export type Database = {
           total_score?: number | null
           updated_at?: string
           verification_state?: Json
+          schema_version?: number
         }
         Relationships: [
           {
@@ -521,6 +533,97 @@ export type Database = {
             columns: ["document_id"]
             isOneToOne: false
             referencedRelation: "candidate_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_logs: {
+        Row: {
+          agency_id: string | null
+          body: string | null
+          candidate_id: string | null
+          clicked_at: string | null
+          created_at: string
+          created_by: string | null
+          employer_id: string | null
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          opened_at: string | null
+          provider_message_id: string | null
+          recipient_email: string
+          sent_at: string | null
+          sent_by: string | null
+          status: string
+          subject: string
+          template: string
+          template_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          agency_id?: string | null
+          body?: string | null
+          candidate_id?: string | null
+          clicked_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          employer_id?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          opened_at?: string | null
+          provider_message_id?: string | null
+          recipient_email: string
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+          subject: string
+          template?: string
+          template_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string | null
+          body?: string | null
+          candidate_id?: string | null
+          clicked_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          employer_id?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          opened_at?: string | null
+          provider_message_id?: string | null
+          recipient_email?: string
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+          subject?: string
+          template?: string
+          template_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "email_logs_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "employers"
             referencedColumns: ["id"]
           },
         ]
@@ -780,9 +883,121 @@ export type Database = {
         }
         Relationships: []
       }
+      intake_schema_meta: {
+        Row: {
+          key: string
+          value: Json
+          updated_at: string
+        }
+        Insert: {
+          key: string
+          value: Json
+          updated_at?: string
+        }
+        Update: {
+          key?: string
+          value?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      readiness_snapshots: {
+        Row: {
+          id: string
+          candidate_id: string
+          readiness_pct: number
+          captured_at: string
+          schema_version: number | null
+          required_total: number | null
+          required_satisfied: number | null
+          fingerprint: Json
+        }
+        Insert: {
+          id?: string
+          candidate_id: string
+          readiness_pct: number
+          captured_at?: string
+          schema_version?: number | null
+          required_total?: number | null
+          required_satisfied?: number | null
+          fingerprint?: Json
+        }
+        Update: {
+          id?: string
+          candidate_id?: string
+          readiness_pct?: number
+          captured_at?: string
+          schema_version?: number | null
+          required_total?: number | null
+          required_satisfied?: number | null
+          fingerprint?: Json
+        }
+        Relationships: []
+      }
+      system_notices: {
+        Row: {
+          id: string
+          kind: string
+          payload: Json
+          created_at: string
+          expires_at: string | null
+          created_by_name: string | null
+        }
+        Insert: {
+          id?: string
+          kind: string
+          payload?: Json
+          created_at?: string
+          expires_at?: string | null
+          created_by_name?: string | null
+        }
+        Update: {
+          id?: string
+          kind?: string
+          payload?: Json
+          created_at?: string
+          expires_at?: string | null
+          created_by_name?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      intake_candidates: {
+        Row: {
+          assigned_recruiter_id: string | null
+          assigned_recruiter_name: string | null
+          batch_id: string | null
+          candidate_id: string
+          country: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by_name: string | null
+          dob: string | null
+          email: string
+          extracted_fields: Json
+          first_name: string
+          gate_status: string
+          gender: string | null
+          highest_qualification: string | null
+          is_mock: boolean
+          last_name: string
+          phone: string
+          product_id: string
+          program_name: string | null
+          rank: number | null
+          schema_version: number
+          source_agency_id: string | null
+          source_agency_name: string | null
+          source_type: string
+          status: string
+          total_score: number | null
+          updated_at: string
+          verification_state: Json
+        }
+        Relationships: []
+      }
     }
     Functions: {
       current_role_key: { Args: never; Returns: string }
@@ -790,6 +1005,7 @@ export type Database = {
       has_role: { Args: { _role_key: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
+      purge_binned_candidates: { Args: never; Returns: number }
     }
     Enums: {
       [_ in never]: never

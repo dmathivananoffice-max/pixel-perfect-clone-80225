@@ -1,6 +1,6 @@
-import { Card, CardContent } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
-import type { LucideIcon } from 'lucide-react';
+import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import type { LucideIcon } from "lucide-react";
 
 interface WidgetCardProps {
   label: string;
@@ -10,7 +10,13 @@ interface WidgetCardProps {
   hint?: string;
 }
 
-export function WidgetCard({ label, value, icon: Icon, accent = 'text-slate-600 bg-slate-50', hint }: WidgetCardProps) {
+export function WidgetCard({
+  label,
+  value,
+  icon: Icon,
+  accent = "text-slate-600 bg-slate-50",
+  hint,
+}: WidgetCardProps) {
   return (
     <Card className="hover:shadow-sm transition-shadow">
       <CardContent className="p-5">
@@ -20,7 +26,7 @@ export function WidgetCard({ label, value, icon: Icon, accent = 'text-slate-600 
             <p className="text-2xl font-bold">{value}</p>
             {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
           </div>
-          <div className={cn('p-3 rounded-lg shrink-0', accent)}>
+          <div className={cn("p-3 rounded-lg shrink-0", accent)}>
             <Icon className="w-5 h-5" />
           </div>
         </div>

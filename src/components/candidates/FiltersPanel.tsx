@@ -1,12 +1,18 @@
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { STAGES, LANG_LEVELS } from '@/lib/workflow';
-import { allCountries, COUNTRY_GROUPS } from '@/lib/countries';
-import { PRODUCTS } from '@/config/products';
-import { mockAgencies } from '@/lib/mockData';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useEffect, useState } from "react";
+import { STAGES, LANG_LEVELS } from "@/lib/workflow";
+import { allCountries, COUNTRY_GROUPS } from "@/lib/countries";
+import { PRODUCTS } from "@/config/products";
+import { supabase } from "@/integrations/supabase/client";
+
+interface AgencyOption {
+  id: string;
+  name: string;
+}
 
 export interface FiltersState {
   products: string[];
@@ -33,10 +39,32 @@ function toggle<T>(arr: T[], v: T): T[] {
 }
 
 export function FiltersPanel({ open, onOpenChange, value, onChange, onClear }: Props) {
+  const [agencies, setAgencies] = useState<AgencyOption[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("agencies")
+        .select("id, name")
+        .eq("active", true)
+        .order("name");
+      if (!cancelled && data) setAgencies(data as AgencyOption[]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const activeCount =
-    value.products.length + value.stages.length + value.countries.length +
-    value.countryGroups.length + value.langLevels.length + value.agencies.length +
-    (value.scoreMin != null ? 1 : 0) + (value.scoreMax != null ? 1 : 0) +
+    value.products.length +
+    value.stages.length +
+    value.countries.length +
+    value.countryGroups.length +
+    value.langLevels.length +
+    value.agencies.length +
+    (value.scoreMin != null ? 1 : 0) +
+    (value.scoreMax != null ? 1 : 0) +
     (value.placementReady ? 1 : 0);
 
   return (
@@ -56,7 +84,7 @@ export function FiltersPanel({ open, onOpenChange, value, onChange, onClear }: P
         <div className="mt-5 space-y-6 px-4 pb-6">
           <Section title="Product">
             <div className="grid grid-cols-1 gap-1.5">
-              {PRODUCTS.filter((p) => p.id !== 'all').map((p) => (
+              {PRODUCTS.filter((p) => p.id !== "all").map((p) => (
                 <CheckRow
                   key={p.id}
                   label={`${p.emoji} ${p.label}`}
@@ -87,7 +115,9 @@ export function FiltersPanel({ open, onOpenChange, value, onChange, onClear }: P
                   key={g}
                   label={g}
                   checked={value.countryGroups.includes(g)}
-                  onToggle={() => onChange({ ...value, countryGroups: toggle(value.countryGroups, g) })}
+                  onToggle={() =>
+                    onChange({ ...value, countryGroups: toggle(value.countryGroups, g) })
+                  }
                 />
               ))}
             </div>
@@ -100,7 +130,9 @@ export function FiltersPanel({ open, onOpenChange, value, onChange, onClear }: P
                   key={c.code}
                   label={`${c.flag} ${c.name}`}
                   checked={value.countries.includes(c.name)}
-                  onToggle={() => onChange({ ...value, countries: toggle(value.countries, c.name) })}
+                  onToggle={() =>
+                    onChange({ ...value, countries: toggle(value.countries, c.name) })
+                  }
                 />
               ))}
             </div>
@@ -116,8 +148,8 @@ export function FiltersPanel({ open, onOpenChange, value, onChange, onClear }: P
                     onClick={() => onChange({ ...value, langLevels: toggle(value.langLevels, l) })}
                     className={`rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset transition ${
                       active
-                        ? 'bg-primary text-primary-foreground ring-primary'
-                        : 'bg-background text-foreground ring-border hover:bg-accent'
+                        ? "bg-primary text-primary-foreground ring-primary"
+                        : "bg-background text-foreground ring-border hover:bg-accent"
                     }`}
                   >
                     {l}
@@ -129,10 +161,13 @@ export function FiltersPanel({ open, onOpenChange, value, onChange, onClear }: P
 
           <Section title="Agency">
             <div className="grid grid-cols-1 gap-1.5">
-              {mockAgencies.map((a) => (
+              {agencies.length === 0 && (
+                <p className="text-xs text-muted-foreground">No agencies on file yet.</p>
+              )}
+              {agencies.map((a) => (
                 <CheckRow
                   key={a.id}
-                  label={a.agency_name}
+                  label={a.name}
                   checked={value.agencies.includes(a.id)}
                   onToggle={() => onChange({ ...value, agencies: toggle(value.agencies, a.id) })}
                 />
@@ -148,9 +183,12 @@ export function FiltersPanel({ open, onOpenChange, value, onChange, onClear }: P
                   type="number"
                   min={0}
                   max={100}
-                  value={value.scoreMin ?? ''}
+                  value={value.scoreMin ?? ""}
                   onChange={(e) =>
-                    onChange({ ...value, scoreMin: e.target.value === '' ? undefined : Number(e.target.value) })
+                    onChange({
+                      ...value,
+                      scoreMin: e.target.value === "" ? undefined : Number(e.target.value),
+                    })
                   }
                   placeholder="0"
                 />
@@ -161,9 +199,12 @@ export function FiltersPanel({ open, onOpenChange, value, onChange, onClear }: P
                   type="number"
                   min={0}
                   max={100}
-                  value={value.scoreMax ?? ''}
+                  value={value.scoreMax ?? ""}
                   onChange={(e) =>
-                    onChange({ ...value, scoreMax: e.target.value === '' ? undefined : Number(e.target.value) })
+                    onChange({
+                      ...value,
+                      scoreMax: e.target.value === "" ? undefined : Number(e.target.value),
+                    })
                   }
                   placeholder="100"
                 />
@@ -181,8 +222,12 @@ export function FiltersPanel({ open, onOpenChange, value, onChange, onClear }: P
         </div>
 
         <div className="sticky bottom-0 flex items-center justify-between gap-2 border-t bg-background/95 px-4 py-3 backdrop-blur">
-          <Button variant="ghost" size="sm" onClick={onClear}>Clear all</Button>
-          <Button size="sm" onClick={() => onOpenChange(false)}>Done</Button>
+          <Button variant="ghost" size="sm" onClick={onClear}>
+            Clear all
+          </Button>
+          <Button size="sm" onClick={() => onOpenChange(false)}>
+            Done
+          </Button>
         </div>
       </SheetContent>
     </Sheet>
@@ -200,7 +245,15 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function CheckRow({ label, checked, onToggle }: { label: string; checked: boolean; onToggle: () => void }) {
+function CheckRow({
+  label,
+  checked,
+  onToggle,
+}: {
+  label: string;
+  checked: boolean;
+  onToggle: () => void;
+}) {
   return (
     <label className="flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-sm hover:bg-accent">
       <Checkbox checked={checked} onCheckedChange={onToggle} />

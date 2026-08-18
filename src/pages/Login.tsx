@@ -1,27 +1,27 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '@/store/authStore';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { GraduationCap, Loader2, Mail, CheckCircle2 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "@/store/authStore";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { GraduationCap, Loader2, Mail, CheckCircle2 } from "lucide-react";
+import toast from "react-hot-toast";
 
 function hasAuthReturnParams() {
-  if (typeof window === 'undefined') return false;
-  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  if (typeof window === "undefined") return false;
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
   const search = new URLSearchParams(window.location.search);
   return (
-    hash.has('access_token') ||
-    hash.has('refresh_token') ||
-    hash.has('error') ||
-    search.has('code') ||
-    search.has('error')
+    hash.has("access_token") ||
+    hash.has("refresh_token") ||
+    hash.has("error") ||
+    search.has("code") ||
+    search.has("error")
   );
 }
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [startupError, setStartupError] = useState<string | null>(null);
   const [isCompletingLink, setIsCompletingLink] = useState(() => hasAuthReturnParams());
@@ -33,10 +33,10 @@ export default function Login() {
   // magic link, missing app_users record, Supabase failure).
   useEffect(() => {
     try {
-      const msg = sessionStorage.getItem('wf:login-error');
+      const msg = sessionStorage.getItem("wf:login-error");
       if (msg) {
         setStartupError(msg);
-        sessionStorage.removeItem('wf:login-error');
+        sessionStorage.removeItem("wf:login-error");
       }
     } catch {
       /* ignore */
@@ -45,7 +45,7 @@ export default function Login() {
 
   // If session hydrates while sitting on /login (e.g. after clicking magic link), go to dashboard.
   useEffect(() => {
-    if (isAuthenticated) navigate('/dashboard', { replace: true });
+    if (isAuthenticated) navigate("/dashboard", { replace: true });
   }, [isAuthenticated, navigate]);
 
   useEffect(() => {
@@ -54,7 +54,9 @@ export default function Login() {
     const finish = window.setTimeout(() => {
       if (!useAuthStore.getState().isAuthenticated) {
         setIsCompletingLink(false);
-        setStartupError('That sign-in link could not be completed. Please request a fresh magic link.');
+        setStartupError(
+          "That sign-in link could not be completed. Please request a fresh magic link.",
+        );
       }
     }, 5000);
 
@@ -66,9 +68,9 @@ export default function Login() {
     try {
       await sendMagicLink(email.trim());
       setSent(true);
-      toast.success('Magic link sent — check your email');
+      toast.success("Magic link sent — check your email");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Could not send magic link';
+      const msg = err instanceof Error ? err.message : "Could not send magic link";
       toast.error(msg);
     }
   };
@@ -113,13 +115,17 @@ export default function Login() {
               <div>
                 <h2 className="text-lg font-semibold">Check your email</h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  We sent a sign-in link to <span className="font-medium text-foreground">{email}</span>.
-                  Click it to continue.
+                  We sent a sign-in link to{" "}
+                  <span className="font-medium text-foreground">{email}</span>. Click it to
+                  continue.
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => { setSent(false); setEmail(''); }}
+                onClick={() => {
+                  setSent(false);
+                  setEmail("");
+                }}
                 className="text-sm text-muted-foreground hover:text-foreground"
               >
                 Use a different email
