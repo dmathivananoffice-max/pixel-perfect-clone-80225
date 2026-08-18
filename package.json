@@ -13,6 +13,8 @@
     "test:intake-hang": "bun test tests/intake-draft-hang.test.ts tests/intake-processing-stuck-detector.test.ts tests/intake-pipeline-speed.test.ts",
     "verify:intake-hang": "bun scripts/verify_intake_draft_hang.ts",
     "test:sprint0": "bun test tests/sprint0-readiness-freeze.test.ts tests/sprint0-parity.test.ts src/intake/__tests__/mapper.test.ts",
+    "test:sprint1": "bun test tests/sprint1-schema-migration.test.ts tests/sprint0-readiness-freeze.test.ts tests/sprint0-parity.test.ts",
+    "gate:sprint1": "bun scripts/sprint1_m10_gate.ts",
     "capture:readiness": "bun scripts/capture_readiness_snapshots.ts"
   },
   "dependencies": {

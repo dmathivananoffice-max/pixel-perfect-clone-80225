@@ -883,6 +883,147 @@ export type Database = {
         }
         Relationships: []
       }
+      intake_education_records: {
+        Row: {
+          id: string
+          candidate_id: string
+          ordinal: number
+          qualification: string | null
+          institution: string | null
+          year: string | null
+          gpa: string | null
+          level: string
+          grade_scale: string
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          candidate_id: string
+          ordinal?: number
+          qualification?: string | null
+          institution?: string | null
+          year?: string | null
+          gpa?: string | null
+          level?: string
+          grade_scale?: string
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          candidate_id?: string
+          ordinal?: number
+          qualification?: string | null
+          institution?: string | null
+          year?: string | null
+          gpa?: string | null
+          level?: string
+          grade_scale?: string
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intake_education_records_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["candidate_id"]
+          },
+        ]
+      }
+      intake_language_certificates: {
+        Row: {
+          id: string
+          candidate_id: string
+          ordinal: number
+          provider: string | null
+          level: string | null
+          cert_date: string | null
+          overall_result: string
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          candidate_id: string
+          ordinal?: number
+          provider?: string | null
+          level?: string | null
+          cert_date?: string | null
+          overall_result?: string
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          candidate_id?: string
+          ordinal?: number
+          provider?: string | null
+          level?: string | null
+          cert_date?: string | null
+          overall_result?: string
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intake_language_certificates_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["candidate_id"]
+          },
+        ]
+      }
+      intake_language_modules: {
+        Row: {
+          id: string
+          certificate_id: string
+          module_key: string
+          exam_date: string | null
+          result: string | null
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          certificate_id: string
+          module_key: string
+          exam_date?: string | null
+          result?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          certificate_id?: string
+          module_key?: string
+          exam_date?: string | null
+          result?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intake_language_modules_certificate_id_fkey"
+            columns: ["certificate_id"]
+            isOneToOne: false
+            referencedRelation: "intake_language_certificates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       intake_schema_meta: {
         Row: {
           key: string
@@ -995,6 +1136,17 @@ export type Database = {
           total_score: number | null
           updated_at: string
           verification_state: Json
+        }
+        Relationships: []
+      }
+      intake_field_values: {
+        Row: {
+          candidate_id: string | null
+          field_key: string | null
+          value: string | null
+          status: string | null
+          human_value: string | null
+          ai_value: string | null
         }
         Relationships: []
       }

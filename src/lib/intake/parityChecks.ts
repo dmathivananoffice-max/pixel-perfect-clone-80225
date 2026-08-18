@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────────────────────
 import { supabase } from "@/integrations/supabase/client";
 import { LEGACY_REQUIRED_SET, requiredFields } from "@/intake/fieldDictionary";
+import { LEGACY_KEY_MAP, resolveLegacyKey } from "@/intake/keyAliases";
 import { captureReadinessSnapshots } from "./readinessSnapshots";
 import { computeReadinessPct } from "./readinessCompute";
 import { M6_CHECK_IDS } from "./parityContract";
@@ -28,6 +29,10 @@ function fail(id: string, title: string, summary: string, failingRows: ParityFai
 }
 
 export async function runParityChecks(): Promise<ParityCheckResult[]> {
+  for (const key of Object.keys(LEGACY_KEY_MAP)) {
+    resolveLegacyKey(key);
+  }
+
   const [{ data: candidates, error: candErr }, { data: snapshots }, { data: humans }, { data: meta }] =
     await Promise.all([
       supabase

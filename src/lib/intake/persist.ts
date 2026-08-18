@@ -18,6 +18,7 @@ import { guessDocType } from "./doctype";
 import { resolveCountryName } from "@/intake/normalisers";
 import { withTimeout } from "@/lib/withTimeout";
 import { DRAFT_DB_TIMEOUT_MS, DRAFT_PHASE_BUDGET_MS } from "./hangBudgets";
+import { syncMappedWritesToNewAddresses } from "./writeNewAddresses";
 
 // ---------- Hang guards ----------
 // Supabase storage uploads / hashing / OCR can stall forever on a dropped
@@ -678,6 +679,7 @@ export async function persistIntakeBatch(params: {
               );
               if (idErr)
                 console.warn("[intake] identity backfill failed for", candDbId, idErr.message);
+              else await syncMappedWritesToNewAddresses(candDbId, extractedFields);
             } catch (e) {
               console.warn("[intake] identity backfill failed for", candDbId, e);
             }
@@ -792,6 +794,9 @@ export async function approveCandidate(
       extracted_fields: snapshot.values,
     })
     .eq("candidate_id", candidateDbId);
+  if (!updErr && snapshot.values) {
+    await syncMappedWritesToNewAddresses(candidateDbId, snapshot.values);
+  }
   if (updErr) {
     throw new IntakeError(
       classifySupabaseError(updErr),
@@ -842,6 +847,7 @@ export async function saveCandidateDraft(
     .update(patch)
     .eq("candidate_id", candidateDbId);
   if (error) return { ok: false, savedAt, error: error.message };
+  if (draft.values) await syncMappedWritesToNewAddresses(candidateDbId, draft.values);
   return { ok: true, savedAt };
 }
 

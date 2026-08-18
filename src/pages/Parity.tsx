@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { broadcastMigrationPending } from "@/hooks/useMigrationFlush";
+import { getAliasResolutionCount } from "@/intake/keyAliases";
 import { recaptureAndCheck, runParityChecks, type ParityCheckResult } from "@/lib/intake/parityChecks";
 import { captureReadinessSnapshots } from "@/lib/intake/readinessSnapshots";
 import { cn } from "@/lib/utils";
@@ -46,6 +47,7 @@ export default function Parity() {
   const { isAdmin, user } = useAuth();
   const [checks, setChecks] = useState<ParityCheckResult[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [aliasResolutions, setAliasResolutions] = useState(() => getAliasResolutionCount());
 
   if (!isAdmin) {
     return (
@@ -65,6 +67,7 @@ export default function Parity() {
     try {
       const result = await runParityChecks();
       setChecks(result);
+      setAliasResolutions(getAliasResolutionCount());
       const failed = result.filter((c) => !c.pass).length;
       toast[failed ? "error" : "success"](
         failed ? `${failed} check(s) failed` : "All eight M6 checks passed",
@@ -81,6 +84,7 @@ export default function Parity() {
     try {
       const { capture, checks: next } = await recaptureAndCheck();
       setChecks(next);
+      setAliasResolutions(getAliasResolutionCount());
       if (capture.error) toast.error(capture.error);
       else toast.success(`Captured ${capture.inserted} snapshot(s)`);
     } catch (e) {
@@ -130,6 +134,20 @@ export default function Parity() {
           Re-runnable safety-net checks. No recruiter-facing intake behaviour is changed here.
         </p>
       </div>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">M4 alias resolutions</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground">
+          <p>
+            <span className="font-mono text-foreground">{aliasResolutions}</span>{" "}
+            legacy-key resolution(s) in this session. Incremented on every{" "}
+            <span className="font-mono">resolveLegacyKey</span> call.{" "}
+            <span className="font-mono">language.exam_date</span> is read-only (fan-out).
+          </p>
+        </CardContent>
+      </Card>
 
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => void run()} disabled={!!busy} className="gap-1.5">
