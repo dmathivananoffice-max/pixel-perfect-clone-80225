@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { ChevronDown, Check } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { STAGES, nextStages, stageMeta, TONE_CLASSES } from '@/lib/workflow';
-import type { CandidateStatus } from '@/types';
+import { useState } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { ChevronDown, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { STAGES, nextStages, stageMeta, TONE_CLASSES } from "@/lib/workflow";
+import type { CandidateStatus } from "@/types";
 
 interface Props {
   status: CandidateStatus;
@@ -16,7 +16,7 @@ interface Props {
 export function StageEditor({ status, onChange, disabled }: Props) {
   const [open, setOpen] = useState(false);
   const [selection, setSelection] = useState<CandidateStatus | null>(null);
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState("");
   const meta = stageMeta(status);
   const options = nextStages(status);
   const allOptions = options.length ? options : STAGES.filter((s) => s.id !== status);
@@ -25,19 +25,28 @@ export function StageEditor({ status, onChange, disabled }: Props) {
     onChange(target, note.trim() || undefined);
     setOpen(false);
     setSelection(null);
-    setNote('');
+    setNote("");
   };
 
   return (
-    <Popover open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setSelection(null); setNote(''); } }}>
+    <Popover
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v);
+        if (!v) {
+          setSelection(null);
+          setNote("");
+        }
+      }}
+    >
       <PopoverTrigger asChild disabled={disabled}>
         <button
           type="button"
           onClick={(e) => e.stopPropagation()}
           className={cn(
-            'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset transition-colors hover:ring-2',
+            "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset transition-colors hover:ring-2",
             TONE_CLASSES[meta.tone],
-            disabled && 'opacity-60 pointer-events-none',
+            disabled && "opacity-60 pointer-events-none",
           )}
         >
           <span className="size-1.5 rounded-full bg-current opacity-70" />
@@ -45,11 +54,7 @@ export function StageEditor({ status, onChange, disabled }: Props) {
           <ChevronDown className="size-3 opacity-60" />
         </button>
       </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        className="w-64 p-0"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <PopoverContent align="start" className="w-64 p-0" onClick={(e) => e.stopPropagation()}>
         {!selection ? (
           <div className="p-1">
             <p className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -61,7 +66,12 @@ export function StageEditor({ status, onChange, disabled }: Props) {
                 onClick={() => setSelection(s.id)}
                 className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
               >
-                <span className={cn('inline-flex size-2 rounded-full', TONE_CLASSES[s.tone].split(' ')[0])} />
+                <span
+                  className={cn(
+                    "inline-flex size-2 rounded-full",
+                    TONE_CLASSES[s.tone].split(" ")[0],
+                  )}
+                />
                 <span className="flex-1 text-left">{s.label}</span>
                 {s.id === status && <Check className="size-3.5 text-muted-foreground" />}
               </button>
