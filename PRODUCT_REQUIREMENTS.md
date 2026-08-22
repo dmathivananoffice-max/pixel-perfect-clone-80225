@@ -1,7 +1,7 @@
 # Workforce Europe — Product Requirements
 
-> Product brief only. No technical implementation detail.  
-> Use this to describe *what* to build and *for whom*. Engineering choices are out of scope here.
+> Product brief only: *what* the product does and *for whom*.  
+> How it is built is out of scope.
 
 ---
 
@@ -12,9 +12,9 @@
 The organisation runs **two connected products**:
 
 1. **Recruitment Intelligence Platform** — the day-to-day tool for staff who intake candidates, check documents, score readiness, run assessments, issue contracts, and track visas through to placement.
-2. **Growth Operating System** — the marketing and sales engine that attracts and qualifies leads (ads, career diagnostic, WhatsApp, counsellor tools, capacity control) and hands ready people into the recruitment platform.
+2. **Growth Operating System** — the marketing and sales engine that attracts and qualifies leads (ads, career diagnostic, WhatsApp conversations, counsellor tools, capacity control) and hands ready people into the recruitment platform.
 
-They share one company identity: a lead who converts becomes a candidate. They do **not** share the same job. Growth never runs visa/document work; the recruitment platform never runs ad spend approvals.
+They share one company identity: a lead who converts becomes a candidate. They do **not** share the same job. Growth never runs visa or document work; the recruitment platform never approves ad spend.
 
 ---
 
@@ -22,18 +22,18 @@ They share one company identity: a lead who converts becomes a candidate. They d
 
 | Who | What they need |
 |---|---|
-| Managing director / super admin | Oversight, roles, dashboards, high-stakes approvals |
+| Managing director / administrator | Oversight, roles, dashboards, high-stakes approvals |
 | Recruiter / documentation officer | Intake candidates, verify documents section by section, move people through the pipeline |
 | German trainer | Language and skill assessments |
 | Counsellor / sales | Qualify leads, book advising, hand off to intake |
-| Marketing operator | See growth performance, approve recommended ad/content actions (never auto-spend) |
+| Marketing operator | See growth performance, approve recommended ad and content actions (never auto-spend) |
 | Agency partner | Submit and track agency candidates |
 | Employer | See matched candidates and interview progress |
 | Candidate | Understand eligibility, upload documents, track status, sign contracts |
 
 ---
 
-## 3. Career pathways (products)
+## 3. Career pathways
 
 Staff choose a pathway when intake starts:
 
@@ -45,7 +45,7 @@ Staff choose a pathway when intake starts:
 | Pre-Masters | Master’s intake preparation |
 | MBA | Business school applications and offers |
 
-Growth-side career families (for the public Diagnostic) also include doctors, technicians/mechatronics, logistics, FSJ, bachelor, and master — used to recommend a path before someone becomes a candidate.
+The public career assessment also covers broader families (doctors, technicians/mechatronics, logistics, FSJ, bachelor, master) to recommend a path before someone becomes a candidate.
 
 ---
 
@@ -57,7 +57,7 @@ A candidate progresses through stages such as:
 
 **Registered → Shortlisted → Interview 1 → Interview 2 → Offer/Contract → Visa → Placed**
 
-They may also be **Rejected** or **Withdrawn**. Staff always see a clear, plain-language **placement readiness** status (e.g. Documents Missing, Placement Ready, Visa Processing) — not internal jargon alone.
+They may also be **Rejected** or **Withdrawn**. Staff always see a clear, plain-language **placement readiness** status (for example Documents Missing, Placement Ready, Visa Processing).
 
 ### 4.2 Intake and document verification
 
@@ -65,11 +65,11 @@ Staff can:
 
 1. Start a **single** or **bulk** intake for one pathway.
 2. Upload the candidate’s documents (passport, photo, degree, language certificate, CV, police clearance, medical fitness, driving licence, and related proofs).
-3. Let the system **read documents and propose field values** (names, dates, passport numbers, language level, education, etc.).
+3. Let the system **read documents and suggest values** (names, dates, passport numbers, language level, education, and so on).
 4. Review every section in a **verification studio**, fix mistakes, mark sections verified, and save drafts safely.
 5. Approve a candidate only when required sections are verified and staff confirm the review declarations.
 
-The system must never silently invent facts that were not on the documents. Unclear or low-confidence values must be obvious so a human can correct them. One candidate’s documents must never bleed into another candidate’s record.
+The system must never invent facts that were not on the documents. Unclear values must be obvious so a human can correct them. One candidate’s documents must never appear on another candidate’s record. When documents are read again later, **staff corrections must be kept**.
 
 ### 4.3 Information the platform captures
 
@@ -92,28 +92,25 @@ Approving intake means the candidate is ready for shortlisting and further pipel
 
 Staff configure **gates and weighted criteria** (for example passport present, German B2, required education). The platform shows who is placement-ready versus blocked by missing documents or unmet gates.
 
-### 4.5 Assessments (STI / Evaluation Center)
+### 4.5 Assessments
 
 Trainers and recruiters record speaking, training, and interview results. These feed readiness views and downstream decisions.
 
 ### 4.6 Contracts and portals
 
 - Candidates can review and **sign contracts**.
-- **Agency**, **employer**, and **candidate** portals show the information each party needs — not the full staff console.
-- Staff can send transactional emails and run basic reports.
+- **Agency**, **employer**, and **candidate** portals show only what each party needs — not the full staff console.
+- Staff can send emails and run basic reports.
 
-### 4.7 Trust and safety (product rules)
+### 4.7 Trust and safety
 
-- Human edits always win over re-extraction.
-- Audit history of important actions is preserved.
-- Inactive users cannot access the system.
+- Important actions leave an audit trail.
+- Inactive people cannot use the system.
 - Outbound messages must never promise visa approval, employment, recognition success, or a specific salary.
 
 ---
 
 ## 5. Growth Operating System — what it must do
-
-*(Detail requirements live in the Growth SRD; this is the product summary.)*
 
 ### 5.1 Purpose
 
@@ -121,7 +118,7 @@ Run Workforce Europe’s online growth from **one operator surface**: watch paid
 
 ### 5.2 Operating principle
 
-The system **watches and recommends**. A human **approves** before anything spends money, publishes content, or changes paid campaigns. There is no “auto-spend” mode.
+The system **watches and recommends**. A human **approves** before anything spends money, publishes content, or changes paid campaigns. There is no auto-spend mode.
 
 ### 5.3 Main capabilities
 
@@ -130,9 +127,9 @@ The system **watches and recommends**. A human **approves** before anything spen
 | Pathway Diagnostic | Short, mobile-friendly career assessment; shows honest eligibility (Ready / Preparable / Not Yet) *before* asking for contact |
 | Lead capture | Consent-aware contact capture; no false encouragement; “Not Yet” still gets a preparation path |
 | Scoring & routing | Hot / Warm / Nurture / Disqualified bands with clear reasons; protect counsellor time |
-| WhatsApp agent | Delivers results, asks qualification questions from an approved playbook, hands off to humans when unsure; discloses it is automated |
+| WhatsApp conversations | Delivers results, asks qualification questions from an approved playbook, hands off to humans when unsure; discloses it is automated |
 | Counsellor tools | Briefings, objection library, logging of real objections as data |
-| Capacity governor | Never generate more demand than confirmed intake capacity |
+| Capacity control | Never generate more demand than confirmed intake capacity |
 | Ads & SEO | Continuous monitoring; changes only via human-approved recommendations |
 | Operator dashboard | One inbox of pending actions with evidence, cost, and risk in plain language |
 
@@ -141,8 +138,8 @@ The system **watches and recommends**. A human **approves** before anything spen
 - Prefer honesty over hype; scarcity only when real.
 - Candidate-facing languages at launch: English and Hindi.
 - Usable on modest phones and slow mobile networks.
-- GDPR-grade consent and erasure for marketing data.
-- Converted leads become recruitment candidates without duplicate identity chaos.
+- Clear consent and the right to be forgotten for marketing data.
+- Converted leads become recruitment candidates without duplicate or conflicting identities.
 
 ---
 
@@ -150,7 +147,7 @@ The system **watches and recommends**. A human **approves** before anything spen
 
 **Recruitment platform**
 
-- Staff can intake and verify a candidate without losing work to hangs or crashes.
+- Staff can intake and verify a candidate without losing unfinished work.
 - Document mistakes are caught by humans before shortlisting.
 - Pipeline stage and placement readiness are understandable at a glance.
 - Agencies, employers, and candidates see only what they should.
@@ -165,15 +162,15 @@ The system **watches and recommends**. A human **approves** before anything spen
 
 ---
 
-## 7. Explicitly out of product scope (for now)
+## 7. Out of scope for now
 
-- Fully autonomous ad spending or autonomous pipeline decisions without a human
+- Fully autonomous ad spending or pipeline decisions without a human
 - Payment processing inside these products
 - Promising visas, jobs, or salaries in any candidate-facing copy
 - Treating Growth and Recruitment as one undifferentiated product (they connect; they are not the same job)
 
 ---
 
-## 8. One-line brief for a builder
+## 8. One-line brief
 
-Build a **candidate verification and placement platform** for Germany-bound pathways, fed by a separate **honest, human-approved growth engine** that qualifies demand and never oversells outcomes.
+A **candidate verification and placement platform** for Germany-bound pathways, fed by a separate **honest, human-approved growth engine** that qualifies demand and never oversells outcomes.
