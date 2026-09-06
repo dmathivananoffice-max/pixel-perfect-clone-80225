@@ -11,7 +11,7 @@
 
 The organisation runs **two connected products**:
 
-1. **Recruitment Intelligence Platform** — the day-to-day tool for staff who intake candidates, check documents, score readiness, run assessments, issue contracts, and track visas through to placement.
+1. **Recruitment Intelligence Platform** — the day-to-day tool for staff who intake candidates, check documents, score readiness, run assessments, prepare people for interviews, manage offers, track visas and flights, and support onboarding in Germany.
 2. **Growth Operating System** — the marketing and sales engine that attracts and qualifies leads (ads, career diagnostic, WhatsApp conversations, counsellor tools, capacity control) and hands ready people into the recruitment platform.
 
 They share one company identity: a lead who converts becomes a candidate. They do **not** share the same job. Growth never runs visa or document work; the recruitment platform never approves ad spend.
@@ -24,12 +24,14 @@ They share one company identity: a lead who converts becomes a candidate. They d
 |---|---|
 | Managing director / administrator | Oversight, roles, dashboards, high-stakes approvals |
 | Recruiter / documentation officer | Intake candidates, verify documents section by section, move people through the pipeline |
-| German trainer | Language and skill assessments |
+| German trainer | Language and skill assessments; interview preparation |
 | Counsellor / sales | Qualify leads, book advising, hand off to intake |
 | Marketing operator | See growth performance, approve recommended ad and content actions (never auto-spend) |
 | Agency partner | Submit and track agency candidates |
-| Employer | See matched candidates and interview progress |
-| Candidate | Understand eligibility, upload documents, track status, sign contracts |
+| Magnet school | Run or join school-side interviews; see candidates assigned to their school track |
+| German office (Verwaltung) | Run or join the Verwaltung interview; review candidates for administrative clearance |
+| Employer | Run or join the employer interview; see matched candidates and hiring progress |
+| Candidate | Understand eligibility, upload documents, track status, prepare for interviews, sign offer documents, follow visa / travel / onboarding steps |
 
 ---
 
@@ -53,11 +55,21 @@ The public career assessment also covers broader families (doctors, technicians/
 
 ### 4.1 End-to-end candidate journey
 
-A candidate progresses through stages such as:
+After intake and shortlisting, a candidate progresses through this placement journey:
 
-**Registered → Shortlisted → Interview 1 → Interview 2 → Offer/Contract → Visa → Placed**
+1. **Assessment** — skills / language / suitability checks  
+2. **Interview training** — prepare the candidate for formal interviews  
+3. **Interview 1 — German Verwaltung** — administrative / office interview  
+4. **Interview 2 — School** — magnet school (or pathway school) interview  
+5. **Interview 3 — Employer** — employer interview  
+6. **Offer documents** — issue, review, and collect signed offer paperwork  
+7. **Visa** — visa application and tracking  
+8. **Flight booking** — travel to Germany  
+9. **Onboarding in Germany** — arrival and settling support  
 
-They may also be **Rejected** or **Withdrawn**. Staff always see a clear, plain-language **placement readiness** status (for example Documents Missing, Placement Ready, Visa Processing).
+They may also be **Rejected** or **Withdrawn** at appropriate points. Staff always see a clear, plain-language **placement readiness** status (for example Documents Missing, Interview Training, Awaiting Verwaltung, Offer Pending, Visa Processing, Travel Booked, Onboarding in Germany).
+
+Each interview stage has a clear **owner** (Verwaltung, school, or employer) so the right party knows when it is their turn and what they must decide.
 
 ### 4.2 Intake and document verification
 
@@ -86,27 +98,45 @@ Typical sections staff verify:
 - Driving licence
 - Document completeness checklist
 
-Approving intake means the candidate is ready for shortlisting and further pipeline work — not that a visa or job is guaranteed.
+Approving intake means the candidate is ready for shortlisting and the journey above — not that a visa, school place, or job is guaranteed.
 
 ### 4.4 Scoring and placement readiness
 
 Staff configure **gates and weighted criteria** (for example passport present, German B2, required education). The platform shows who is placement-ready versus blocked by missing documents or unmet gates.
 
-### 4.5 Assessments
+### 4.5 Assessments and interview training
 
-Trainers and recruiters record speaking, training, and interview results. These feed readiness views and downstream decisions.
+- Trainers and recruiters record assessment results (speaking, training, suitability).
+- **Interview training** prepares the candidate before Verwaltung, school, and employer interviews.
+- Assessment and training outcomes feed readiness views and whether the candidate may advance to the next interview.
 
-### 4.6 Contracts and portals
+### 4.6 Interviews, offers, travel, and onboarding
 
-- Candidates can review and **sign contracts**.
-- **Agency**, **employer**, and **candidate** portals show only what each party needs — not the full staff console.
-- Staff can send emails and run basic reports.
+The platform must support:
 
-### 4.7 Trust and safety
+| Stage | Product outcome |
+|---|---|
+| Interview 1 — German Verwaltung | Schedule, conduct or record outcome with the German office; clear pass / fail / defer |
+| Interview 2 — School | Same for the magnet school (or pathway school) |
+| Interview 3 — Employer | Same for the employer |
+| Offer documents | Generate / share offer paperwork; candidate (and partners as needed) review and sign |
+| Visa | Track visa status and required follow-ups |
+| Flight booking | Record travel arrangements to Germany |
+| Onboarding in Germany | Track arrival and early settling steps so staff and partners see the candidate is landed and supported |
+
+Verwaltung, school, and employer each see **only their interview and the candidate information they need** — not the full internal console.
+
+### 4.7 Contracts and portals
+
+- Candidates can review and **sign offer / contract documents**.
+- **Agency**, **magnet school**, **German Verwaltung**, **employer**, and **candidate** portals show only what each party needs.
+- Staff can send emails and run basic reports across the journey.
+
+### 4.8 Trust and safety
 
 - Important actions leave an audit trail.
 - Inactive people cannot use the system.
-- Outbound messages must never promise visa approval, employment, recognition success, or a specific salary.
+- Outbound messages must never promise visa approval, employment, school admission, recognition success, or a specific salary.
 
 ---
 
@@ -149,8 +179,8 @@ The system **watches and recommends**. A human **approves** before anything spen
 
 - Staff can intake and verify a candidate without losing unfinished work.
 - Document mistakes are caught by humans before shortlisting.
-- Pipeline stage and placement readiness are understandable at a glance.
-- Agencies, employers, and candidates see only what they should.
+- Assessment → interview training → Verwaltung / school / employer interviews → offer → visa → flight → German onboarding is understandable at a glance.
+- Magnet school, German Verwaltung, employers, agencies, and candidates each see only their part of the journey.
 
 **Growth**
 
@@ -166,11 +196,11 @@ The system **watches and recommends**. A human **approves** before anything spen
 
 - Fully autonomous ad spending or pipeline decisions without a human
 - Payment processing inside these products
-- Promising visas, jobs, or salaries in any candidate-facing copy
+- Promising visas, jobs, school places, or salaries in any candidate-facing copy
 - Treating Growth and Recruitment as one undifferentiated product (they connect; they are not the same job)
 
 ---
 
 ## 8. One-line brief
 
-A **candidate verification and placement platform** for Germany-bound pathways, fed by a separate **honest, human-approved growth engine** that qualifies demand and never oversells outcomes.
+A **candidate verification and placement platform** for Germany-bound pathways — from assessment and multi-party interviews through offer, visa, travel, and onboarding — fed by a separate **honest, human-approved growth engine** that qualifies demand and never oversells outcomes.
